@@ -1,0 +1,241 @@
+﻿<%@ page title="" language="VB" masterpagefile="~/menu.master" autoeventwireup="false" inherits="Reportes_ReporteCartera, App_Web_1pmgrmve" %>
+
+
+<%@ Register Assembly="System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"
+    Namespace="System.Web.UI" TagPrefix="asp" %>
+<%@ Register Assembly="AjaxControlToolkit" Namespace="AjaxControlToolkit" TagPrefix="cc1" %>
+<%@ Register TagPrefix="CP" TagName="Filtros" Src="~/Filtros/FiltrosUsuarios.ascx" %>
+<asp:Content ID="Content1" ContentPlaceHolderID="ContentPlaceHolder1" runat="Server">
+    <asp:UpdatePanel ID="up1" runat="server">
+        <ContentTemplate>
+            <div class="panel-heading-icon">
+                <i class="fa fa-line-chart " style="text-align: center;"></i>
+            </div>
+            <h1 class="page-header">
+
+                <small>
+                    <asp:Label runat="server" Text="Informe Registros"></asp:Label></small>
+            </h1>
+
+
+            <div class="panel panel-default">
+
+
+                <%--Div con la gráfica de barras--%>
+                <%--<div class="col-sm-12">--%>
+                <div class=" table-responsive">
+                    <div id="container2">
+                    </div>
+                </div>
+                <%--</div>--%>
+
+                <asp:Panel ID="Panel1" runat="server" CssClass="panel panel-default">                    
+                     <div class="panel panel-default">                            
+                            <div class="panel-body">
+                                <div class=" table-responsive">
+                                    <table style="margin: auto;">                                       
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <asp:Label runat="server" Text="Fecha Inicial"></asp:Label>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <asp:TextBox ID="txtFechaInicial" runat="server" Width="160px" CssClass='form-control' ></asp:TextBox>
+                                            </td>
+                                            <td>
+                                                <i class="fa fa-calendar" aria-hidden="true" id="Image1" runat="server"></i>
+                                                <asp:RequiredFieldValidator ValidationGroup="cartera" ID="RequiredFieldValidator10" runat="server" ErrorMessage=" * campo requerido"
+                                                    ForeColor="Red" ControlToValidate="txtFechaInicial"></asp:RequiredFieldValidator>
+                                                <cc1:CalendarExtender ID="CalendarExtender1" runat="server" TargetControlID="txtFechaInicial"
+                                                    PopupButtonID="Image1">
+                                                </cc1:CalendarExtender>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <b>
+                                                    <asp:Label runat="server" Text="Fecha Final"></asp:Label>
+                                                </b>
+                                            </td>
+                                            <td>
+                                                <asp:TextBox ID="txtFechaFinal" runat="server" Width="160px" CssClass='form-control' ></asp:TextBox>
+                                            </td>
+                                            <td>
+                                                <i class="fa fa-calendar" aria-hidden="true" id="Image2" runat="server"></i>
+                                                <asp:RequiredFieldValidator ValidationGroup="cartera" ID="RequiredFieldValidator1" runat="server" ErrorMessage=" * campo requerido"
+                                                    ForeColor="Red" ControlToValidate="txtFechaFinal"></asp:RequiredFieldValidator>
+                                                <cc1:CalendarExtender ID="CalendarExtender2" runat="server" TargetControlID="txtFechaFinal"
+                                                    PopupButtonID="Image2">
+                                                </cc1:CalendarExtender>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <asp:Label runat="server" Text="Empresa" Visible="false"></asp:Label>
+                                            </td>
+                                            <td colspan="3">
+                                                <asp:DropDownList ID="ddlBancos" runat="server" DataSourceID="dsTiposUsuarios" DataTextField="descripcion"
+                                                    DataValueField="codigo" CssClass='form-control' Width="196px" Visible="false">
+                                                </asp:DropDownList>
+                                                <asp:SqlDataSource ID="dsTiposUsuarios" runat="server" ConnectionString="<%$ ConnectionStrings:Arquitectos %>"
+                                                    SelectCommand="select 'Empresa' as Empresa"></asp:SqlDataSource>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4">
+                                                <div style="text-align: center">
+                                                    <asp:Button ID="btnAceptar" runat="server" CausesValidation="true" Text="<%$ Resources:multi.language, aceptar%>"
+                                                        CssClass="btn btn-success btn-sm" Width="100px" ValidationGroup="cartera" />
+                                                    <asp:Button ID="btnCancelar" runat="server" Text="<%$ Resources:multi.language, cancelar%>" CausesValidation="False"
+                                                        CssClass="btn btn-primary btn-sm" Width="100px" Visible="False" />
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    <div class="table-responsive">
+                        <asp:GridView ID="gvDatos" runat="server" AutoGenerateColumns="False" EmptyDataText="NO SE ENCONTRARON RESULTADOS PARA ESTA  BUSQUEDA"
+                            Width="100%" Font-Size="12px" CssClass="gvHeader" DataSourceID="dsReporteTransacciones" EnableModelValidation="True"
+                            ShowFooter="True" DataKeyNames="id" AllowSorting="True" OnRowDataBound="gvDatos_RowDataBound">
+                            <Columns>
+                                <asp:BoundField DataField="NombreDB" HeaderText="NombreDB" ItemStyle-HorizontalAlign="Left" SortExpression="NombreDB" />
+                                <asp:BoundField DataField="CodigoUsuario" HeaderText="CodigoUsuario" ItemStyle-HorizontalAlign="Right" SortExpression="CodigoUsuario" />
+                                <asp:BoundField DataField="NumTransacciones" HeaderText="NumTransacciones" ItemStyle-HorizontalAlign="Right" SortExpression="NumTransacciones" />
+                                <asp:BoundField DataField="FechaRegistro" HeaderText="FechaRegistro" ItemStyle-HorizontalAlign="Center" SortExpression="FechaRegistro" />
+                            </Columns>
+                            <FooterStyle CssClass="gvHeader-footer" />
+                        </asp:GridView>
+                        <asp:Button ID="btnExportar" runat="server" Text="<%$ Resources:multi.language, Exportar%>" CssClass="btn btn-primary" />
+                    </div>
+                    <asp:SqlDataSource ID="dsReporteTransacciones" runat="server" ConnectionString="<%$ ConnectionStrings:Arquitectos %>" 
+                        SelectCommand="ReporteTransCarteraSelProc" SelectCommandType="StoredProcedure">
+                        <SelectParameters>
+                                <asp:Parameter Name="fechaInicial" Type="DateTime" />
+                                <asp:Parameter Name="fechaFinal" Type="DateTime" />
+                            </SelectParameters>
+                    </asp:SqlDataSource>
+                </asp:Panel>
+            </div>  
+        </ContentTemplate>
+        <Triggers>
+            <asp:PostBackTrigger ControlID="btnExportar" />
+        </Triggers>
+    </asp:UpdatePanel>
+
+    <%--Script para las gráficas hechas con highcharts--%>
+    <script type="text/javascript">
+
+        //Método que recibe los datos obtenidos por el SP con los campos a graficar
+        //y llama a los métodos encargados de graficar
+        function iniciar(datos) {
+            console.log(datos);
+            graficaBarra(datos);
+        }
+
+        //Gráfica de barras
+
+        function graficaBarra(datos) {
+            var series2 = [];
+
+            // metodo para crear las series como se muestra en el codigo arriba que esta comentado
+            for (var i = 0; i < datos[0].length; i++) {
+
+                var _name = datos[0][i]
+                var _data = [];
+
+                _data.push(parseFloat(datos[1][i]));
+
+                var itemSerie = {
+                    name: _name,
+                    data: _data
+                };
+
+                console.log('---------');
+                console.log(itemSerie);
+
+                series2.push(itemSerie);
+            }
+
+            console.log(series2);
+
+            $('#container2').highcharts({
+                chart: {
+                    type: 'column'
+                },
+                title: {
+                    text: '<% =  Resources.multi.language.top_5_vendedores.ToString()%>' //'Top 5 Vendedores con más ventas'
+                },
+                subtitle: {
+                    text: ''
+                },
+                xAxis: {
+                    categories: '',
+                    crosshair: true
+                    ,
+                    title: {
+                        text: '<% =  Resources.multi.language.Vendedor.ToString()%>'
+                    }
+                },
+                yAxis: {
+                    min: 0,
+                    title: {
+                        text: '<% =  Resources.multi.language.Pedidos.ToString()%>'
+                    }
+                },
+                tooltip: {
+                    headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+                    pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+                    '<td style="padding:0"><b>{point.y:.2f}' + '</b></td></tr>',
+                    footerFormat: '</table>',
+                    shared: true,
+                    useHTML: true
+                },
+                plotOptions: {
+                    column: {
+                        pointPadding: 0.2,
+                        borderWidth: 0
+                    },
+                    series: {
+                        borderWidth: 0,
+                        dataLabels: {
+                            // rotation: -90,
+                            enabled: true,
+                            format: '{point.y:.0f}'
+                        }
+                    }
+                },
+                series: series2
+            });
+        }
+    </script>
+    <script type="text/javascript">
+        function initMap(latitud, longitud) {
+            console.log(latitud);
+            console.log(longitud);
+            var uluru = { lat: parseFloat(latitud), lng: parseFloat(longitud) };
+
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 16,
+                center: uluru
+            });
+            var marker = new google.maps.Marker({
+                position: uluru,
+                map: map
+            });
+        }
+    </script>
+    <%-- <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDf1s74m2sYm-tiCglRIi1pl3fRZ8XUYf0&callback=initMap">
+    </script>--%>
+    <script type='text/javascript' src='https://maps.googleapis.com/maps/api/js?key=AIzaSyDRL0ag9-lF_XxR9IS2BbahTlEh-IrrGBM'></script>
+    <style>
+        #map {
+            height: 280px;
+            width: 100%;
+        }
+    </style>
+</asp:Content>

@@ -1,0 +1,155 @@
+﻿<%@ master language="VB" inherits="menu, App_Web_x6isu8n2" %>
+
+<%@ Register Assembly="System.Web.Extensions, Version=1.0.61025.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"
+    Namespace="System.Web.UI" TagPrefix="asp" %>
+<%@ Register Assembly="AjaxControlToolkit" Namespace="AjaxControlToolkit" TagPrefix="cc1" %>
+<!DOCTYPE html >
+<html lang="es" style="background: #23323c;">
+
+<head id="Head1" runat="server">
+    <title>CELUWEB</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- CSS -->
+    <%--<link rel="stylesheet" type="text/css" href="Styles/css/bootstrap.css" />--%>
+    <link rel="stylesheet" type="text/css" href="Styles/bootstrap/dist/css/bootstrap.css" />
+    <%--<link rel="stylesheet" type="text/css" href="Styles/css/default.css" />--%>
+    <link href="Styles/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="Styles/build/css/custom.css" rel="stylesheet">
+    <link href="Styles/sweetalert/src/sweetalert2.css" rel="Stylesheet" />
+    <link rel="stylesheet" type="text/css" href="Styles/css/component.css" />
+    <link rel="Stylesheet" type="text/css" href="Styles/css/Styles.css" />
+    <link rel="Stylesheet" type="text/css" href="Styles/css/Catalogo.css" />
+    <link href="Styles/css/hide-column.css" rel="stylesheet" type="text/css" />
+
+
+    <script src="https://code.jquery.com/jquery-1.9.1.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.1/jquery-ui.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js" type="text/javascript"></script>
+    <script src="https://code.highcharts.com/highcharts-3d.js" type="text/javascript"> </script>
+    <script src="https://code.highcharts.com/modules/exporting.js" type="text/javascript"></script>
+
+    <%--Se colocan para el funcionamiento del catalogo, desactivar si hay alguna incompatibilidad --%>
+
+    <script src="../Styles/js/bootstrap-prettyfile.js"></script>
+
+
+    <style>
+        .carousel-inner > .item > img,
+        .carousel-inner > .item > a > img {
+            width: 70%;
+            margin: auto;
+        }
+    </style>
+
+
+</head>
+<%--<body class="nav-md">--%>
+<body class="nav-md" style="background-image: url(../Styles/images/fondo-menu.png); background-repeat: no-repeat; background-color: #23323c;">
+    <div class="container body">
+        <div class="main_container">
+            <div class="col-md-3 left_col">
+                <div class="left_col scroll-view">
+                    <div class="navbar nav_title" style="border: 0; text-align: center; padding-top: 10px;">
+                        <img runat="server" src="Styles/images/LOGO.png" />
+                        <%--   <h2 style="text-align:center; color:#fff;">Web Pruebas</h2>--%>
+                    </div>
+                    <div class="clearfix">
+                    </div>
+                    <!-- sidebar menu -->
+                    <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
+                        <div class="menu_section">
+                            <ul class="nav side-menu">
+                                <asp:Literal ID="menuHtml" runat="server"></asp:Literal>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- /sidebar menu -->
+                    <!-- /menu footer buttons -->
+                    <!-- /menu footer buttons -->
+                </div>
+            </div>
+            <!-- top navigation -->
+            <div class="top_nav">
+                <div class="nav_menu" style="background-image: url(../Styles/images/fondo-Header.png); height: 60px;">
+                    <nav class="" role="navigation">
+                        <div class="nav toggle">
+                            <a id="menu_toggle"><i class="fa fa-bars" style="color: #FFFFFF;"></i></a>
+
+                        </div>
+                        <%-- <div class="imgLogo">--%>
+                        <img src="Styles/images/logo-celuwebsas.png" runat="server" style="padding: 12px 12px 0;" />
+                        <%--  </div>--%>
+                        <a class="link-navbar" href="~/index.aspx" runat="server"><i class="fa fa-sign-out"></i>
+                            <asp:Label runat="server" Text="<%$ Resources:multi.language, salir%>"></asp:Label>
+                        </a>
+                        <%--<ul class="nav navbar-nav navbar-right">
+                            <li class="">
+                                <a href="#" class="user-profile dropdown-toggle" data-toggle="dropdown" aria-expanded="false" style="font-size: 14px; padding: 13px 5px 12px;">
+                                    <asp:Image ID="imagenLang" runat="server" ImageUrl="" Style="margin-top: -4px;" />
+                                </a>
+                                <ul class="dropdown-menu dropdown-usermenu pull-right">
+                                    <li>
+                                        <a href="?lang=es">Español Colombia
+                                        <img runat="server" src="Styles/images/col_32.png" style="float: right; margin-top: -8px;" />
+
+                                        </a>
+
+                                    </li>
+                                    <li>
+                                        <a href="?lang=en">Ingles
+                                             <img runat="server" src="Styles/images/usa_32.png" style="float: right; margin-top: -8px;" />
+                                        </a>
+
+                                    </li>
+                                </ul>
+                            </li>
+
+
+                        </ul>--%>
+
+                        <%--    <a class="link-navbar" href="~/index.aspx" runat="server"><i class="fa fa-sign-out"></i>Salir</a>--%>
+                    </nav>
+                </div>
+            </div>
+            <!-- /top navigation -->
+            <!-- page content -->
+            <div class="right_col" role="main">
+                <form id="form2" method="post" runat="server">
+                    <asp:UpdateProgress ID="UpdateProgress1" runat="server" DisplayAfter="0">
+                        <ProgressTemplate>
+                            <script type="text/javascript">document.write("<div class='UpdateProgressBackground'><div class='UpdateProgressContent'> <img src='../Styles/images/loader1.gif' /><br /><span>Loading...</span> </div> </div>");</script>
+                        </ProgressTemplate>
+                    </asp:UpdateProgress>
+                    <asp:ScriptManager ID="ScriptManager1" runat="server" EnableScriptGlobalization="True"
+                        EnableScriptLocalization="True" AsyncPostBackTimeout="420">
+                        <Scripts>
+                            <asp:ScriptReference Path="~/Styles/bootstrap/js/bootstrap.js" />
+                            <asp:ScriptReference Path="~/Styles/js/funciones.js" />
+                            <asp:ScriptReference Path="~/Styles/build/js/custom.min.js" />
+                            <asp:ScriptReference Path="~/Styles/sweetalert/src/sweetalert2.min.js" />
+                            <asp:ScriptReference Path="~/Styles/js/hide-column.js" />
+                        </Scripts>
+                    </asp:ScriptManager>
+
+                    <div class="panel panel-default">
+                        <div class="panel-body">
+                            <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+                            </asp:ContentPlaceHolder>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <!-- /page content -->
+            <!-- footer content -->
+            <footer>
+                <div class="pull-right">
+                </div>
+                <div class="clearfix"></div>
+            </footer>
+            <!-- /footer content -->
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1000 @@
+﻿
+.imgButton {
+    background-color: Transparent;
+}
+
+.uprogLoading {
+    background-color: #CF4342;
+    color: #fff;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+}
+
+    .uprogLoading img {
+        vertical-align: middle;
+        margin: 2px;
+    }
+
+
+.login {
+    background-image: url(../../Styles/images/login.jpg);
+    float: none;
+    cursor: pointer;
+    width: 90px;
+    height: 28px;
+    border: solid 0px;
+    background-repeat: no-repeat;
+}
+
+input.activo:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url('../../Styles/images/activo.png');
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.activo {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url('../../Styles/images/activo.png');
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.inactivo:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url('../../Styles/images/inactivar.png');
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.inactivo {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url('../../Styles/images/inactivar.png');
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+.capaInicial {
+    background-image: url( '../../Styles/images/back.png' );
+    background-repeat: no-repeat;
+    width: 212px;
+    height: 184px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.FondoModal {
+    background-color: Gray;
+    filter: alpha(opacity=70);
+    opacity: 0.7;
+}
+
+.modalPopUp {
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border: 0px solid #000000;
+    -webkit-box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+    -moz-box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+    box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+    padding: 10px;
+    max-height: 90%;
+    max-width: 90%;
+    background: #fff;
+    overflow: auto;
+}
+
+
+
+.closePopUp {
+    background-image: url(../../Styles/icons/close.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+    border: none;
+}
+
+
+
+.buttonPopUp {
+    float: right;
+    top: -10px;
+    right: -10px;
+    background-image: url(../../Styles/images/cerrar.png);
+    background-repeat: no-repeat;
+    position: relative;
+    background-color: Transparent;
+    border: none;
+    width: 25px;
+    height: 25px;
+    font-size: 0px;
+}
+
+input.editar:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/pencil_go.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.editar {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/pencil_go.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.inactivo:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/inactivo.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.inactivo {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/inactivo.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.activo:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/activo.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.activo {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/activo.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.inactivo:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/inactivo.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.iconEncCondicional:hover {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btoIconEncuesta.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconEncCondicional {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btnIconEncuesta.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconSubir:hover {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btoSubir.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconSubir {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btnSubir.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconAdd:hover {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/add.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconAdd {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/add.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+
+input.iconBajar:hover {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btoBajar.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconBajar {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../images/btnBajar.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.eliminaricon:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/btnEliminar.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.eliminaricon {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../images/btnEliminar.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+
+input.agregarEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_agregarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.modificarEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_modificarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.eliminarEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_eliminarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.verEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_verEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.ordenarPreguntas
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_ordenarPreguntas.jpg);
+	background-repeat: no-repeat;
+}
+
+input.listarEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_listarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.descargarRespuestas
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_descargarRespuestas.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.bajarInfEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_bajarInfEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.copiarEncuesta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_copiarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.copiarEncuesta:hover
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btov_copiarEncuesta.jpg);
+	width: 150px;
+	height: 26px;
+
+}
+
+input.eliminarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_eliminarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.modificarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_modificarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+
+input.verParametros
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_verParametros.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.copiarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_copiarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.salir
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_salir.jpg);
+	background-repeat: no-repeat;
+}
+
+input.enlazarPreguntas
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_enlazarPreguntas.jpg);
+	background-repeat: no-repeat;
+}
+
+input.modificar
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_modificar.jpg);
+	background-repeat: no-repeat;
+}
+
+
+input.eliminarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_eliminarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.modificarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_modificarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+
+input.verParametros
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_verParametros.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.copiarPregunta
+{
+	background-repeat: no-repeat;
+	background-image: url(../images/btn_copiarPregunta.jpg);
+	width: 150px;
+	height: 26px;
+}
+
+input.salir
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_salir.jpg);
+	background-repeat: no-repeat;
+}
+
+input.enlazarPreguntas
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_enlazarPreguntas.jpg);
+	background-repeat: no-repeat;
+}
+
+input.modificar
+{
+	width: 150px;
+	height: 26px;
+	border: solid 0px FFFFFF;
+	background-image: url(../images/btn_modificar.jpg);
+	background-repeat: no-repeat;
+}
+
+
+
+.gvEliminar {
+    float: left;
+    top: 5px;
+    background-image: url(../../Styles/images/cerrar.png);
+    background-repeat: no-repeat;
+    position: relative;
+    background-color: Transparent;
+    border: none;
+    width: 25px;
+    height: 25px;
+    font-size: 0px;
+}
+
+
+.buttonPopUpEdit {
+    float: left;
+    top: 5px;
+    background-image: url(../../Styles/icons/edit1.png);
+    background-repeat: no-repeat;
+    position: relative;
+    background-color: Transparent;
+    border: none;
+    width: 25px;
+    height: 25px;
+    font-size: 0px;
+}
+
+.backArrow {
+    float: right;
+    top: 5px;
+    right: 15px;
+    background-image: url(../../Styles/icons/back_arrow.png);
+    background-repeat: no-repeat;
+    position: relative;
+    background-color: Transparent;
+    border: none;
+    width: 20px;
+    height: 20px;
+}
+
+
+.Background {
+    position: fixed;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    background-color: #000000;
+    filter: alpha(opacity=80);
+    opacity: 0.8;
+    z-index: 100000;
+}
+
+.Progress {
+    position: fixed;
+    top: 40%;
+    left: 40%;
+    height: 20%;
+    width: 20%;
+    z-index: 100001;
+    background-color: #FFFFFF;
+    border: 1px solid Gray;
+    background-image: url(../../Styles/images/BarLoading.gif);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/*.gvHeader
+{
+	border-radius: 20px 10px 10px 10px;
+	-moz-border-radius: 20px 10px 10px 10px;
+	-webkit-border-radius: 20px 10px 10px 10px;
+	border: 0px solid #000000;
+	-webkit-box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+	-moz-box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+	box-shadow: 14px 9px 24px 0px rgba(0,0,0,0.75);
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.gvHeader th
+{
+	background-color: Navy;
+	color: White;
+}
+
+.gvHeader tr
+{
+	background-color: White;
+	margin-right: auto;
+	margin-left: auto;
+}*/
+
+.acceso {
+    width: 720px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.labelMain {
+    font-size: 10pt;
+    color: #807770;
+    font-weight: bold;
+    text-align: end;
+    margin: 50px;
+}
+
+
+.nav_menu_sub {
+    padding: 0;
+    margin: 0;
+}
+
+    .nav_menu_sub ul {
+        margin-top: -7px;
+        display: none !important;
+    }
+
+    .nav_menu_sub:hover ul {
+        display: block !important;
+        opacity: 1;
+        visibility: visible;
+    }
+
+.dlResumen {
+    margin-left: auto;
+    margin-top: -40px;
+}
+
+.imgModulos {
+    width: 70px;
+    height: 70px;
+}
+
+.aMenu {
+    margin-left: 20px;
+}
+
+.imgMenu {
+    margin-top: 10px;
+    position: fixed;
+    margin-left: 7px;
+}
+
+span {
+    font-family: Calibri;
+    font-weight: bold;
+}
+
+.divLogin {
+    float: right;
+    background-image: url(../../Styles/images/back_login.png);
+    background-repeat: no-repeat;
+    height: 82px;
+    width: 778px;
+}
+
+.divLogo {
+    float: left;
+}
+
+.divLogo1 {
+    float: left;
+}
+
+
+.divVersion {
+    position: relative;
+    bottom: -350px;
+    margin: 500px;
+    z-index: -1;
+}
+
+.tableLogin {
+    margin-left: auto;
+}
+
+.imgLogin {
+    /*margin-top: -3px;*/
+}
+
+.txtLogin {
+    background-color: Transparent;
+    border: none;
+    margin-top: 18px;
+}
+
+.image2 {
+    position: relative;
+    bottom: -350px;
+}
+
+.leftArrow {
+    position: absolute;
+    bottom: -7px;
+    margin-left: -36px;
+    height: 50px;
+    width: 50px;
+}
+
+.rigthArrow {
+    position: absolute;
+    bottom: -7px;
+    margin-left: -25px;
+    height: 50px;
+    width: 50px;
+}
+
+.lMenu {
+    font-weight: bold;
+}
+
+.loginLine {
+    border-width: 0px;
+    position: relative;
+    bottom: -10px;
+    margin-left: -155px;
+}
+
+.barReportStyle {
+    height: 400px;
+    min-width: 310px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+
+@media screen and (max-width: 720px) {
+    .divLogin {
+        background-image: url(../../Styles/images/back_login.png);
+        background-repeat: no-repeat;
+        height: 1182px;
+        width: 778px;
+        margin-right: -770px;
+        position: relative;
+        bottom: 25px;
+    }
+
+    .image2 {
+        position: relative;
+        bottom: -150px;
+    }
+}
+
+
+@media all and (transform-3d), (-webkit-transform-3d) {
+    .loginLine {
+        border-width: 0px;
+        position: relative;
+        bottom: -10px;
+        margin-left: -185px;
+    }
+
+    .divVersion {
+        margin: 300px;
+    }
+}
+/**-----------estilos para  gridview-----------------------------------------------**/
+.gvHeader {
+    border-style: none;
+    border-color: inherit;
+    border-width: 0;
+    font-size: 10px;
+    /* text-align: center;*/
+    width: 80%;
+    max-width: 100%;
+    margin: 5px auto 20px auto;
+    /*font-weight: 700;*/
+}
+
+    .gvHeader > tbody > tr > th /** .gvHeader > thead > tr > th**/ {
+        background-color: #476786;
+        color: #ffffff;
+        /**text-transform: uppercase;*/
+        font-size: 10px;
+        padding: 6px 4px !important;
+        white-space: nowrap;
+    }
+
+        .gvHeader > tbody > tr > th > a {
+            /*background-color: #6C6C6C;*/
+            color: #ffffff;
+            /**text-transform: uppercase;**/
+            text-decoration: none;
+        }
+
+    .gvHeader > thead > tr > th, .gvHeader > tbody > tr > th, .gvHeader > tfoot > tr > th, .gvHeader > thead > tr > td, .gvHeader > tbody > tr > td, .gvHeader > tfoot > tr > td {
+        padding: 4px;
+        line-height: 1.42857;
+        border: 1px solid #e0e0e0;
+        border-top: 1px solid #DDD;
+        font-size: 10px;
+    }
+
+    .gvHeader > tbody tr:hover {
+        background-color: #ddd;
+    }
+
+    .gvHeader tr:nth-child(odd) {
+        background-color: #fff;
+    }
+
+    .gvHeader tr:nth-child(even) {
+        background-color: #f5f5f5;
+    }
+
+    /** estilo de paginacion para gridview */
+    .gvHeader tr:last-child table {
+        margin: 0 auto;
+        padding: 0;
+        /*text-align: center;*/
+    }
+
+        .gvHeader tr:last-child table td a {
+            margin: 0 auto;
+            padding: 3px 6px;
+            border: 1px solid #D8D8D8;
+            border-radius: 3px;
+        }
+
+.table-gridView > tbody > tr > th > a::after {
+    content: " \25BC";
+}
+/**----------------------------------------------------------------**/
+
+
+.gvHeader-responsive {
+    min-height: .01%;
+    overflow-x: auto;
+}
+
+.gvHeader-footer {
+    color: #000;
+    font-weight: bold;
+    text-align: right;
+    background: #d6d6d6 !important;
+}
+
+.navbar img {
+    max-width: 100%;
+}
+
+/*.side-menu a {
+	text-transform: capitalize;
+	font-size: 10px;
+}*/
+
+/**---------------*/
+table {
+    margin: auto;
+    border-spacing: 1px;
+    border-collapse: separate;
+}
+
+label {
+    font-weight: lighter;
+}
+
+.perfilProducto {
+    width: 100%;
+    margin-top: 15px;
+}
+
+    .perfilProducto > table {
+        width: 100%;
+        margin: 0;
+    }
+
+.UpdateProgressContent {
+    text-align: center;
+    z-index: 100009;
+    margin: 200px auto 0 auto;
+}
+
+.UpdateProgressBackground {
+    margin: 0px;
+    padding: 0px;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    position: fixed;
+    z-index: 100008;
+    opacity: 0.8;
+    height: 100%;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.15) none repeat scroll 0% 0%;
+}
+
+
+.botonLogin {
+    position: absolute;
+    margin-top: 187px;
+    margin-left: 164px;
+    width: 207px;
+    height: 47px;
+    border: none;
+    background: none;
+    border-bottom-left-radius: 15px;
+    border-top-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+input.btnCliente {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../../Styles/images/user.png) !important;
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.btnCliente:hover {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../../Styles/images/user.png) !important;
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.btnlista {
+    width: 27px;
+    height: 27px;
+    border: 0;
+    background-image: url(../../Styles/images/lista.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.actualizar {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../../Styles/images/actualizar.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.regresar {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../../Styles/images/regresar.png);
+    background-repeat: no-repeat;
+    background-color: Transparent;
+}
+
+input.iconEditar:hover {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../../Styles/images/btnEditar.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+input.iconEditar {
+    width: 26px;
+    height: 26px;
+    border: 0;
+    background-image: url(../../Styles/images/btnEditar.png);
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+.btn-primary.btn-outline {
+    color: #428bca;
+}
+
+.btn-outline {
+    color: inherit;
+    background-color: transparent;
+    transition: all .5s;
+    border-radius: 4px;
+}
+
+.panel-heading-icon {
+    float: left;
+    margin: -9px 15px 0;
+    border-radius: 3px;
+    padding: 15px;
+    z-index: 3;
+    position: relative;
+    /*border-color: #2A3F54;*/
+    color: #2A3F54;
+    /*background-color: #2A3F54;*/
+    font-size: 25px;
+}
+
+/* Clase Form-Control modificada, reducción de tamaños*/
+.form-control {
+    height: auto;
+    padding: 3px 12px;
+    font-size: 12px;
+}
+
+.btn {
+    padding: 3px 12px;
+}
+
+.popUpMapa {
+    max-width: 1200px;
+}
+
+
+.link-navbar {
+    float: right;
+    color: #fff;
+    padding: 19px 5px;
+    text-decoration: none;
+    background: #e4e4e42e;
+}

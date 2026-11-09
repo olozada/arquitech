@@ -1,0 +1,389 @@
+:root {
+  --bs-primary: #1abb9c;
+  --bs-primary-rgb: 26, 187, 156;
+  --arquitectos-sidebar: #23323c;
+  --arquitectos-texto: #2a3f54;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--arquitectos-texto);
+  background: #f4f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f4f6f8;
+  color: var(--arquitectos-texto);
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.75rem;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100%;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--arquitectos-sidebar);
+  color: #e7eef3;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-marca {
+  padding: 1.25rem 1.15rem 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.menu-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0.75rem 1.5rem;
+}
+
+.menu-lista .menu-lista {
+  padding: 0.15rem 0 0.35rem 0.85rem;
+}
+
+.menu-enlace,
+.menu-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.menu-titulo {
+  color: #d5dee6;
+}
+
+.menu-enlace:hover,
+.menu-titulo:hover,
+.menu-enlace.activo,
+.menu-titulo.activo {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.menu-enlace i,
+.menu-titulo i {
+  width: 1.1rem;
+  text-align: center;
+}
+
+.menu-titulo span,
+.menu-enlace span {
+  flex: 1;
+}
+
+.menu-estado {
+  margin: 0.5rem 1.15rem;
+  color: #b7c4ce;
+}
+
+.principal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  min-height: 64px;
+  padding: 0.75rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cabecera-usuario {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.cabecera-usuario span {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.cabecera-enlace {
+  color: var(--arquitectos-sidebar);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.cabecera-enlace:hover {
+  color: #1abb9c;
+}
+
+.cargando-pagina {
+  margin: 2rem;
+}
+
+.boton-menu,
+.sidebar-fondo {
+  display: none;
+}
+
+.pagina {
+  padding: 1.5rem;
+}
+
+.login-pagina {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--arquitectos-sidebar);
+}
+
+.login-tarjeta {
+  width: min(100%, 400px);
+  padding: 2rem 1.75rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 25%);
+}
+
+.login-tarjeta h1 {
+  margin-bottom: 0.25rem;
+}
+
+.login-ayuda {
+  margin-bottom: 1.5rem;
+  color: #6b7280;
+}
+
+.catalogo-panel {
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.catalogo-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.catalogo-tabla th {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.catalogo-paginacion {
+  margin: 1rem 0 0;
+}
+
+.catalogo-panel h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.75rem;
+}
+
+.dos-columnas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.total-acta {
+  margin: 1rem 0 0;
+  text-align: right;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .dos-columnas {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-primary {
+  --bs-btn-bg: #1abb9c;
+  --bs-btn-border-color: #1abb9c;
+  --bs-btn-hover-bg: #159a80;
+  --bs-btn-hover-border-color: #159a80;
+  --bs-btn-active-bg: #12866f;
+  --bs-btn-active-border-color: #12866f;
+  --bs-btn-disabled-bg: #1abb9c;
+  --bs-btn-disabled-border-color: #1abb9c;
+}
+
+@media (max-width: 768px) {
+  .boton-menu {
+    display: inline-flex;
+    margin-right: auto;
+    border: 0;
+    background: transparent;
+    color: var(--arquitectos-sidebar);
+    font-size: 1.25rem;
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 30;
+    inset: 0 auto 0 0;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .sidebar.abierto {
+    transform: translateX(0);
+  }
+
+  .sidebar-fondo {
+    display: block;
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    border: 0;
+    background: rgb(0 0 0 / 45%);
+  }
+}
+
+.kpi-tarjeta {
+  height: 100%;
+  padding: 1rem 1.05rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.kpi-titulo,
+.kpi-subtitulo,
+.nota-a2 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.kpi-valor {
+  margin: 0.35rem 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.kpi-variacion {
+  margin: 0 0 0.35rem;
+  font-weight: 650;
+}
+
+.kpi-variacion.bien {
+  color: #1abb9c;
+}
+
+.kpi-variacion.mal {
+  color: #d9534f;
+}
+
+.kpi-variacion.neutro {
+  color: #6b7280;
+}
+
+.kpi-esqueleto {
+  min-height: 8.5rem;
+  background: linear-gradient(90deg, #eef2f4 25%, #f8fafb 37%, #eef2f4 63%);
+  background-size: 400% 100%;
+  animation: esqueleto 1.2s ease infinite;
+}
+
+@keyframes esqueleto {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: 0 0;
+  }
+}
+
+.grafico-alto {
+  height: 320px;
+}
+
+.dashboard-vacio {
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.75rem;
+}
+
+.nota-a2 {
+  margin-bottom: 0.75rem;
+}
+
+.severidad {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.severidad-alta {
+  background: #d9534f;
+}
+
+.severidad-media {
+  background: #f0ad4e;
+  color: #3d2b00;
+}
+
+.severidad-baja {
+  background: #5bc0de;
+}
+
+.calidad-lista {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.calidad-lista div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.calidad-lista dt {
+  font-weight: 500;
+}
+
+.calidad-lista dd {
+  margin: 0;
+  font-weight: 700;
+}

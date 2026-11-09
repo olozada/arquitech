@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CC012EAC-7E25-4DEF-92FA-197C1FD9D1B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arquitectos.Api", "src\Arquitectos.Api\Arquitectos.Api.csproj", "{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arquitectos.Domain", "src\Arquitectos.Domain\Arquitectos.Domain.csproj", "{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arquitectos.Application", "src\Arquitectos.Application\Arquitectos.Application.csproj", "{E9A547A2-CD93-4809-A58A-78E428460EAE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arquitectos.Infrastructure", "src\Arquitectos.Infrastructure\Arquitectos.Infrastructure.csproj", "{FC452CAA-C26E-43FE-9580-E848D3364835}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{9F31FAAD-4D8D-46E9-AE03-1C7009238F1C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arquitectos.Tests", "tests\Arquitectos.Tests\Arquitectos.Tests.csproj", "{8E0CE799-3783-49FE-A8BD-8BB864E80AF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9A547A2-CD93-4809-A58A-78E428460EAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9A547A2-CD93-4809-A58A-78E428460EAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9A547A2-CD93-4809-A58A-78E428460EAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9A547A2-CD93-4809-A58A-78E428460EAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC452CAA-C26E-43FE-9580-E848D3364835}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC452CAA-C26E-43FE-9580-E848D3364835}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC452CAA-C26E-43FE-9580-E848D3364835}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC452CAA-C26E-43FE-9580-E848D3364835}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E0CE799-3783-49FE-A8BD-8BB864E80AF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E0CE799-3783-49FE-A8BD-8BB864E80AF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E0CE799-3783-49FE-A8BD-8BB864E80AF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E0CE799-3783-49FE-A8BD-8BB864E80AF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1AEA4BE3-33F1-472A-8EB5-97FE071C3DE6} = {CC012EAC-7E25-4DEF-92FA-197C1FD9D1B3}
+		{E8C57EC7-64EC-4B70-AAB3-7A63EA4949F2} = {CC012EAC-7E25-4DEF-92FA-197C1FD9D1B3}
+		{E9A547A2-CD93-4809-A58A-78E428460EAE} = {CC012EAC-7E25-4DEF-92FA-197C1FD9D1B3}
+		{FC452CAA-C26E-43FE-9580-E848D3364835} = {CC012EAC-7E25-4DEF-92FA-197C1FD9D1B3}
+		{8E0CE799-3783-49FE-A8BD-8BB864E80AF6} = {9F31FAAD-4D8D-46E9-AE03-1C7009238F1C}
+	EndGlobalSection
+EndGlobal

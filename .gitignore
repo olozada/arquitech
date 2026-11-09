@@ -1,0 +1,18 @@
+# Secretos locales
+.env
+.env.*
+**/appsettings.Production.json
+Codigo_anterior/web.config
+Codigo_anterior/**/web.config
+
+# Dependencias y compilados
+**/node_modules/
+**/bin/
+**/obj/
+**/dist/
+**/.vs/
+*.user
+*.suo
+*.log
+*.rar
+TestResults/

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<version>
+  <!-- VERSION DE LA APLICACION WEB -->
+  <WebVersion value="2.0.0" />
+  <!-- AMBIENTE DE LA APLICACION-->
+  <Enviroment value="PRODUCCION" />
+</version>
