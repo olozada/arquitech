@@ -6,44 +6,44 @@ using Microsoft.AspNetCore.Mvc;
 namespace Arquitectos.Api.Controllers;
 
 [Route("api/arquitectos")]
-public sealed class ArquitectosController : CatalogoController<Arquitecto, CatalogoNombreDto, CatalogoNombreSolicitud>
+public sealed class ArquitectosController : CatalogoController<Arquitecto, CatalogoPersonaDto, CatalogoPersonaSolicitud>
 {
     public ArquitectosController(
-        ICatalogoServicio<Arquitecto, CatalogoNombreDto, CatalogoNombreSolicitud> servicio,
-        IValidator<CatalogoNombreSolicitud> validador)
+        ICatalogoServicio<Arquitecto, CatalogoPersonaDto, CatalogoPersonaSolicitud> servicio,
+        IValidator<CatalogoPersonaSolicitud> validador)
         : base(servicio, validador)
     {
     }
 }
 
 [Route("api/revisores")]
-public sealed class RevisoresController : CatalogoController<Revisor, CatalogoNombreDto, CatalogoNombreSolicitud>
+public sealed class RevisoresController : CatalogoController<Revisor, CatalogoPersonaDto, CatalogoPersonaSolicitud>
 {
     public RevisoresController(
-        ICatalogoServicio<Revisor, CatalogoNombreDto, CatalogoNombreSolicitud> servicio,
-        IValidator<CatalogoNombreSolicitud> validador)
+        ICatalogoServicio<Revisor, CatalogoPersonaDto, CatalogoPersonaSolicitud> servicio,
+        IValidator<CatalogoPersonaSolicitud> validador)
         : base(servicio, validador)
     {
     }
 }
 
 [Route("api/contratistas")]
-public sealed class ContratistasController : CatalogoController<Contratista, CatalogoNombreDto, CatalogoNombreSolicitud>
+public sealed class ContratistasController : CatalogoController<Contratista, CatalogoPersonaDto, CatalogoPersonaSolicitud>
 {
     public ContratistasController(
-        ICatalogoServicio<Contratista, CatalogoNombreDto, CatalogoNombreSolicitud> servicio,
-        IValidator<CatalogoNombreSolicitud> validador)
+        ICatalogoServicio<Contratista, CatalogoPersonaDto, CatalogoPersonaSolicitud> servicio,
+        IValidator<CatalogoPersonaSolicitud> validador)
         : base(servicio, validador)
     {
     }
 }
 
 [Route("api/proveedores")]
-public sealed class ProveedoresController : CatalogoController<Proveedor, CatalogoNombreDto, CatalogoNombreSolicitud>
+public sealed class ProveedoresController : CatalogoController<Proveedor, ProveedorDto, ProveedorSolicitud>
 {
     public ProveedoresController(
-        ICatalogoServicio<Proveedor, CatalogoNombreDto, CatalogoNombreSolicitud> servicio,
-        IValidator<CatalogoNombreSolicitud> validador)
+        ICatalogoServicio<Proveedor, ProveedorDto, ProveedorSolicitud> servicio,
+        IValidator<ProveedorSolicitud> validador)
         : base(servicio, validador)
     {
     }
@@ -65,17 +65,6 @@ public sealed class ConceptosController : CatalogoController<Concepto, Descripci
 {
     public ConceptosController(
         ICatalogoServicio<Concepto, DescripcionUnidadDto, DescripcionUnidadSolicitud> servicio,
-        IValidator<DescripcionUnidadSolicitud> validador)
-        : base(servicio, validador)
-    {
-    }
-}
-
-[Route("api/materiales")]
-public sealed class MaterialesController : CatalogoController<Material, DescripcionUnidadDto, DescripcionUnidadSolicitud>
-{
-    public MaterialesController(
-        ICatalogoServicio<Material, DescripcionUnidadDto, DescripcionUnidadSolicitud> servicio,
         IValidator<DescripcionUnidadSolicitud> validador)
         : base(servicio, validador)
     {

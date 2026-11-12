@@ -17,28 +17,43 @@ public static class GeneradorPdfActa
             documento.Page(pagina =>
             {
                 pagina.Size(PageSizes.Letter);
-                pagina.Margin(36);
-                pagina.DefaultTextStyle(estilo => estilo.FontSize(10));
+                pagina.Margin(32);
+                pagina.DefaultTextStyle(estilo => estilo.FontSize(10).LineHeight(1.2f));
 
                 pagina.Content().Column(columna =>
                 {
-                    columna.Spacing(10);
+                    columna.Spacing(6);
                     columna.Item().Text($"Impresión de Acta No. {acta.NumeroActa}").FontSize(16).SemiBold();
-                    columna.Item().Text($"Fecha inicial: {acta.FechaInicial:yyyy-MM-dd}");
-                    columna.Item().Text($"Fecha final: {acta.FechaFinal:yyyy-MM-dd}");
-                    columna.Item().Text($"Arquitecto: {acta.Arquitecto}");
-                    columna.Item().Text($"Revisor: {acta.Revisor}");
+                    if (acta.Cerrada)
+                    {
+                        columna.Item().Text("Acta cerrada. No se pueden agregar, modificar ni eliminar ítems.").SemiBold();
+                    }
+                    columna.Item().Row(fila =>
+                    {
+                        fila.RelativeItem().Text($"Fecha inicial: {acta.FechaInicial:yyyy-MM-dd}");
+                        fila.RelativeItem().Text($"Fecha final: {acta.FechaFinal:yyyy-MM-dd}");
+                        fila.RelativeItem().Text($"Registro: {acta.FechaRegistro.ToLocalTime():yyyy-MM-dd HH:mm}");
+                    });
+                    columna.Item().Row(fila =>
+                    {
+                        fila.RelativeItem(2).Text($"Arquitecto: {acta.Arquitecto}");
+                        fila.RelativeItem().Text($"Revisor: {acta.Revisor}");
+                    });
                     columna.Item().Text($"Contratista: {acta.Contratista}");
-                    columna.Item().Text($"Observación: {acta.Observacion}");
-                    columna.Item().Text($"Fecha de registro: {acta.FechaRegistro.ToLocalTime():yyyy-MM-dd HH:mm}");
+                    if (!string.IsNullOrWhiteSpace(acta.Observacion))
+                    {
+                        columna.Item().Text($"Observación: {acta.Observacion}");
+                    }
 
                     foreach (var grupo in acta.Detalles.GroupBy(detalle => detalle.Construccion))
                     {
-                        columna.Item().PaddingTop(6).Text(grupo.Key).SemiBold();
+                        columna.Item().PaddingTop(8).Text(grupo.Key).SemiBold();
                         columna.Item().Table(tabla =>
                         {
                             tabla.ColumnsDefinition(columnas =>
                             {
+                                columnas.RelativeColumn(1.6f);
+                                columnas.RelativeColumn(1.4f);
                                 columnas.RelativeColumn(3);
                                 columnas.RelativeColumn(3);
                                 columnas.RelativeColumn(1);
@@ -49,6 +64,8 @@ public static class GeneradorPdfActa
 
                             tabla.Header(encabezado =>
                             {
+                                Encabezado(encabezado.Cell(), "Perfil");
+                                Encabezado(encabezado.Cell(), "Estado");
                                 Encabezado(encabezado.Cell(), "Concepto");
                                 Encabezado(encabezado.Cell(), "Material");
                                 Encabezado(encabezado.Cell(), "UM");
@@ -59,8 +76,10 @@ public static class GeneradorPdfActa
 
                             foreach (var linea in grupo)
                             {
+                                Celda(tabla.Cell()).Text(linea.TipoUsuario);
+                                Celda(tabla.Cell()).Text(linea.Aprobado ? "Aprobado" : "Rechazado");
                                 Celda(tabla.Cell()).Text(linea.Concepto);
-                                Celda(tabla.Cell()).Text(linea.Material ?? "");
+                                Celda(tabla.Cell()).Text(linea.Insumo ?? "");
                                 Celda(tabla.Cell()).Text(linea.UnidadMedida);
                                 Celda(tabla.Cell()).AlignRight().Text(linea.Cantidad.ToString("0.####", Cultura));
                                 Celda(tabla.Cell()).AlignRight().Text(Moneda(linea.Precio));
@@ -71,7 +90,7 @@ public static class GeneradorPdfActa
 
                     columna.Item().AlignRight().Text($"Total: {Moneda(acta.Total)}").SemiBold();
 
-                    columna.Item().PaddingTop(36).Row(fila =>
+                    columna.Item().PaddingTop(24).Row(fila =>
                     {
                         Firma(fila, "Arquitecto", acta.Arquitecto);
                         Firma(fila, "Revisor", acta.Revisor);
@@ -101,6 +120,7 @@ public static class GeneradorPdfActa
     {
         fila.RelativeItem().AlignCenter().Column(columna =>
         {
+            columna.Spacing(2);
             columna.Item().Text("________________________");
             columna.Item().AlignCenter().Text(rol).SemiBold();
             columna.Item().AlignCenter().Text(nombre);

@@ -13,12 +13,17 @@ public static class ReglasAlertas
         var alertas = new List<AlertaDto>();
         foreach (var linea in candidatas)
         {
+            if (linea.UnidadMedidaId is not > 0)
+            {
+                continue;
+            }
+
             var desde = linea.FechaFinal.AddDays(-opciones.VentanaReferenciaDias);
             var previas = historico.Where(otra =>
                 otra.NumeroActa != linea.NumeroActa
                 && otra.ConceptoId == linea.ConceptoId
                 && otra.UnidadMedidaId == linea.UnidadMedidaId
-                && otra.MaterialId == linea.MaterialId
+                && otra.InsumoId == linea.InsumoId
                 && otra.FechaFinal < linea.FechaFinal
                 && otra.FechaFinal >= desde).ToList();
             if (previas.Count < opciones.MinObservacionesReferencia)
@@ -39,7 +44,7 @@ public static class ReglasAlertas
             }
 
             var porcentaje = Math.Round(ratio * 100m, 0);
-            var nombre = linea.Material ?? linea.Concepto;
+            var nombre = linea.Insumo ?? linea.Concepto;
             alertas.Add(new AlertaDto(
                 "A1",
                 ratio > umbral * 2 ? "Alta" : "Media",
@@ -58,11 +63,11 @@ public static class ReglasAlertas
         IReadOnlyList<LineaParaAlerta> lineas,
         IReadOnlyList<PrecioProveedor> listas)
     {
-        var porMaterial = listas.ToDictionary(lista => lista.MaterialId);
+        var porMaterial = listas.ToDictionary(lista => lista.InsumoId);
         var alertas = new List<AlertaDto>();
         foreach (var linea in lineas)
         {
-            if (linea.MaterialId is not int materialId || !porMaterial.TryGetValue(materialId, out var lista))
+            if (linea.InsumoId is not int insumoId || !porMaterial.TryGetValue(insumoId, out var lista))
             {
                 continue;
             }
@@ -72,7 +77,7 @@ public static class ReglasAlertas
                 continue;
             }
 
-            var nombre = linea.Material ?? linea.Concepto;
+            var nombre = linea.Insumo ?? linea.Concepto;
             alertas.Add(new AlertaDto(
                 "A2",
                 "Media",
@@ -183,6 +188,69 @@ public static class ReglasAlertas
 
         return alertas;
     }
+
+    public static IReadOnlyList<AlertaDto> PrecioSobrePresupuesto(
+        IReadOnlyList<LineaContraPresupuesto> lineas,
+        decimal umbralFraccion)
+    {
+        var alertas = new List<AlertaDto>();
+        foreach (var linea in lineas)
+        {
+            var tope = linea.PrecioPresupuesto * (1 + umbralFraccion);
+            if (linea.PrecioPresupuesto <= 0 || linea.PrecioActa <= tope)
+            {
+                continue;
+            }
+
+            alertas.Add(new AlertaDto(
+                "A6",
+                "Media",
+                $"Precio de acta sobre el presupuesto: {linea.Codigo}",
+                $"{linea.Construccion}: el acta paga {linea.PrecioActa:N0} y el presupuesto trae {linea.PrecioPresupuesto:N0}.",
+                linea.NumeroActa,
+                linea.ConstruccionId,
+                linea.Construccion,
+                (linea.PrecioActa - linea.PrecioPresupuesto) * linea.CantidadActa));
+        }
+
+        return alertas;
+    }
+
+    public static IReadOnlyList<AlertaDto> SobreEjecucion(IReadOnlyList<LineaContraPresupuesto> items)
+    {
+        var alertas = new List<AlertaDto>();
+        foreach (var item in items)
+        {
+            if (item.CantidadPresupuesto <= 0 || item.CantidadEjecutada <= item.CantidadPresupuesto * 1.05m)
+            {
+                continue;
+            }
+
+            var alta = item.CantidadEjecutada > item.CantidadPresupuesto * 1.20m;
+            alertas.Add(new AlertaDto(
+                "A7",
+                alta ? "Alta" : "Media",
+                $"Sobre-ejecución: {item.Codigo}",
+                $"{item.Construccion}: se ejecutaron {item.CantidadEjecutada:N2} de {item.CantidadPresupuesto:N2} presupuestados.",
+                item.NumeroActa,
+                item.ConstruccionId,
+                item.Construccion,
+                (item.CantidadEjecutada - item.CantidadPresupuesto) * item.PrecioPresupuesto));
+        }
+
+        return alertas;
+    }
+
+    public static IReadOnlyList<AlertaDto> EjecutadoNoPresupuestado(IReadOnlyList<LineaContraPresupuesto> lineas) =>
+        lineas.Select(linea => new AlertaDto(
+            "A8",
+            "Media",
+            $"Ejecutado no presupuestado: acta {linea.NumeroActa}",
+            $"{linea.Construccion}: {linea.Codigo} no está ligado a un ítem del presupuesto.",
+            linea.NumeroActa,
+            linea.ConstruccionId,
+            linea.Construccion,
+            linea.PrecioActa * linea.CantidadActa)).ToList();
 
     public static IReadOnlyList<AlertaDto> Ordenar(IEnumerable<AlertaDto> alertas) =>
         alertas

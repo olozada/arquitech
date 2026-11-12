@@ -22,8 +22,9 @@ public sealed class ArquitectosDbContextFactory : IDesignTimeDbContextFactory<Ar
         var connectionString = configuration.GetConnectionString("Arquitectos");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException(
-                "ConnectionStrings:Arquitectos no está configurada. Defínela en el archivo .env o con dotnet user-secrets.");
+            // La comparación del modelo no abre la conexión. En CI no hay secretos.
+            connectionString =
+                "Server=127.0.0.1,9;Database=Arquitectos;User ID=ci;Password=ci;TrustServerCertificate=True;Connect Timeout=1";
         }
 
         var options = new DbContextOptionsBuilder<ArquitectosDbContext>()

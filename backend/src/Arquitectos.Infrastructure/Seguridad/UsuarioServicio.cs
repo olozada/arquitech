@@ -1,3 +1,4 @@
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Usuarios;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Persistence;
@@ -10,11 +11,13 @@ namespace Arquitectos.Infrastructure.Seguridad;
 public sealed class UsuarioServicio : IUsuarioServicio
 {
     private readonly ArquitectosDbContext _context;
+    private readonly IRevocacionSesiones _revocacion;
     private readonly PasswordHasher<string> _hasher = new();
 
-    public UsuarioServicio(ArquitectosDbContext context)
+    public UsuarioServicio(ArquitectosDbContext context, IRevocacionSesiones revocacion)
     {
         _context = context;
+        _revocacion = revocacion;
     }
 
     public async Task<IReadOnlyList<UsuarioDto>> ListarAsync(bool incluirInactivos, CancellationToken cancellationToken)
@@ -33,7 +36,8 @@ public sealed class UsuarioServicio : IUsuarioServicio
                 usuario.Nombre,
                 usuario.TipoUsuarioId,
                 usuario.TipoUsuario.Nombre,
-                usuario.Activo))
+                usuario.Activo,
+                usuario.ArquitectoId ?? usuario.ContratistaId ?? usuario.RevisorId))
             .ToListAsync(cancellationToken);
     }
 
@@ -57,7 +61,8 @@ public sealed class UsuarioServicio : IUsuarioServicio
                 usuario.Nombre,
                 usuario.TipoUsuarioId,
                 usuario.TipoUsuario.Nombre,
-                usuario.Activo))
+                usuario.Activo,
+                usuario.ArquitectoId ?? usuario.ContratistaId ?? usuario.RevisorId))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -67,19 +72,28 @@ public sealed class UsuarioServicio : IUsuarioServicio
     {
         var nombreUsuario = solicitud.Usuario.Trim();
         var nombre = solicitud.Nombre.Trim();
-        if (!await TipoExisteAsync(solicitud.TipoUsuarioId, cancellationToken))
+        var perfil = await ValidarPerfilAsync(solicitud.TipoUsuarioId, solicitud.PerfilId, null, cancellationToken);
+        if (perfil.Error is not null)
         {
-            return ResultadoUsuario<UsuarioDto>.Invalido(MensajesUsuario.Tipo);
+            return ResultadoUsuario<UsuarioDto>.Invalido(perfil.Error);
         }
 
         var inactivo = await _context.Usuarios
             .FirstOrDefaultAsync(usuario => usuario.NombreUsuario == nombreUsuario && !usuario.Activo, cancellationToken);
+        var contrasenaInvalida = PoliticaContrasena.Validar(solicitud.Password, nombreUsuario);
+        if (contrasenaInvalida is not null)
+        {
+            return ResultadoUsuario<UsuarioDto>.Invalido(contrasenaInvalida);
+        }
+
         if (inactivo is not null)
         {
             inactivo.NombreUsuario = nombreUsuario;
             inactivo.Nombre = nombre;
             inactivo.TipoUsuarioId = solicitud.TipoUsuarioId;
+            AsignarPerfil(inactivo, solicitud.TipoUsuarioId, perfil.Id);
             inactivo.Activo = true;
+            inactivo.DebeCambiarContrasena = true;
             inactivo.PasswordHash = _hasher.HashPassword(nombreUsuario, solicitud.Password);
             if (!await GuardarAsync(cancellationToken))
             {
@@ -99,7 +113,11 @@ public sealed class UsuarioServicio : IUsuarioServicio
             NombreUsuario = nombreUsuario,
             Nombre = nombre,
             TipoUsuarioId = solicitud.TipoUsuarioId,
+            ArquitectoId = solicitud.TipoUsuarioId == PerfilesUsuario.Arquitecto ? perfil.Id : null,
+            ContratistaId = solicitud.TipoUsuarioId == PerfilesUsuario.Contratista ? perfil.Id : null,
+            RevisorId = solicitud.TipoUsuarioId == PerfilesUsuario.Revisor ? perfil.Id : null,
             Activo = true,
+            DebeCambiarContrasena = true,
             PasswordHash = _hasher.HashPassword(nombreUsuario, solicitud.Password)
         };
         _context.Usuarios.Add(entidad);
@@ -136,14 +154,16 @@ public sealed class UsuarioServicio : IUsuarioServicio
             return ResultadoUsuario<UsuarioDto>.Conflicto(MensajesUsuario.Duplicado);
         }
 
-        if (!await TipoExisteAsync(solicitud.TipoUsuarioId, cancellationToken))
+        var perfil = await ValidarPerfilAsync(solicitud.TipoUsuarioId, solicitud.PerfilId, id, cancellationToken);
+        if (perfil.Error is not null)
         {
-            return ResultadoUsuario<UsuarioDto>.Invalido(MensajesUsuario.Tipo);
+            return ResultadoUsuario<UsuarioDto>.Invalido(perfil.Error);
         }
 
         entidad.NombreUsuario = nombreUsuario;
         entidad.Nombre = solicitud.Nombre.Trim();
         entidad.TipoUsuarioId = solicitud.TipoUsuarioId;
+        AsignarPerfil(entidad, solicitud.TipoUsuarioId, perfil.Id);
         if (solicitud.Activo is bool activo)
         {
             entidad.Activo = activo;
@@ -151,12 +171,24 @@ public sealed class UsuarioServicio : IUsuarioServicio
 
         if (!string.IsNullOrWhiteSpace(solicitud.Password))
         {
+            var contrasenaInvalida = PoliticaContrasena.Validar(solicitud.Password, nombreUsuario);
+            if (contrasenaInvalida is not null)
+            {
+                return ResultadoUsuario<UsuarioDto>.Invalido(contrasenaInvalida);
+            }
+
+            entidad.DebeCambiarContrasena = true;
             entidad.PasswordHash = _hasher.HashPassword(nombreUsuario, solicitud.Password);
         }
 
         if (!await GuardarAsync(cancellationToken))
         {
             return ResultadoUsuario<UsuarioDto>.Conflicto(MensajesUsuario.Duplicado);
+        }
+
+        if (!entidad.Activo)
+        {
+            await _revocacion.RevocarUsuarioAsync(entidad.Id, cancellationToken);
         }
 
         return ResultadoUsuario<UsuarioDto>.Ok(await MapearAsync(entidad.Id, cancellationToken));
@@ -180,6 +212,7 @@ public sealed class UsuarioServicio : IUsuarioServicio
 
         entidad.Activo = false;
         await _context.SaveChangesAsync(cancellationToken);
+        await _revocacion.RevocarUsuarioAsync(entidad.Id, cancellationToken);
         return ResultadoUsuario<bool>.Ok(true);
     }
 
@@ -209,13 +242,69 @@ public sealed class UsuarioServicio : IUsuarioServicio
             return ResultadoUsuario<bool>.Invalido(MensajesUsuario.Distinta);
         }
 
+        var contrasenaInvalida = PoliticaContrasena.Validar(solicitud.ContrasenaNueva, usuario.NombreUsuario);
+        if (contrasenaInvalida is not null)
+        {
+            return ResultadoUsuario<bool>.Invalido(contrasenaInvalida);
+        }
+
         usuario.PasswordHash = _hasher.HashPassword(usuario.NombreUsuario, solicitud.ContrasenaNueva);
+        usuario.DebeCambiarContrasena = false;
         await _context.SaveChangesAsync(cancellationToken);
         return ResultadoUsuario<bool>.Ok(true);
     }
 
-    private async Task<bool> TipoExisteAsync(int tipoUsuarioId, CancellationToken cancellationToken) =>
-        await _context.TiposUsuario.AnyAsync(tipo => tipo.Id == tipoUsuarioId, cancellationToken);
+    private async Task<(int? Id, string? Error)> ValidarPerfilAsync(
+        int tipoUsuarioId,
+        int? perfilId,
+        int? usuarioId,
+        CancellationToken cancellationToken)
+    {
+        if (!await _context.TiposUsuario.AnyAsync(tipo => tipo.Id == tipoUsuarioId, cancellationToken))
+        {
+            return (null, MensajesUsuario.Tipo);
+        }
+
+        if (!PerfilesUsuario.EsOperativo(tipoUsuarioId))
+        {
+            return (null, null);
+        }
+
+        if (perfilId is not > 0)
+        {
+            return (null, MensajesUsuario.Perfil);
+        }
+
+        var activo = tipoUsuarioId switch
+        {
+            PerfilesUsuario.Arquitecto => await _context.Arquitectos.AnyAsync(
+                persona => persona.Id == perfilId && persona.Activo, cancellationToken),
+            PerfilesUsuario.Contratista => await _context.Contratistas.AnyAsync(
+                persona => persona.Id == perfilId && persona.Activo, cancellationToken),
+            _ => await _context.Revisores.AnyAsync(
+                persona => persona.Id == perfilId && persona.Activo, cancellationToken)
+        };
+        if (!activo)
+        {
+            return (null, MensajesUsuario.PerfilInvalido);
+        }
+
+        var ocupado = await _context.Usuarios.AnyAsync(usuario =>
+            usuario.Activo &&
+            usuario.Id != usuarioId &&
+            ((tipoUsuarioId == PerfilesUsuario.Arquitecto && usuario.ArquitectoId == perfilId) ||
+             (tipoUsuarioId == PerfilesUsuario.Contratista && usuario.ContratistaId == perfilId) ||
+             (tipoUsuarioId == PerfilesUsuario.Revisor && usuario.RevisorId == perfilId)),
+            cancellationToken);
+        return ocupado ? (null, MensajesUsuario.PerfilOcupado) : (perfilId, null);
+    }
+
+    private static void AsignarPerfil(Usuario usuario, int tipoUsuarioId, int? perfilId)
+    {
+        usuario.ArquitectoId = tipoUsuarioId == PerfilesUsuario.Arquitecto ? perfilId : null;
+        usuario.ContratistaId = tipoUsuarioId == PerfilesUsuario.Contratista ? perfilId : null;
+        usuario.RevisorId = tipoUsuarioId == PerfilesUsuario.Revisor ? perfilId : null;
+    }
 
     private async Task<UsuarioDto> MapearAsync(int id, CancellationToken cancellationToken) =>
         (await ObtenerAsync(id, cancellationToken))!;

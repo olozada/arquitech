@@ -1,3 +1,5 @@
+*"Documento histórico; el estado vigente está en docs/ARQUITECTURA.md"*
+
 # Dashboard de KPIs – App "Arquitectos"
 
 > Documento para **Cursor**. Extiende la app ya migrada (`C:\Arquitectos\backend` .NET 8 + `C:\Arquitectos\frontend` React/Vite).

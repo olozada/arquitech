@@ -16,16 +16,16 @@ public sealed class EmisorJwt
         _opciones = opciones.Value;
     }
 
-    public string Emitir(int usuarioId, string nombreUsuario, string nombre, int tipoUsuarioId, string tipoUsuario)
+    public string Emitir(int usuarioId, string nombreUsuario, string nombre, int tipoUsuarioId, string tipoUsuario, long sesionId)
     {
         if (string.IsNullOrWhiteSpace(_opciones.Key))
         {
             throw new InvalidOperationException("Jwt:Key no está configurada.");
         }
 
-        var minutos = _opciones.ExpirationMinutes > 0 ? _opciones.ExpirationMinutes : 480;
+        var minutos = _opciones.ExpirationMinutes > 0 ? _opciones.ExpirationMinutes : 20;
         var credenciales = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opciones.Key)),
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opciones.Key)) { KeyId = "arquitectos" },
             SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
@@ -37,7 +37,8 @@ public sealed class EmisorJwt
                 new Claim(ClaimsArquitectos.Usuario, nombreUsuario),
                 new Claim(ClaimsArquitectos.Nombre, nombre),
                 new Claim(ClaimsArquitectos.TipoUsuarioId, tipoUsuarioId.ToString()),
-                new Claim(ClaimsArquitectos.TipoUsuario, tipoUsuario)
+                new Claim(ClaimsArquitectos.TipoUsuario, tipoUsuario),
+                new Claim(ClaimsArquitectos.Sesion, sesionId.ToString())
             ],
             notBefore: DateTime.UtcNow,
             expires: DateTime.UtcNow.AddMinutes(minutos),

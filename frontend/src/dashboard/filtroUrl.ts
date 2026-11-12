@@ -1,11 +1,15 @@
 import { aIso } from '../actas/formato'
 
+export type EstadoActa = '' | 'abierta' | 'cerrada'
+
 export type FiltroDashboard = {
   desde: string
   hasta: string
   construccionId: number
   contratistaId: number
   arquitectoId: number
+  revisorId: number
+  estado: EstadoActa
 }
 
 export function filtroPorDefecto(hoy = new Date()): FiltroDashboard {
@@ -15,6 +19,8 @@ export function filtroPorDefecto(hoy = new Date()): FiltroDashboard {
     construccionId: 0,
     contratistaId: 0,
     arquitectoId: 0,
+    revisorId: 0,
+    estado: '',
   }
 }
 
@@ -43,6 +49,8 @@ export function leerFiltro(params: URLSearchParams): FiltroDashboard {
     construccionId: entero(params.get('construccionId')),
     contratistaId: entero(params.get('contratistaId')),
     arquitectoId: entero(params.get('arquitectoId')),
+    revisorId: entero(params.get('revisorId')),
+    estado: estadoDe(params.get('estado')),
   }
 }
 
@@ -62,6 +70,14 @@ export function escribirFiltro(filtro: FiltroDashboard) {
     params.set('arquitectoId', String(filtro.arquitectoId))
   }
 
+  if (filtro.revisorId > 0) {
+    params.set('revisorId', String(filtro.revisorId))
+  }
+
+  if (filtro.estado) {
+    params.set('estado', filtro.estado)
+  }
+
   return params
 }
 
@@ -74,4 +90,8 @@ export function periodoAnteriorTexto(desde: string, hasta: string) {
 function entero(valor: string | null) {
   const numero = Number(valor)
   return Number.isInteger(numero) && numero > 0 ? numero : 0
+}
+
+function estadoDe(valor: string | null): EstadoActa {
+  return valor === 'abierta' || valor === 'cerrada' ? valor : ''
 }

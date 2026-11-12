@@ -14,6 +14,28 @@ public sealed class CatalogoNombreSolicitud
     public bool? Activo { get; set; }
 }
 
+public sealed record CatalogoPersonaDto(int Id, string Nombre, string? Cedula, bool Activo) : IConId;
+
+public sealed class CatalogoPersonaSolicitud
+{
+    public string Nombre { get; set; } = "";
+
+    public string? Cedula { get; set; }
+
+    public bool? Activo { get; set; }
+}
+
+public sealed record ProveedorDto(int Id, string Nombre, string? Nit, bool Activo) : IConId;
+
+public sealed class ProveedorSolicitud
+{
+    public string Nombre { get; set; } = "";
+
+    public string? Nit { get; set; }
+
+    public bool? Activo { get; set; }
+}
+
 public sealed record ConstruccionDto(int Id, string Descripcion, string? Propietario, bool Activo) : IConId;
 
 public sealed class ConstruccionSolicitud

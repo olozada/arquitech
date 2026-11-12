@@ -12,6 +12,11 @@ public interface IConNombre : ICatalogo
     string Nombre { get; set; }
 }
 
+public interface IConCedula : IConNombre
+{
+    string? Cedula { get; set; }
+}
+
 public interface IConDescripcionPropietario : ICatalogo
 {
     string Descripcion { get; set; }
@@ -33,29 +38,35 @@ public interface IConDescripcionUnidad : ICatalogo
     string? Unidad { get; set; }
 }
 
-public class Arquitecto : IConNombre
+public class Arquitecto : IConCedula
 {
     public int Id { get; set; }
 
     public required string Nombre { get; set; }
+
+    public string? Cedula { get; set; }
 
     public bool Activo { get; set; } = true;
 }
 
-public class Revisor : IConNombre
+public class Revisor : IConCedula
 {
     public int Id { get; set; }
 
     public required string Nombre { get; set; }
+
+    public string? Cedula { get; set; }
 
     public bool Activo { get; set; } = true;
 }
 
-public class Contratista : IConNombre
+public class Contratista : IConCedula
 {
     public int Id { get; set; }
 
     public required string Nombre { get; set; }
+
+    public string? Cedula { get; set; }
 
     public bool Activo { get; set; } = true;
 }
@@ -65,6 +76,8 @@ public class Proveedor : IConNombre
     public int Id { get; set; }
 
     public required string Nombre { get; set; }
+
+    public string? Nit { get; set; }
 
     public bool Activo { get; set; } = true;
 
@@ -106,28 +119,15 @@ public class Concepto : IConDescripcionUnidad
     public bool Activo { get; set; } = true;
 }
 
-public class Material : IConDescripcionUnidad
-{
-    public int Id { get; set; }
-
-    public string? Codigo { get; set; }
-
-    public required string Descripcion { get; set; }
-
-    public string? Unidad { get; set; }
-
-    public bool Activo { get; set; } = true;
-}
-
 public class ProveedorMaterial
 {
     public int ProveedorId { get; set; }
 
-    public int MaterialId { get; set; }
+    public int InsumoId { get; set; }
 
     public decimal Precio { get; set; }
 
     public Proveedor Proveedor { get; set; } = null!;
 
-    public Material Material { get; set; } = null!;
+    public Insumo Insumo { get; set; } = null!;
 }

@@ -6,15 +6,15 @@ export function CalidadDatos({ calidad }: { calidad: Calidad }) {
       <h2>Calidad de datos</h2>
       <dl className="calidad-lista">
         <div>
-          <dt>Materiales con precio de proveedor</dt>
+          <dt>Insumos con precio de proveedor</dt>
           <dd>{calidad.pctMaterialesConPrecio.toLocaleString('es-CO', { maximumFractionDigits: 1 })} %</dd>
         </div>
         <div>
-          <dt>Materiales con un solo proveedor</dt>
+          <dt>Insumos con un solo proveedor</dt>
           <dd>{calidad.materialesUnProveedor}</dd>
         </div>
         <div>
-          <dt>Líneas de acta sin material</dt>
+          <dt>Líneas de acta sin insumo</dt>
           <dd>{calidad.lineasSinMaterial}</dd>
         </div>
         <div>

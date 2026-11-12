@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import Swal from 'sweetalert2'
 import { z } from 'zod'
 import { cliente, mensajeError } from '../api/cliente'
+import { errorContrasena } from '../auth/contrasena'
 import { useSesion } from '../auth/contextoSesion'
 
 const esquema = z.object({
@@ -21,6 +22,7 @@ const esquema = z.object({
     .max(150, 'El nombre no puede superar 150 caracteres.'),
   password: z.string(),
   tipoUsuarioId: z.string().min(1, 'Debe seleccionar el tipo de usuario.'),
+  perfilId: z.string(),
 })
 
 type Valores = z.infer<typeof esquema>
@@ -32,6 +34,7 @@ type Usuario = {
   tipoUsuarioId: number
   tipoUsuario: string
   activo: boolean
+  perfilId: number | null
 }
 
 type TipoUsuario = {
@@ -39,7 +42,13 @@ type TipoUsuario = {
   nombre: string
 }
 
-const vacios: Valores = { usuario: '', nombre: '', password: '', tipoUsuarioId: '' }
+const vacios: Valores = { usuario: '', nombre: '', password: '', tipoUsuarioId: '', perfilId: '' }
+
+const recursosPerfil: Record<string, string> = {
+  '2': 'arquitectos',
+  '3': 'contratistas',
+  '4': 'revisores',
+}
 
 export function Usuarios() {
   const { sesion } = useSesion()
@@ -50,6 +59,7 @@ export function Usuarios() {
     handleSubmit,
     reset,
     setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<Valores>({
     resolver: zodResolver(esquema),
@@ -81,6 +91,7 @@ export function Usuarios() {
         nombre: valores.nombre.trim(),
         password: valores.password.trim() === '' ? null : valores.password,
         tipoUsuarioId: Number(valores.tipoUsuarioId),
+        perfilId: valores.perfilId ? Number(valores.perfilId) : null,
       }
       if (seleccionId == null) {
         const { data } = await cliente.post<Usuario>('/api/usuarios', cuerpo)
@@ -126,6 +137,14 @@ export function Usuarios() {
     },
   })
 
+  const tipoSeleccionado = watch('tipoUsuarioId')
+  const recursoPerfil = recursosPerfil[tipoSeleccionado]
+  const personas = useQuery({
+    queryKey: ['catalogo', recursoPerfil],
+    enabled: Boolean(recursoPerfil),
+    queryFn: async () => (await cliente.get<Array<{ id: number; nombre: string }>>(`/api/${recursoPerfil}`)).data,
+  })
+
   if (sesion?.tipoUsuario !== 'Administrador') {
     return (
       <section className="catalogo">
@@ -145,6 +164,7 @@ export function Usuarios() {
       nombre: registro.nombre,
       password: '',
       tipoUsuarioId: String(registro.tipoUsuarioId),
+      perfilId: registro.perfilId ? String(registro.perfilId) : '',
     })
   }
 
@@ -160,8 +180,16 @@ export function Usuarios() {
       return
     }
 
-    if (password.length > 0 && password.length < 8) {
-      setError('password', { message: 'La contraseña debe tener al menos 8 caracteres.' })
+    if (password.length > 0) {
+      const mensaje = errorContrasena(password, valores.usuario)
+      if (mensaje) {
+        setError('password', { message: mensaje })
+        return
+      }
+    }
+
+    if (recursosPerfil[valores.tipoUsuarioId] && !valores.perfilId) {
+      setError('perfilId', { message: 'Debe seleccionar la persona del perfil.' })
       return
     }
 
@@ -228,6 +256,20 @@ export function Usuarios() {
           </Form.Select>
           <Form.Control.Feedback type="invalid">{errors.tipoUsuarioId?.message}</Form.Control.Feedback>
         </Form.Group>
+        {recursoPerfil && (
+          <Form.Group className="mb-3" controlId="usuario-perfil">
+            <Form.Label>Persona del perfil *</Form.Label>
+            <Form.Select isInvalid={Boolean(errors.perfilId)} {...register('perfilId')}>
+              <option value="">Seleccione</option>
+              {(personas.data ?? []).map((persona) => (
+                <option key={persona.id} value={persona.id}>
+                  {persona.nombre}
+                </option>
+              ))}
+            </Form.Select>
+            <Form.Control.Feedback type="invalid">{errors.perfilId?.message}</Form.Control.Feedback>
+          </Form.Group>
+        )}
         <div className="catalogo-acciones">
           {seleccionId == null ? (
             <Button type="submit" disabled={ocupado}>

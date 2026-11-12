@@ -1,15 +1,20 @@
 import axios from 'axios'
-import type { AxiosError } from 'axios'
-import { borrarSesion, leerSesion } from './sesion'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import { borrarSesion } from './sesion'
+
+type Peticion = InternalAxiosRequestConfig & { _reintento?: boolean }
 
 export const cliente = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '',
+  withCredentials: true,
 })
 
+let renovacion: Promise<void> | null = null
+
 cliente.interceptors.request.use((config) => {
-  const sesion = leerSesion()
-  if (sesion) {
-    config.headers.Authorization = `Bearer ${sesion.token}`
+  const metodo = (config.method ?? 'get').toLowerCase()
+  if (metodo === 'post' || metodo === 'put' || metodo === 'delete') {
+    config.headers['X-Requested-With'] = 'arquitectos'
   }
 
   return config
@@ -17,18 +22,44 @@ cliente.interceptors.request.use((config) => {
 
 cliente.interceptors.response.use(
   (respuesta) => respuesta,
-  (error: AxiosError) => {
-    const url = error.config?.url ?? ''
-    if (error.response?.status === 401 && !url.includes('/api/auth/login')) {
-      borrarSesion()
-      if (window.location.pathname !== '/login') {
-        window.location.assign('/login')
+  async (error: AxiosError) => {
+    const config = error.config as Peticion | undefined
+    const url = config?.url ?? ''
+    const esLogin = url.includes('/api/auth/login')
+    const esRenovar = url.includes('/api/auth/renovar')
+    if (error.response?.status !== 401 || !config || esLogin || config._reintento) {
+      if (error.response?.status === 401 && esRenovar) {
+        borrarSesion()
+        irALogin()
       }
+
+      return Promise.reject(error)
     }
 
-    return Promise.reject(error)
+    config._reintento = true
+    try {
+      renovacion ??= cliente
+        .post('/api/auth/renovar')
+        .then(() => undefined)
+        .finally(() => {
+          renovacion = null
+        })
+      await renovacion
+      return cliente(config)
+    } catch (renovacionError) {
+      borrarSesion()
+      irALogin()
+      return Promise.reject(renovacionError)
+    }
   },
 )
+
+function irALogin() {
+  const destino = `${import.meta.env.BASE_URL}login`.replace(/\/{2,}/g, '/')
+  if (!window.location.pathname.endsWith('/login')) {
+    window.location.assign(destino)
+  }
+}
 
 type CuerpoProblema = {
   title?: string

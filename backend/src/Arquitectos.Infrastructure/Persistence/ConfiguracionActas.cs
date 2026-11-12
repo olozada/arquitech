@@ -17,6 +17,8 @@ public sealed class ActaConfiguracion : IEntityTypeConfiguration<Acta>
         builder.Property(a => a.FechaInicial).HasColumnType("date");
         builder.Property(a => a.FechaFinal).HasColumnType("date");
         builder.Property(a => a.Observacion).HasMaxLength(1000);
+        builder.Property(a => a.Cerrada).HasDefaultValue(false);
+        builder.Property(a => a.RowVersion).IsRowVersion();
         builder.Property(a => a.FechaRegistro)
             .HasColumnType("datetime2")
             .HasDefaultValueSql("SYSUTCDATETIME()");
@@ -56,11 +58,12 @@ public sealed class ActaDetalleConfiguracion : IEntityTypeConfiguration<ActaDeta
         builder.Property(d => d.Cantidad).HasPrecision(18, 4);
         builder.Property(d => d.Precio).HasPrecision(18, 2);
         builder.Property(d => d.Descripcion).HasMaxLength(500).IsRequired();
+        builder.Property(d => d.Aprobado).HasDefaultValue(true);
         builder.Property(d => d.Subtotal)
             .HasPrecision(37, 6)
             .HasComputedColumnSql("[Cantidad] * [Precio]", stored: true);
         builder.HasIndex(d => new { d.ConstruccionId, d.ConceptoId });
-        builder.HasIndex(d => new { d.ConceptoId, d.UnidadMedidaId, d.MaterialId });
+        builder.HasIndex(d => new { d.ConceptoId, d.UnidadMedidaId, d.InsumoId });
 
         builder.HasOne(d => d.Acta)
             .WithMany(a => a.Detalles)
@@ -77,10 +80,19 @@ public sealed class ActaDetalleConfiguracion : IEntityTypeConfiguration<ActaDeta
         builder.HasOne(d => d.UnidadMedida)
             .WithMany()
             .HasForeignKey(d => d.UnidadMedidaId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(d => d.Material)
+        builder.HasOne(d => d.Insumo)
             .WithMany()
-            .HasForeignKey(d => d.MaterialId)
+            .HasForeignKey(d => d.InsumoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.TipoUsuario)
+            .WithMany()
+            .HasForeignKey(d => d.TipoUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.PresupuestoItem)
+            .WithMany()
+            .HasForeignKey(d => d.PresupuestoItemId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

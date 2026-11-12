@@ -64,7 +64,8 @@ public sealed class DashboardServicioTests : IDisposable
             1,
             catalogos.OtraConstruccionId,
             catalogos.OtroContratistaId,
-            catalogos.OtroArquitectoId);
+            catalogos.OtroArquitectoId,
+            revisorId: catalogos.OtroRevisorId);
 
         var filtro = new FiltroDashboard
         {
@@ -72,7 +73,8 @@ public sealed class DashboardServicioTests : IDisposable
             Hasta = new DateOnly(2026, 5, 31),
             ConstruccionId = catalogos.ConstruccionId,
             ContratistaId = catalogos.ContratistaId,
-            ArquitectoId = catalogos.ArquitectoId
+            ArquitectoId = catalogos.ArquitectoId,
+            RevisorId = catalogos.RevisorId
         };
         var tablero = await _servicio.ObtenerAsync(filtro, CancellationToken.None);
         var valor = tablero.Kpis.Single(kpi => kpi.Codigo == "K1");
@@ -83,7 +85,32 @@ public sealed class DashboardServicioTests : IDisposable
         Assert.Equal(catalogos.ConstruccionId, top.Id);
         Assert.Equal(catalogos.ContratistaId, Assert.Single(tablero.Contratistas).Id);
         Assert.Equal(catalogos.ArquitectoId, Assert.Single(tablero.Arquitectos).Id);
+        Assert.Equal(catalogos.RevisorId, Assert.Single(tablero.Revisores).Id);
         Assert.True(tablero.TopConstrucciones.Sum(fila => fila.Valor) <= valor.Valor);
+    }
+
+    [Fact]
+    public async Task El_filtro_de_estado_separa_actas_abiertas_y_cerradas()
+    {
+        var catalogos = await SembrarAsync();
+        await AgregarActaAsync(catalogos, new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 10), 100m, 1);
+        await AgregarActaAsync(catalogos, new DateOnly(2026, 6, 1), new DateOnly(2026, 6, 12), 40m, 5, cerrada: true);
+
+        var rango = new FiltroDashboard
+        {
+            Desde = new DateOnly(2026, 6, 1),
+            Hasta = new DateOnly(2026, 6, 30)
+        };
+        var todas = await _servicio.ObtenerAsync(rango, CancellationToken.None);
+        var abiertas = await _servicio.ObtenerAsync(rango with { Cerrada = false }, CancellationToken.None);
+        var cerradas = await _servicio.ObtenerAsync(rango with { Cerrada = true }, CancellationToken.None);
+
+        Assert.Equal(300m, todas.Kpis.Single(kpi => kpi.Codigo == "K1").Valor);
+        Assert.Equal(2, todas.Kpis.Single(kpi => kpi.Codigo == "K2").Valor);
+        Assert.Equal(100m, abiertas.Kpis.Single(kpi => kpi.Codigo == "K1").Valor);
+        Assert.Equal(1, abiertas.Kpis.Single(kpi => kpi.Codigo == "K2").Valor);
+        Assert.Equal(200m, cerradas.Kpis.Single(kpi => kpi.Codigo == "K1").Valor);
+        Assert.Equal(1, cerradas.Kpis.Single(kpi => kpi.Codigo == "K2").Valor);
     }
 
     [Fact]
@@ -111,18 +138,20 @@ public sealed class DashboardServicioTests : IDisposable
         var arquitecto = new Arquitecto { Nombre = "Arq uno" };
         var otroArquitecto = new Arquitecto { Nombre = "Arq dos" };
         var revisor = new Revisor { Nombre = "Revisor uno" };
+        var otroRevisor = new Revisor { Nombre = "Revisor dos" };
         var contratista = new Contratista { Nombre = "Contra uno" };
         var otroContratista = new Contratista { Nombre = "Contra dos" };
         var obra = new Construccion { Descripcion = "Obra uno", Propietario = "Dueño" };
         var otraObra = new Construccion { Descripcion = "Obra dos", Propietario = "Dueño" };
         var concepto = new Concepto { Descripcion = "Concepto uno", Unidad = "m2" };
         var unidad = new UnidadMedida { Nombre = "m2", Descripcion = "Metro" };
-        _context.AddRange(arquitecto, otroArquitecto, revisor, contratista, otroContratista, obra, otraObra, concepto, unidad);
+        _context.AddRange(arquitecto, otroArquitecto, revisor, otroRevisor, contratista, otroContratista, obra, otraObra, concepto, unidad);
         await _context.SaveChangesAsync();
         return new CatalogosDashboard(
             arquitecto.Id,
             otroArquitecto.Id,
             revisor.Id,
+            otroRevisor.Id,
             contratista.Id,
             otroContratista.Id,
             obra.Id,
@@ -139,14 +168,17 @@ public sealed class DashboardServicioTests : IDisposable
         decimal cantidad,
         int? construccionId = null,
         int? contratistaId = null,
-        int? arquitectoId = null)
+        int? arquitectoId = null,
+        int? revisorId = null,
+        bool cerrada = false)
     {
         _context.Actas.Add(new Acta
         {
             FechaInicial = inicio,
             FechaFinal = fin,
+            Cerrada = cerrada,
             ArquitectoId = arquitectoId ?? catalogos.ArquitectoId,
-            RevisorId = catalogos.RevisorId,
+            RevisorId = revisorId ?? catalogos.RevisorId,
             ContratistaId = contratistaId ?? catalogos.ContratistaId,
             Observacion = "Prueba",
             FechaRegistro = DateTime.SpecifyKind(fin.ToDateTime(new TimeOnly(15, 0)), DateTimeKind.Utc),
@@ -160,7 +192,8 @@ public sealed class DashboardServicioTests : IDisposable
                     UnidadMedidaId = catalogos.UnidadId,
                     Cantidad = cantidad,
                     Precio = precio,
-                    Descripcion = "Línea"
+                    Descripcion = "Línea",
+                    TipoUsuarioId = SemillaInicial.TipoArquitectoId
                 }
             ]
         });
@@ -171,6 +204,7 @@ public sealed class DashboardServicioTests : IDisposable
         int ArquitectoId,
         int OtroArquitectoId,
         int RevisorId,
+        int OtroRevisorId,
         int ContratistaId,
         int OtroContratistaId,
         int ConstruccionId,

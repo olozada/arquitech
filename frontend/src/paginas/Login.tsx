@@ -28,14 +28,14 @@ export function Login() {
   })
 
   if (sesion) {
-    return <Navigate to="/" replace />
+    return <Navigate to={sesion.debeCambiarContrasena ? '/cuenta/contrasena' : '/'} replace />
   }
 
   async function enviar(valores: FormularioLogin) {
     try {
       const { data } = await cliente.post<Sesion>('/api/auth/login', valores)
       iniciarSesion(data)
-      await navegar('/')
+      await navegar(data.debeCambiarContrasena ? '/cuenta/contrasena' : '/')
     } catch (error) {
       await Swal.fire({
         icon: 'error',

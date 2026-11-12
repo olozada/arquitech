@@ -25,6 +25,8 @@ const sentido: Record<string, boolean> = {
   K6: false,
   K7: false,
   K8: false,
+  K9: true,
+  K10: false,
 }
 
 export function Dashboard() {
@@ -55,6 +57,8 @@ export function Dashboard() {
         construccionId: filtro.construccionId > 0 ? filtro.construccionId : undefined,
         contratistaId: filtro.contratistaId > 0 ? filtro.contratistaId : undefined,
         arquitectoId: filtro.arquitectoId > 0 ? filtro.arquitectoId : undefined,
+        revisorId: filtro.revisorId > 0 ? filtro.revisorId : undefined,
+        estado: filtro.estado || undefined,
       })
     } catch (error) {
       await Swal.fire({ title: '¡Error!', text: await mensajeDeError(error), icon: 'error' })
@@ -78,7 +82,7 @@ export function Dashboard() {
         <>
           <Row className="g-3 mb-3">
             {datos.kpis.slice(0, 4).map((kpi) => (
-              <Col key={kpi.codigo} xs={6} lg={3}>
+              <Col key={kpi.codigo} xs={12} sm={6} lg={3}>
                 <TarjetaKpi
                   kpi={kpi}
                   mayorEsMejor={sentido[kpi.codigo] ?? true}
@@ -89,7 +93,7 @@ export function Dashboard() {
           </Row>
           <Row className="g-3 mb-3">
             {datos.kpis.slice(4).map((kpi) => (
-              <Col key={kpi.codigo} xs={6} lg={3}>
+              <Col key={kpi.codigo} xs={12} sm={6} lg={3}>
                 <TarjetaKpi
                   kpi={kpi}
                   mayorEsMejor={sentido[kpi.codigo] ?? false}
@@ -126,13 +130,13 @@ export function Dashboard() {
             </Col>
             <Col xs={12}>
               <TablaAlertas
-                key={filtro.desde + filtro.hasta + filtro.construccionId + filtro.contratistaId + filtro.arquitectoId}
+                key={filtro.desde + filtro.hasta + filtro.construccionId + filtro.contratistaId + filtro.arquitectoId + filtro.revisorId + filtro.estado}
                 filtro={filtro}
                 alFiltrarConstruccion={(construccionId) => actualizar({ ...filtro, construccionId })}
               />
             </Col>
             <Col xs={12} lg={8}>
-              <GraficoPrecio desde={filtro.desde} hasta={filtro.hasta} />
+              <GraficoPrecio desde={filtro.desde} hasta={filtro.hasta} estado={filtro.estado} />
             </Col>
             <Col xs={12} lg={4}>
               <CalidadDatos calidad={datos.calidad} />
@@ -148,7 +152,7 @@ function Esqueleto() {
   return (
     <Row className="g-3 mb-3">
       {Array.from({ length: 8 }, (_, indice) => (
-        <Col key={indice} xs={6} lg={3}>
+        <Col key={indice} xs={12} sm={6} lg={3}>
           <div className="kpi-tarjeta kpi-esqueleto" />
         </Col>
       ))}

@@ -43,21 +43,28 @@ export function Layout() {
           >
             <i className="fa fa-bars" aria-hidden="true" />
           </button>
-          <Link className="cabecera-enlace" to="/cuenta/contrasena">
-            Contraseña
-          </Link>
-          {sesion?.tipoUsuario === 'Administrador' && (
-            <Link className="cabecera-enlace" to="/admin/usuarios">
-              Usuarios
+          <div className="cabecera-acciones">
+            <Link className="cabecera-enlace" to="/cuenta/contrasena">
+              Contraseña
             </Link>
-          )}
-          <div className="cabecera-usuario">
-            <strong>{sesion?.nombre}</strong>
-            <span>{sesion?.tipoUsuario}</span>
+            {sesion?.tipoUsuario === 'Administrador' && (
+              <>
+                <Link className="cabecera-enlace" to="/admin/usuarios">
+                  Usuarios
+                </Link>
+                <Link className="cabecera-enlace" to="/admin/auditoria">
+                  Historial
+                </Link>
+              </>
+            )}
+            <div className="cabecera-usuario">
+              <strong>{sesion?.nombre}</strong>
+              <span>{sesion?.tipoUsuario}</span>
+            </div>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={cerrarSesion}>
+              Salir
+            </button>
           </div>
-          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={cerrarSesion}>
-            Salir
-          </button>
         </header>
         <main className="pagina">
           <Suspense fallback={<p className="cargando-pagina">Cargando…</p>}>

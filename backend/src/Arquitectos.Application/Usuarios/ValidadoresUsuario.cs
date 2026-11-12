@@ -24,8 +24,8 @@ public sealed class CrearUsuarioValidador : AbstractValidator<CrearUsuarioSolici
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(MensajesUsuario.Password)
-            .MinimumLength(MensajesUsuario.LongitudMinima)
-            .WithMessage(MensajesUsuario.PasswordCorta);
+            .Must((solicitud, password) => PoliticaContrasena.Validar(password, solicitud.Usuario) is null)
+            .WithMessage(solicitud => PoliticaContrasena.Validar(solicitud.Password, solicitud.Usuario)!);
 
         RuleFor(solicitud => solicitud.TipoUsuarioId)
             .GreaterThan(0)
@@ -52,9 +52,9 @@ public sealed class ActualizarUsuarioValidador : AbstractValidator<ActualizarUsu
             .WithMessage(MensajesUsuario.NombreLargo);
 
         RuleFor(solicitud => solicitud.Password)
-            .MinimumLength(MensajesUsuario.LongitudMinima)
+            .Must((solicitud, password) => PoliticaContrasena.Validar(password!, solicitud.Usuario) is null)
             .When(solicitud => !string.IsNullOrWhiteSpace(solicitud.Password))
-            .WithMessage(MensajesUsuario.PasswordCorta);
+            .WithMessage(solicitud => PoliticaContrasena.Validar(solicitud.Password!, solicitud.Usuario)!);
 
         RuleFor(solicitud => solicitud.TipoUsuarioId)
             .GreaterThan(0)
@@ -74,7 +74,7 @@ public sealed class CambiarContrasenaValidador : AbstractValidator<CambiarContra
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(MensajesUsuario.Nueva)
-            .MinimumLength(MensajesUsuario.LongitudMinima)
-            .WithMessage(MensajesUsuario.PasswordCorta);
+            .Must(contrasena => PoliticaContrasena.Validar(contrasena, null) is null)
+            .WithMessage(solicitud => PoliticaContrasena.Validar(solicitud.ContrasenaNueva, null)!);
     }
 }

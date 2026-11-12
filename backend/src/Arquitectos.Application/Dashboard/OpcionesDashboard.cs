@@ -9,6 +9,9 @@ public sealed class OpcionesDashboard
     [Range(0, 500)]
     public decimal UmbralDesvioPrecioPct { get; set; } = 15;
 
+    [Range(0, 500)]
+    public decimal UmbralDesvioPresupuestoPct { get; set; } = 10;
+
     [Range(1, 3650)]
     public int VentanaReferenciaDias { get; set; } = 180;
 
@@ -28,4 +31,6 @@ public sealed class OpcionesDashboard
     public int MaxAlertas { get; set; } = 100;
 
     public decimal UmbralFraccion => UmbralDesvioPrecioPct / 100m;
+
+    public decimal UmbralFraccionPresupuesto => UmbralDesvioPresupuestoPct / 100m;
 }

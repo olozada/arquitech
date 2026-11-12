@@ -12,7 +12,9 @@ public class ActaTests
         var resultado = _validador.Validate(new CrearActaSolicitud());
 
         Assert.False(resultado.IsValid);
-        Assert.Equal(CrearActaValidador.MensajeEncabezado, resultado.Errors[0].ErrorMessage);
+        Assert.Equal(CrearActaValidador.MensajeArquitecto, resultado.Errors[0].ErrorMessage);
+        Assert.Contains(resultado.Errors, error => error.ErrorMessage == CrearActaValidador.MensajeRevisor);
+        Assert.Contains(resultado.Errors, error => error.ErrorMessage == CrearActaValidador.MensajeContratista);
     }
 
     [Fact]
@@ -27,14 +29,28 @@ public class ActaTests
     }
 
     [Fact]
-    public void Rechaza_el_detalle_vacio()
+    public void Acepta_un_acta_sin_items()
     {
         var solicitud = SolicitudValida();
         solicitud.Detalles = [];
 
         var resultado = _validador.Validate(solicitud);
 
-        Assert.Contains(resultado.Errors, error => error.ErrorMessage == CrearActaValidador.MensajeDetalle);
+        Assert.True(resultado.IsValid);
+    }
+
+    [Fact]
+    public void Acepta_una_linea_sin_unidad_material_ni_descripcion()
+    {
+        var solicitud = SolicitudValida();
+        var linea = solicitud.Detalles[0];
+        linea.UnidadMedidaId = null;
+        linea.InsumoId = null;
+        linea.Descripcion = "";
+
+        var resultado = _validador.Validate(solicitud);
+
+        Assert.True(resultado.IsValid);
     }
 
     [Fact]

@@ -12,6 +12,11 @@ public sealed record FiltroDashboard
 
     public int? ArquitectoId { get; init; }
 
+    public int? RevisorId { get; init; }
+
+    /// <summary>Null incluye abiertas y cerradas.</summary>
+    public bool? Cerrada { get; init; }
+
     public (DateOnly Desde, DateOnly Hasta) PeriodoAnterior()
     {
         var dias = Hasta.DayNumber - Desde.DayNumber + 1;

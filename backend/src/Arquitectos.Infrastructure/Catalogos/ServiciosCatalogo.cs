@@ -44,6 +44,151 @@ public sealed class CatalogoNombreServicio<TEntity>
     }
 }
 
+public sealed class CatalogoPersonaServicio<TEntity>
+    : CatalogoServicioBase<TEntity, CatalogoPersonaDto, CatalogoPersonaSolicitud>
+    where TEntity : class, IConCedula
+{
+    public CatalogoPersonaServicio(ArquitectosDbContext context, string articuloYNombre)
+        : base(context, articuloYNombre, "nombre")
+    {
+    }
+
+    protected override IOrderedQueryable<TEntity> Ordenar(IQueryable<TEntity> consulta) =>
+        consulta.OrderBy(entidad => entidad.Nombre);
+
+    protected override string ValorUnico(CatalogoPersonaSolicitud solicitud) => solicitud.Nombre.Trim();
+
+    protected override Task<bool> ExisteDuplicadoAsync(string valor, int exceptoId, CancellationToken cancellationToken) =>
+        Context.Set<TEntity>().AnyAsync(entidad => entidad.Nombre == valor && entidad.Id != exceptoId, cancellationToken);
+
+    protected override Task<TEntity?> BuscarInactivoAsync(string valor, CancellationToken cancellationToken) =>
+        Context.Set<TEntity>().FirstOrDefaultAsync(
+            entidad => entidad.Nombre == valor && !entidad.Activo,
+            cancellationToken);
+
+    protected override CatalogoPersonaDto Mapear(TEntity entidad) =>
+        new(entidad.Id, entidad.Nombre, entidad.Cedula, entidad.Activo);
+
+    protected override void Aplicar(TEntity entidad, CatalogoPersonaSolicitud solicitud, bool esNuevo)
+    {
+        entidad.Nombre = solicitud.Nombre.Trim();
+        entidad.Cedula = Documento(solicitud.Cedula);
+        if (esNuevo)
+        {
+            entidad.Activo = true;
+        }
+        else if (solicitud.Activo is bool activo)
+        {
+            entidad.Activo = activo;
+        }
+    }
+
+    protected override async Task<string?> ConflictoAdicionalAsync(
+        CatalogoPersonaSolicitud solicitud,
+        int exceptoId,
+        CancellationToken cancellationToken)
+    {
+        var cedula = Documento(solicitud.Cedula);
+        if (cedula is null)
+        {
+            return null;
+        }
+
+        var exceptoArquitecto = typeof(TEntity) == typeof(Arquitecto) ? exceptoId : 0;
+        var exceptoRevisor = typeof(TEntity) == typeof(Revisor) ? exceptoId : 0;
+        var exceptoContratista = typeof(TEntity) == typeof(Contratista) ? exceptoId : 0;
+        if (await CedulaRepetidaAsync(Context.Arquitectos, cedula, exceptoArquitecto, cancellationToken))
+        {
+            return "Ya existe un arquitecto con esa cédula.";
+        }
+
+        if (await CedulaRepetidaAsync(Context.Revisores, cedula, exceptoRevisor, cancellationToken))
+        {
+            return "Ya existe un revisor con esa cédula.";
+        }
+
+        if (await CedulaRepetidaAsync(Context.Contratistas, cedula, exceptoContratista, cancellationToken))
+        {
+            return "Ya existe un contratista con esa cédula.";
+        }
+
+        return null;
+    }
+
+    private static async Task<bool> CedulaRepetidaAsync<TPersona>(
+        IQueryable<TPersona> consulta,
+        string cedula,
+        int exceptoId,
+        CancellationToken cancellationToken)
+        where TPersona : class, IConCedula
+    {
+        var existentes = await consulta
+            .Where(entidad => entidad.Cedula != null && entidad.Id != exceptoId)
+            .Select(entidad => entidad.Cedula!)
+            .ToListAsync(cancellationToken);
+        return existentes.Any(existente => Documento(existente) == cedula);
+    }
+}
+
+public sealed class ProveedorServicio
+    : CatalogoServicioBase<Proveedor, ProveedorDto, ProveedorSolicitud>
+{
+    public ProveedorServicio(ArquitectosDbContext context)
+        : base(context, "un proveedor", "nombre")
+    {
+    }
+
+    protected override IOrderedQueryable<Proveedor> Ordenar(IQueryable<Proveedor> consulta) =>
+        consulta.OrderBy(entidad => entidad.Nombre);
+
+    protected override string ValorUnico(ProveedorSolicitud solicitud) => solicitud.Nombre.Trim();
+
+    protected override Task<bool> ExisteDuplicadoAsync(string valor, int exceptoId, CancellationToken cancellationToken) =>
+        Context.Proveedores.AnyAsync(entidad => entidad.Nombre == valor && entidad.Id != exceptoId, cancellationToken);
+
+    protected override Task<Proveedor?> BuscarInactivoAsync(string valor, CancellationToken cancellationToken) =>
+        Context.Proveedores.FirstOrDefaultAsync(
+            entidad => entidad.Nombre == valor && !entidad.Activo,
+            cancellationToken);
+
+    protected override ProveedorDto Mapear(Proveedor entidad) =>
+        new(entidad.Id, entidad.Nombre, entidad.Nit, entidad.Activo);
+
+    protected override void Aplicar(Proveedor entidad, ProveedorSolicitud solicitud, bool esNuevo)
+    {
+        entidad.Nombre = solicitud.Nombre.Trim();
+        entidad.Nit = Documento(solicitud.Nit);
+        if (esNuevo)
+        {
+            entidad.Activo = true;
+        }
+        else if (solicitud.Activo is bool activo)
+        {
+            entidad.Activo = activo;
+        }
+    }
+
+    protected override async Task<string?> ConflictoAdicionalAsync(
+        ProveedorSolicitud solicitud,
+        int exceptoId,
+        CancellationToken cancellationToken)
+    {
+        var nit = Documento(solicitud.Nit);
+        if (nit is null)
+        {
+            return null;
+        }
+
+        var existentes = await Context.Proveedores
+            .Where(entidad => entidad.Nit != null && entidad.Id != exceptoId)
+            .Select(entidad => entidad.Nit!)
+            .ToListAsync(cancellationToken);
+        return existentes.Any(existente => Documento(existente) == nit)
+            ? "Ya existe un proveedor con ese NIT."
+            : null;
+    }
+}
+
 public sealed class ConstruccionServicio
     : CatalogoServicioBase<Construccion, ConstruccionDto, ConstruccionSolicitud>
 {

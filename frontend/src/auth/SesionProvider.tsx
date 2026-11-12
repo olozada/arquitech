@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { cliente } from '../api/cliente'
 import { consultas } from '../api/consultas'
 import { borrarSesion, guardarSesion, leerSesion } from '../api/sesion'
 import type { Sesion } from '../api/sesion'
@@ -16,9 +17,11 @@ export function SesionProvider({ children }: { children: ReactNode }) {
         setSesion(nueva)
       },
       cerrarSesion: () => {
-        borrarSesion()
-        consultas.clear()
-        setSesion(null)
+        void cliente.post('/api/auth/salir').finally(() => {
+          borrarSesion()
+          consultas.clear()
+          setSesion(null)
+        })
       },
     }),
     [sesion],

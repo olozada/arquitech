@@ -1,0 +1,62 @@
+name: e2e
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'
+jobs:
+  recorrido:
+    runs-on: ubuntu-latest
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: E2e-Arquitectos1
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P E2e-Arquitectos1 -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+          --health-start-period 20s
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Arquitectos: Server=localhost,1433;Database=ARQUITECTOS_E2E;User ID=sa;Password=E2e-Arquitectos1;TrustServerCertificate=True
+      Jwt__Key: kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+      E2E_CLAVE: ${{ secrets.E2E_CLAVE }}
+      E2E_CLAVE_NUEVA: Otra123456
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+      - name: Instalar dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.15
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+      - name: Crear la base de prueba
+        run: dotnet-ef database update -p backend/src/Arquitectos.Infrastructure -s backend/src/Arquitectos.Api --configuration Release
+      - name: Sembrar datos de demostración
+        run: |
+          dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile -- --reset --seed-demo
+          dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile -- --seed-plantilla
+      - name: Arrancar la API
+        run: |
+          dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile --urls http://localhost:5190 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:5190/api/health && exit 0
+            sleep 2
+          done
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Pruebas de punta a punta
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test:e2e

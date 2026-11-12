@@ -5,7 +5,14 @@
 Codigo_anterior/web.config
 Codigo_anterior/**/web.config
 
+# Datos del sistema anterior y hashes de usuarios reales
+*.mdb
+datos_demo/migrar_desde_mdb.sql
+datos_demo/recrear_pruebas.sql
+
 # Dependencias y compilados
+**/publish/
+*.zip
 **/node_modules/
 **/bin/
 **/obj/
@@ -16,3 +23,9 @@ Codigo_anterior/**/web.config
 *.log
 *.rar
 TestResults/
+
+# Datos legacy y con credenciales
+datos_demo/*.mdb
+datos_demo/migrar_desde_mdb.sql
+datos_demo/recrear_pruebas.sql
+datos_demo/recrear_tablas.sql

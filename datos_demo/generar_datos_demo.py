@@ -2,6 +2,10 @@
 Genera datos_demo.sql: datos simulados (determinísticos) para la app Arquitectos.
 Uso:  python generar_datos_demo.py [--hoy 2026-11-09] [--salida datos_demo.sql]
 Todos los montos en COP. Semilla fija => mismo resultado siempre.
+
+El archivo sale en UTF-16 LE con BOM. sqlcmd.exe solo trata como Unicode los
+archivos UTF-16; un UTF-8 (aunque tenga BOM) se lee con la página ANSI de
+Windows y guarda á, é, ñ e í como caracteres raros (Ã¡, Ã©, Ã±).
 """
 import argparse
 import random
@@ -12,7 +16,9 @@ SEMILLA = 2026
 
 ARQUITECTOS = ["Laura Restrepo Gómez", "Andrés Felipe Ocampo", "Catalina Henao Ruiz",
                "Julián Marín Castaño", "Paula Andrea Giraldo"]
+CEDULAS_ARQUITECTOS = ["1094567101", "1094567823", "1094876540", "1094123987", "1094654321"]
 REVISORES = ["Ing. Carlos Arango", "Ing. Natalia Quintero", "Ing. Mauricio Salazar"]
+CEDULAS_REVISORES = ["1093987601", "1093765432", "1093543210"]
 CONTRATISTAS = [
     "Construcciones Quindío S.A.S.",          # 1 grande (concentración)
     "Obras y Acabados El Roble",              # 2 infractor de precios
@@ -21,8 +27,11 @@ CONTRATISTAS = [
     "Redes y Montajes Calarcá",               # 5 doble cobro
     "Acabados Finos Circasia",                # 6
 ]
+# NIT ficticio: las empresas no tienen cédula de persona.
+CEDULAS_CONTRATISTAS = ["900456781-2", "901234567-8", "800987654-3", "901876543-5", "900654321-9", "901112233-4"]
 PROVEEDORES = ["Ferretería La Sexta", "Homecenter Armenia", "Distribuidora Cemex Eje",
                "Aceros del Quindío"]
+NITS_PROVEEDORES = ["890123456-1", "800111222-3", "860333444-5", "901555666-7"]
 UM = [("m3", "Metro cúbico"), ("m2", "Metro cuadrado"), ("ml", "Metro lineal"),
       ("kg", "Kilogramo"), ("und", "Unidad"), ("gl", "Global")]
 UMI = {c: i + 1 for i, (c, _) in enumerate(UM)}
@@ -300,6 +309,8 @@ def emitir_sql(hoy, lista, actas, detalles, salida):
     w("   Seguridad: si ya hay datos en catálogos o actas, el script se detiene.")
     w("              Para borrar y recargar: SET @Reiniciar = 1 (borra actas, precios y catálogos;")
     w("              NO toca usuarios ni menú).")
+    w("   Codificación: UTF-16. No lo vuelva a guardar como ANSI ni UTF-8: sqlcmd")
+    w("              leería mal las tildes y las eñes.")
     w("   ============================================================================ */")
     w("SET NOCOUNT ON;")
     w("SET XACT_ABORT ON;")
@@ -340,10 +351,14 @@ def emitir_sql(hoy, lista, actas, detalles, salida):
 
     bloque("UnidadesMedida", ["Id", "Nombre", "Descripcion", "Activo"],
            [[str(i), sql_str(c), sql_str(d), "1"] for i, (c, d) in enumerate(UM, 1)])
-    bloque("Arquitectos", ["Id", "Nombre", "Activo"], [[str(i), sql_str(n), "1"] for i, n in enumerate(ARQUITECTOS, 1)])
-    bloque("Revisores", ["Id", "Nombre", "Activo"], [[str(i), sql_str(n), "1"] for i, n in enumerate(REVISORES, 1)])
-    bloque("Contratistas", ["Id", "Nombre", "Activo"], [[str(i), sql_str(n), "1"] for i, n in enumerate(CONTRATISTAS, 1)])
-    bloque("Proveedores", ["Id", "Nombre", "Activo"], [[str(i), sql_str(n), "1"] for i, n in enumerate(PROVEEDORES, 1)])
+    bloque("Arquitectos", ["Id", "Nombre", "Cedula", "Activo"],
+           [[str(i), sql_str(n), sql_str(c), "1"] for i, (n, c) in enumerate(zip(ARQUITECTOS, CEDULAS_ARQUITECTOS), 1)])
+    bloque("Revisores", ["Id", "Nombre", "Cedula", "Activo"],
+           [[str(i), sql_str(n), sql_str(c), "1"] for i, (n, c) in enumerate(zip(REVISORES, CEDULAS_REVISORES), 1)])
+    bloque("Contratistas", ["Id", "Nombre", "Cedula", "Activo"],
+           [[str(i), sql_str(n), sql_str(c), "1"] for i, (n, c) in enumerate(zip(CONTRATISTAS, CEDULAS_CONTRATISTAS), 1)])
+    bloque("Proveedores", ["Id", "Nombre", "Nit", "Activo"],
+           [[str(i), sql_str(n), sql_str(nit), "1"] for i, (n, nit) in enumerate(zip(PROVEEDORES, NITS_PROVEEDORES), 1)])
     bloque("Construcciones", ["Id", "Descripcion", "Propietario", "Activo"],
            [[str(i), sql_str(c[0]), sql_str(c[1]),
              "0" if c[3] is not None and c[3] < hoy - timedelta(days=90) else "1"]   # obra terminada = inactiva
@@ -365,6 +380,7 @@ def emitir_sql(hoy, lista, actas, detalles, salida):
              str(d["mat"]) if d["mat"] else "NULL", sql_dec(d["cant"], 4), sql_dec(d["precio"]), sql_str(d["desc"])]
             for d in detalles])
 
+    w("UPDATE dbo.Actas SET Cerrada = 1;")
     w("COMMIT TRANSACTION;")
     w("END TRY")
     w("BEGIN CATCH")
@@ -382,7 +398,8 @@ def emitir_sql(hoy, lista, actas, detalles, salida):
     w("FROM dbo.Actas a JOIN dbo.ActaDetalles d ON d.NumeroActa = a.NumeroActa")
     w("GROUP BY YEAR(a.FechaFinal), MONTH(a.FechaFinal)")
     w("ORDER BY Anio, Mes;")
-    with open(salida, "w", encoding="utf-8-sig") as f:
+    # utf-16 escribe UTF-16 LE con BOM, que sqlcmd reconoce como Unicode.
+    with open(salida, "w", encoding="utf-16") as f:
         f.write("\n".join(L) + "\n")
 
 

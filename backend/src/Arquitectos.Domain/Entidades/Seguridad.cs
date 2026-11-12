@@ -23,9 +23,50 @@ public class Usuario
 
     public int TipoUsuarioId { get; set; }
 
+    public int? ArquitectoId { get; set; }
+
+    public int? ContratistaId { get; set; }
+
+    public int? RevisorId { get; set; }
+
     public bool Activo { get; set; } = true;
 
+    public int IntentosFallidos { get; set; }
+
+    public DateTime? BloqueadoHasta { get; set; }
+
+    public bool DebeCambiarContrasena { get; set; }
+
     public TipoUsuario TipoUsuario { get; set; } = null!;
+
+    public Arquitecto? Arquitecto { get; set; }
+
+    public Contratista? Contratista { get; set; }
+
+    public Revisor? Revisor { get; set; }
+
+    public ICollection<SesionUsuario> Sesiones { get; set; } = new List<SesionUsuario>();
+}
+
+public class SesionUsuario
+{
+    public long Id { get; set; }
+
+    public int UsuarioId { get; set; }
+
+    public required string HashToken { get; set; }
+
+    public DateTime Expira { get; set; }
+
+    public DateTime CreadoEn { get; set; }
+
+    public DateTime? RevocadoEn { get; set; }
+
+    public string? Ip { get; set; }
+
+    public string? UserAgent { get; set; }
+
+    public Usuario Usuario { get; set; } = null!;
 }
 
 public class MenuOpcion

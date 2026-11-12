@@ -65,16 +65,27 @@ public sealed record LineaParaAlerta(
     string Construccion,
     int ConceptoId,
     string Concepto,
-    int UnidadMedidaId,
-    int? MaterialId,
-    string? Material,
+    int? UnidadMedidaId,
+    int? InsumoId,
+    string? Insumo,
     decimal Cantidad,
     decimal Precio,
     decimal Subtotal);
 
-public sealed record PrecioProveedor(int MaterialId, decimal PrecioMinimo, string ProveedorMasBarato);
+public sealed record PrecioProveedor(int InsumoId, decimal PrecioMinimo, string ProveedorMasBarato);
 
 public sealed record ObraActividad(int Id, string Nombre, DateOnly? UltimaFechaFinal);
+
+public sealed record LineaContraPresupuesto(
+    int? NumeroActa,
+    int ConstruccionId,
+    string Construccion,
+    string Codigo,
+    decimal PrecioActa,
+    decimal PrecioPresupuesto,
+    decimal CantidadActa,
+    decimal CantidadPresupuesto,
+    decimal CantidadEjecutada);
 
 public sealed record ActaRegistro(
     int NumeroActa,

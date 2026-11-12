@@ -5,14 +5,19 @@ import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, 
 import { cliente } from '../api/cliente'
 import { dinero } from '../actas/formato'
 import { usePrecioUnitario } from '../api/dashboard'
-import type { RegistroCatalogo } from '../catalogos/definiciones'
 
-export function GraficoPrecio({ desde, hasta }: { desde: string; hasta: string }) {
+export function GraficoPrecio({ desde, hasta, estado }: { desde: string; hasta: string; estado: '' | 'abierta' | 'cerrada' }) {
   const [conceptoId, setConceptoId] = useState(0)
-  const [materialId, setMaterialId] = useState(0)
+  const [insumoId, setInsumoId] = useState(0)
   const conceptos = useCatalogo('conceptos')
-  const materiales = useCatalogo('materiales')
-  const serie = usePrecioUnitario(desde, hasta, conceptoId, materialId)
+  const insumos = useQuery({
+    queryKey: ['insumos-precio'],
+    queryFn: async () =>
+      (await cliente.get<Array<{ id: number; codigo: string | null; descripcion: string; activo: boolean }>>('/api/insumos')).data.filter(
+        (insumo) => insumo.activo,
+      ),
+  })
+  const serie = usePrecioUnitario(desde, hasta, conceptoId, insumoId, estado)
   const datos = (serie.data ?? []).map((punto) => ({
     ...punto,
     etiqueta: new Date(punto.anio, punto.mes - 1, 1).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }),
@@ -34,19 +39,19 @@ export function GraficoPrecio({ desde, hasta }: { desde: string; hasta: string }
           </Form.Select>
         </Col>
         <Col md={6}>
-          <Form.Label>Material</Form.Label>
-          <Form.Select value={materialId} onChange={(evento) => setMaterialId(Number(evento.target.value))}>
+          <Form.Label>Insumo</Form.Label>
+          <Form.Select value={insumoId} onChange={(evento) => setInsumoId(Number(evento.target.value))}>
             <option value={0}>Todos</option>
-            {(materiales.data ?? []).map((opcion) => (
+            {(insumos.data ?? []).map((opcion) => (
               <option key={opcion.id} value={opcion.id}>
-                {String(opcion.descripcion ?? opcion.nombre ?? opcion.id)}
+                {opcion.codigo ? `${opcion.codigo} ${opcion.descripcion}` : opcion.descripcion}
               </option>
             ))}
           </Form.Select>
         </Col>
       </Row>
-      {conceptoId === 0 && materialId === 0 ? (
-        <p className="kpi-subtitulo">Selecciona un concepto o un material.</p>
+      {conceptoId === 0 && insumoId === 0 ? (
+        <p className="kpi-subtitulo">Selecciona un concepto o un insumo.</p>
       ) : serie.isLoading ? (
         <p className="kpi-subtitulo">Cargando precios…</p>
       ) : datos.length === 0 ? (
@@ -74,6 +79,7 @@ export function GraficoPrecio({ desde, hasta }: { desde: string; hasta: string }
 function useCatalogo(recurso: string) {
   return useQuery({
     queryKey: ['catalogo', recurso],
-    queryFn: async () => (await cliente.get<RegistroCatalogo[]>(`/api/${recurso}`)).data,
+    queryFn: async () =>
+      (await cliente.get<Array<{ id: number; descripcion?: string; nombre?: string }>>(`/api/${recurso}`)).data,
   })
 }

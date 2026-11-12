@@ -9,9 +9,9 @@ namespace Arquitectos.Infrastructure.ProveedorMateriales;
 public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
 {
     private const string MensajeProveedor = "No se encontró el proveedor.";
-    private const string MensajeMateriales = "Hay materiales que no existen o están inactivos.";
-    private const string MensajeDuplicado = "El material ya está agregado al proveedor.";
-    private const string MensajeNoAgregados = "No se encontraron los materiales seleccionados.";
+    private const string MensajeMateriales = "Hay insumos que no existen o están inactivos.";
+    private const string MensajeDuplicado = "El insumo ya está agregado al proveedor.";
+    private const string MensajeNoAgregados = "No se encontraron los insumos seleccionados.";
 
     private readonly ArquitectosDbContext _context;
 
@@ -32,12 +32,12 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
         var filas = await _context.ProveedorMateriales
             .AsNoTracking()
             .Where(item => item.ProveedorId == proveedorId)
-            .OrderBy(item => item.Material.Descripcion)
-            .Select(item => new { item.MaterialId, item.Material.Descripcion, item.Precio })
+            .OrderBy(item => item.Insumo.Descripcion)
+            .Select(item => new { item.InsumoId, item.Insumo.Descripcion, item.Precio })
             .ToListAsync(cancellationToken);
 
         IReadOnlyList<MaterialAgregadoDto> materiales = filas
-            .Select(item => new MaterialAgregadoDto(item.MaterialId, item.Descripcion, item.Precio))
+            .Select(item => new MaterialAgregadoDto(item.InsumoId, item.Descripcion, item.Precio))
             .ToList();
 
         return ResultadoProveedorMaterial<IReadOnlyList<MaterialAgregadoDto>>.Ok(materiales);
@@ -54,13 +54,13 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
 
         var asignados = _context.ProveedorMateriales
             .Where(item => item.ProveedorId == proveedorId)
-            .Select(item => item.MaterialId);
+            .Select(item => item.InsumoId);
 
-        var filas = await _context.Materiales
+        var filas = await _context.Insumos
             .AsNoTracking()
-            .Where(material => material.Activo && !asignados.Contains(material.Id))
-            .OrderBy(material => material.Descripcion)
-            .Select(material => new { material.Id, material.Descripcion })
+            .Where(insumo => insumo.Activo && !asignados.Contains(insumo.Id))
+            .OrderBy(insumo => insumo.Descripcion)
+            .Select(insumo => new { insumo.Id, insumo.Descripcion })
             .ToListAsync(cancellationToken);
 
         IReadOnlyList<MaterialDisponibleDto> materiales = filas
@@ -80,10 +80,10 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
             return ResultadoProveedorMaterial<bool>.NoEncontrado(MensajeProveedor);
         }
 
-        var ids = materiales.Select(item => item.MaterialId).ToList();
+        var ids = materiales.Select(item => item.InsumoId).ToList();
         if (ids.Distinct().Count() != ids.Count)
         {
-            return ResultadoProveedorMaterial<bool>.Invalido("Hay materiales repetidos en la selección.");
+            return ResultadoProveedorMaterial<bool>.Invalido("Hay insumos repetidos en la selección.");
         }
 
         if (materiales.Any(item => decimal.Round(item.Precio, 2, MidpointRounding.AwayFromZero) <= 0))
@@ -91,10 +91,10 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
             return ResultadoProveedorMaterial<bool>.Invalido(AgregarMaterialesValidador.MensajePrecio);
         }
 
-        var existentes = await _context.Materiales
+        var existentes = await _context.Insumos
             .AsNoTracking()
-            .Where(material => ids.Contains(material.Id))
-            .Select(material => new { material.Id, material.Activo })
+            .Where(insumo => ids.Contains(insumo.Id))
+            .Select(insumo => new { insumo.Id, insumo.Activo })
             .ToListAsync(cancellationToken);
 
         if (existentes.Count != ids.Count || existentes.Any(material => !material.Activo))
@@ -103,8 +103,8 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
         }
 
         var yaAgregados = await _context.ProveedorMateriales
-            .Where(item => item.ProveedorId == proveedorId && ids.Contains(item.MaterialId))
-            .Select(item => item.MaterialId)
+            .Where(item => item.ProveedorId == proveedorId && ids.Contains(item.InsumoId))
+            .Select(item => item.InsumoId)
             .ToListAsync(cancellationToken);
 
         if (yaAgregados.Count > 0)
@@ -117,7 +117,7 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
             _context.ProveedorMateriales.Add(new ProveedorMaterial
             {
                 ProveedorId = proveedorId,
-                MaterialId = material.MaterialId,
+                InsumoId = material.InsumoId,
                 Precio = decimal.Round(material.Precio, 2, MidpointRounding.AwayFromZero)
             });
         }
@@ -148,7 +148,7 @@ public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
 
         var ids = materialIds.Distinct().ToList();
         var agregados = await _context.ProveedorMateriales
-            .Where(item => item.ProveedorId == proveedorId && ids.Contains(item.MaterialId))
+            .Where(item => item.ProveedorId == proveedorId && ids.Contains(item.InsumoId))
             .ToListAsync(cancellationToken);
 
         if (agregados.Count == 0)

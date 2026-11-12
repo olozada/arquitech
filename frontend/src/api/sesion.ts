@@ -1,7 +1,7 @@
 export type Sesion = {
-  token: string
   nombre: string
   tipoUsuario: string
+  debeCambiarContrasena?: boolean
 }
 
 const CLAVE = 'arquitectos.sesion'
@@ -18,7 +18,11 @@ export function leerSesion(): Sesion | null {
       return null
     }
 
-    return valor
+    return {
+      nombre: valor.nombre,
+      tipoUsuario: valor.tipoUsuario,
+      debeCambiarContrasena: valor.debeCambiarContrasena,
+    }
   } catch {
     return null
   }
@@ -38,5 +42,9 @@ function esSesion(valor: unknown): valor is Sesion {
   }
 
   const sesion = valor as Partial<Sesion>
-  return Boolean(sesion.token && sesion.nombre && sesion.tipoUsuario)
+  if (sesion.debeCambiarContrasena != null && typeof sesion.debeCambiarContrasena !== 'boolean') {
+    return false
+  }
+
+  return Boolean(sesion.nombre && sesion.tipoUsuario)
 }

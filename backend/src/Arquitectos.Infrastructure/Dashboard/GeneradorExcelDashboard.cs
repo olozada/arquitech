@@ -149,11 +149,11 @@ public static class GeneradorExcelDashboard
     {
         var hoja = libro.Worksheets.Add("Calidad");
         EscribirTitulos(hoja, ["Indicador", "Valor"]);
-        hoja.Cell(2, 1).Value = "% materiales con precio de proveedor";
+        hoja.Cell(2, 1).Value = "% insumos con precio de proveedor";
         hoja.Cell(2, 2).Value = (double)calidad.PctMaterialesConPrecio;
-        hoja.Cell(3, 1).Value = "Materiales con un solo proveedor";
+        hoja.Cell(3, 1).Value = "Insumos con un solo proveedor";
         hoja.Cell(3, 2).Value = calidad.MaterialesUnProveedor;
-        hoja.Cell(4, 1).Value = "Líneas sin material";
+        hoja.Cell(4, 1).Value = "Líneas sin insumo";
         hoja.Cell(4, 2).Value = calidad.LineasSinMaterial;
         hoja.Cell(5, 1).Value = "Actas sin observación";
         hoja.Cell(5, 2).Value = calidad.ActasSinObservacion;

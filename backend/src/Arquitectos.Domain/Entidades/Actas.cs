@@ -16,6 +16,10 @@ public class Acta
 
     public string? Observacion { get; set; }
 
+    public bool Cerrada { get; set; }
+
+    public byte[] RowVersion { get; set; } = [];
+
     public DateTime FechaRegistro { get; set; }
 
     public int? UsuarioRegistroId { get; set; }
@@ -41,25 +45,35 @@ public class ActaDetalle
 
     public int ConceptoId { get; set; }
 
-    public int UnidadMedidaId { get; set; }
+    public int? UnidadMedidaId { get; set; }
 
-    public int? MaterialId { get; set; }
+    public int? InsumoId { get; set; }
 
     public decimal Cantidad { get; set; }
 
     public decimal Precio { get; set; }
 
-    public required string Descripcion { get; set; }
+    public string Descripcion { get; set; } = "";
 
     public decimal Subtotal { get; set; }
 
+    public int TipoUsuarioId { get; set; }
+
+    public bool Aprobado { get; set; } = true;
+
+    public int? PresupuestoItemId { get; set; }
+
     public Acta Acta { get; set; } = null!;
+
+    public TipoUsuario TipoUsuario { get; set; } = null!;
 
     public Construccion Construccion { get; set; } = null!;
 
     public Concepto Concepto { get; set; } = null!;
 
-    public UnidadMedida UnidadMedida { get; set; } = null!;
+    public UnidadMedida? UnidadMedida { get; set; }
 
-    public Material? Material { get; set; }
+    public Insumo? Insumo { get; set; }
+
+    public PresupuestoItem? PresupuestoItem { get; set; }
 }

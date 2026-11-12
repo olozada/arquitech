@@ -5,6 +5,7 @@ export type CampoCatalogo = {
   maximo: number
   mensajeRequerido?: string
   mensajeMaximo: string
+  numero?: boolean
 }
 
 export type ColumnaCatalogo = {
@@ -44,24 +45,51 @@ const descripcion = (maximo: number, mensajeMaximo: string, requerido = true): C
   mensajeMaximo,
 })
 
-function catalogoNombre(titulo: string, recurso: string): ConfiguracionCatalogo {
+function catalogoPersona(titulo: string, recurso: string): ConfiguracionCatalogo {
   return {
     titulo,
     recurso,
     ruta: `admin/${recurso}`,
-    campos: [nombre()],
+    campos: [
+      {
+        nombre: 'cedula',
+        etiqueta: 'Cédula',
+        requerido: false,
+        maximo: 20,
+        mensajeMaximo: 'La cédula no puede superar 20 caracteres.',
+      },
+      nombre(),
+    ],
     columnas: [
-      { clave: 'id', titulo: 'Código' },
+      { clave: 'cedula', titulo: 'Cédula' },
       { clave: 'nombre', titulo: 'Nombre' },
     ],
   }
 }
 
 export const catalogos: ConfiguracionCatalogo[] = [
-  catalogoNombre('Arquitectos', 'arquitectos'),
-  catalogoNombre('Revisores', 'revisores'),
-  catalogoNombre('Contratistas', 'contratistas'),
-  catalogoNombre('Proveedores', 'proveedores'),
+  catalogoPersona('Arquitectos', 'arquitectos'),
+  catalogoPersona('Revisores', 'revisores'),
+  catalogoPersona('Contratistas', 'contratistas'),
+  {
+    titulo: 'Proveedores',
+    recurso: 'proveedores',
+    ruta: 'admin/proveedores',
+    campos: [
+      {
+        nombre: 'nit',
+        etiqueta: 'NIT',
+        requerido: false,
+        maximo: 20,
+        mensajeMaximo: 'El NIT no puede superar 20 caracteres.',
+      },
+      nombre(),
+    ],
+    columnas: [
+      { clave: 'nit', titulo: 'NIT' },
+      { clave: 'nombre', titulo: 'Nombre' },
+    ],
+  },
   {
     titulo: 'Construcciones',
     recurso: 'construcciones',
@@ -86,26 +114,6 @@ export const catalogos: ConfiguracionCatalogo[] = [
     titulo: 'Conceptos',
     recurso: 'conceptos',
     ruta: 'admin/conceptos',
-    campos: [
-      descripcion(200, 'La descripción no puede superar 200 caracteres.'),
-      {
-        nombre: 'unidad',
-        etiqueta: 'Unidad',
-        requerido: false,
-        maximo: 20,
-        mensajeMaximo: 'La unidad no puede superar 20 caracteres.',
-      },
-    ],
-    columnas: [
-      { clave: 'id', titulo: 'Código' },
-      { clave: 'descripcion', titulo: 'Descripción' },
-      { clave: 'unidad', titulo: 'Unidad' },
-    ],
-  },
-  {
-    titulo: 'Materiales',
-    recurso: 'materiales',
-    ruta: 'admin/materiales',
     campos: [
       descripcion(200, 'La descripción no puede superar 200 caracteres.'),
       {

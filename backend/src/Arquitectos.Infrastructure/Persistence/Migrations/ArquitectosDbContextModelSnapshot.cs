@@ -17,7 +17,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.33")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -32,6 +32,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("ArquitectoId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("Cerrada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int>("ContratistaId")
                         .HasColumnType("int");
@@ -53,6 +58,12 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("RevisorId")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int?>("UsuarioRegistroId")
                         .HasColumnType("int");
@@ -86,6 +97,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Aprobado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<decimal>("Cantidad")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
@@ -101,7 +117,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int?>("MaterialId")
+                    b.Property<int?>("InsumoId")
                         .HasColumnType("int");
 
                     b.Property<int>("NumeroActa")
@@ -111,26 +127,36 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("PresupuestoItemId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Subtotal")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasPrecision(37, 6)
                         .HasColumnType("decimal(37,6)")
                         .HasComputedColumnSql("[Cantidad] * [Precio]", true);
 
-                    b.Property<int>("UnidadMedidaId")
+                    b.Property<int>("TipoUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UnidadMedidaId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("InsumoId");
 
                     b.HasIndex("NumeroActa");
+
+                    b.HasIndex("PresupuestoItemId");
+
+                    b.HasIndex("TipoUsuarioId");
 
                     b.HasIndex("UnidadMedidaId");
 
                     b.HasIndex("ConstruccionId", "ConceptoId");
 
-                    b.HasIndex("ConceptoId", "UnidadMedidaId", "MaterialId");
+                    b.HasIndex("ConceptoId", "UnidadMedidaId", "InsumoId");
 
                     b.ToTable("ActaDetalles", null, t =>
                         {
@@ -138,6 +164,144 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_ActaDetalles_Precio", "[Precio] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Apu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Codigo")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("ConceptoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("DivisorGeneral")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<bool>("EsSubanalisis")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Unidad")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("UnidadMedidaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConceptoId");
+
+                    b.HasIndex("UnidadMedidaId");
+
+                    b.ToTable("Apus", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ApuGrupo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApuId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Divisor")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int>("Grupo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApuId");
+
+                    b.ToTable("ApuGrupos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ApuLinea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApuGrupoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int?>("CuadrillaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Factor")
+                        .HasPrecision(19, 8)
+                        .HasColumnType("decimal(19,8)");
+
+                    b.Property<int?>("InsumoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Modo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PrecioManual")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int?>("SubApuId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unidad")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApuGrupoId");
+
+                    b.HasIndex("CuadrillaId");
+
+                    b.HasIndex("InsumoId");
+
+                    b.HasIndex("SubApuId");
+
+                    b.ToTable("ApuLineas", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Arquitecto", b =>
@@ -153,6 +317,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Cedula")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -160,10 +328,89 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cedula")
+                        .IsUnique()
+                        .HasFilter("[Cedula] IS NOT NULL");
+
                     b.HasIndex("Nombre")
                         .IsUnique();
 
                     b.ToTable("Arquitectos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Auditoria", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("CambiosJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("EntidadId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha");
+
+                    b.HasIndex("Entidad", "EntidadId");
+
+                    b.ToTable("Auditoria", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Cargo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<decimal>("SalarioMensual")
+                        .HasPrecision(19, 2)
+                        .HasColumnType("decimal(19,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Cargos", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Concepto", b =>
@@ -243,6 +490,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Cedula")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -250,13 +501,17 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cedula")
+                        .IsUnique()
+                        .HasFilter("[Cedula] IS NOT NULL");
+
                     b.HasIndex("Nombre")
                         .IsUnique();
 
                     b.ToTable("Contratistas", (string)null);
                 });
 
-            modelBuilder.Entity("Arquitectos.Domain.Entidades.Material", b =>
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Cuadrilla", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -269,25 +524,132 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Cuadrillas", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.CuadrillaCargo", b =>
+                {
+                    b.Property<int>("CuadrillaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CargoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.HasKey("CuadrillaId", "CargoId");
+
+                    b.HasIndex("CargoId");
+
+                    b.ToTable("CuadrillaCargos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal>("CantidadPorUnidad")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
                     b.Property<string>("Codigo")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("Unidad")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<DateTime>("FechaPrecio")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("PorcentajeIva")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PrecioBase")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<decimal>("PrecioUnitario")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnidadCompra")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("UnidadUso")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Descripcion")
-                        .IsUnique();
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasFilter("[Codigo] IS NOT NULL");
 
-                    b.ToTable("Materiales", (string)null);
+                    b.ToTable("Insumos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.InsumoPrecioHistorial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("InsumoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PorcentajeIva")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PrecioBase")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InsumoId");
+
+                    b.ToTable("InsumoPreciosHistorial", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.MenuOpcion", b =>
@@ -398,11 +760,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 8,
-                            Descripcion = "Materiales",
+                            Descripcion = "Insumos",
                             Icono = "fa fa-cubes",
                             Orden = 7,
                             PadreId = 1,
-                            Url = "/admin/materiales"
+                            Url = "/presupuesto/insumos"
                         },
                         new
                         {
@@ -445,16 +807,8 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                             Id = 11,
                             Descripcion = "Actas",
                             Icono = "fa fa-file-text",
-                            Orden = 2
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Descripcion = "Toma de actas",
-                            Icono = "fa fa-pencil",
-                            Orden = 1,
-                            PadreId = 11,
-                            Url = "/actas/nueva"
+                            Orden = 2,
+                            Url = "/actas"
                         },
                         new
                         {
@@ -471,6 +825,58 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                             Orden = 1,
                             PadreId = 13,
                             Url = "/informes/actas"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Descripcion = "Reporte por materiales",
+                            Icono = "fa fa-cubes",
+                            Orden = 2,
+                            PadreId = 13,
+                            Url = "/informes/materiales"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Descripcion = "Presupuestos",
+                            Icono = "fa fa-calculator",
+                            Orden = 4
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Descripcion = "Presupuestos de obra",
+                            Icono = "fa fa-file-text-o",
+                            Orden = 1,
+                            PadreId = 18,
+                            Url = "/presupuestos"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Descripcion = "Insumos",
+                            Icono = "fa fa-cubes",
+                            Orden = 2,
+                            PadreId = 18,
+                            Url = "/presupuesto/insumos"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Descripcion = "Mano de obra",
+                            Icono = "fa fa-users",
+                            Orden = 3,
+                            PadreId = 18,
+                            Url = "/presupuesto/mano-obra"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Descripcion = "Análisis de precios",
+                            Icono = "fa fa-list-alt",
+                            Orden = 4,
+                            PadreId = 18,
+                            Url = "/presupuesto/apu"
                         });
                 });
 
@@ -561,11 +967,6 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
-                            MenuOpcionId = 12,
-                            TipoUsuarioId = 1
-                        },
-                        new
-                        {
                             MenuOpcionId = 13,
                             TipoUsuarioId = 1
                         },
@@ -573,7 +974,367 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             MenuOpcionId = 14,
                             TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 23,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 18,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 19,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 20,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 21,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 22,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 11,
+                            TipoUsuarioId = 2
+                        },
+                        new
+                        {
+                            MenuOpcionId = 16,
+                            TipoUsuarioId = 2
+                        },
+                        new
+                        {
+                            MenuOpcionId = 11,
+                            TipoUsuarioId = 3
+                        },
+                        new
+                        {
+                            MenuOpcionId = 16,
+                            TipoUsuarioId = 3
+                        },
+                        new
+                        {
+                            MenuOpcionId = 11,
+                            TipoUsuarioId = 4
+                        },
+                        new
+                        {
+                            MenuOpcionId = 16,
+                            TipoUsuarioId = 4
+                        },
+                        new
+                        {
+                            MenuOpcionId = 18,
+                            TipoUsuarioId = 2
+                        },
+                        new
+                        {
+                            MenuOpcionId = 19,
+                            TipoUsuarioId = 2
                         });
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ParametrosManoObra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DiasHabilesAnio")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DiasMes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IncluirDiasNoHabiles")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParametrosManoObra", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            DiasHabilesAnio = 296,
+                            DiasMes = 30,
+                            IncluirDiasNoHabiles = false
+                        });
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PrestacionSocial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Concepto")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Porcentaje")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PrestacionesSociales", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Presupuesto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AreaConstruidaM2")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int?>("ConstruccionId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("EsPlantilla")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("FechaAprobacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MesesProyecto")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("PctAdministracion")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PctImprevistos")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PctIncremento")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PctIvaUtilidad")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal>("PctUtilidad")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int?>("PresupuestoOrigenId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("UsuarioAprobacionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConstruccionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Presupuestos_Aprobado")
+                        .HasFilter("[Estado] = 2 AND [EsPlantilla] = 0");
+
+                    b.HasIndex("PresupuestoOrigenId");
+
+                    b.ToTable("Presupuestos", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Presupuestos_Plantilla", "[EsPlantilla] = 1 OR [ConstruccionId] IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoCapitulo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PresupuestoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PresupuestoId");
+
+                    b.ToTable("PresupuestoCapitulos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ApuId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CantidadOrigenFactor")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int?>("CantidadOrigenItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CapituloId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("ConceptoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DesgloseApuJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("FactorConversionApu")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unidad")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("UnidadMedidaId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ValorManoObraUnitario")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.Property<decimal>("ValorMaterialUnitario")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("decimal(19,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApuId");
+
+                    b.HasIndex("CapituloId");
+
+                    b.HasIndex("ConceptoId");
+
+                    b.HasIndex("UnidadMedidaId");
+
+                    b.ToTable("PresupuestoItems", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoMedicion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("Alto")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("Ancho")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("Largo")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("Parcial")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("PresupuestoItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Ubicacion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("Veces")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PresupuestoItemId");
+
+                    b.ToTable("PresupuestoMediciones", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Proveedor", b =>
@@ -589,12 +1350,20 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Nit")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Nit")
+                        .IsUnique()
+                        .HasFilter("[Nit] IS NOT NULL");
 
                     b.HasIndex("Nombre")
                         .IsUnique();
@@ -607,16 +1376,16 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Property<int>("ProveedorId")
                         .HasColumnType("int");
 
-                    b.Property<int>("MaterialId")
+                    b.Property<int>("InsumoId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Precio")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.HasKey("ProveedorId", "MaterialId");
+                    b.HasKey("ProveedorId", "InsumoId");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("InsumoId");
 
                     b.ToTable("ProveedorMateriales", null, t =>
                         {
@@ -637,6 +1406,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Cedula")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -644,10 +1417,57 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cedula")
+                        .IsUnique()
+                        .HasFilter("[Cedula] IS NOT NULL");
+
                     b.HasIndex("Nombre")
                         .IsUnique();
 
                     b.ToTable("Revisores", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.SesionUsuario", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Expira")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HashToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("RevocadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HashToken")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("SesionesUsuario", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.TipoUsuario", b =>
@@ -675,6 +1495,21 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 1,
                             Nombre = "Administrador"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Nombre = "Arquitecto"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Nombre = "Contratista"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Nombre = "Revisor"
                         });
                 });
 
@@ -721,6 +1556,25 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<int?>("ArquitectoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("BloqueadoHasta")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ContratistaId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("DebeCambiarContrasena")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("IntentosFallidos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -737,13 +1591,22 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("RevisorId")
+                        .HasColumnType("int");
+
                     b.Property<int>("TipoUsuarioId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ArquitectoId");
+
+                    b.HasIndex("ContratistaId");
+
                     b.HasIndex("NombreUsuario")
                         .IsUnique();
+
+                    b.HasIndex("RevisorId");
 
                     b.HasIndex("TipoUsuarioId");
 
@@ -754,6 +1617,8 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 1,
                             Activo = true,
+                            DebeCambiarContrasena = true,
+                            IntentosFallidos = 0,
                             Nombre = "Administrador",
                             NombreUsuario = "admin",
                             PasswordHash = "AQAAAAIAAYagAAAAEL0ccqOmHJF693FpHgqXvF0RaUM3+mkM0eAUTDbLMZ7ItRQKN6V2h0RqsGcQ0ovuXg==",
@@ -809,9 +1674,9 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Arquitectos.Domain.Entidades.Material", "Material")
+                    b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
                         .WithMany()
-                        .HasForeignKey("MaterialId")
+                        .HasForeignKey("InsumoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Arquitectos.Domain.Entidades.Acta", "Acta")
@@ -820,11 +1685,21 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Arquitectos.Domain.Entidades.PresupuestoItem", "PresupuestoItem")
+                        .WithMany()
+                        .HasForeignKey("PresupuestoItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.TipoUsuario", "TipoUsuario")
+                        .WithMany()
+                        .HasForeignKey("TipoUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Arquitectos.Domain.Entidades.UnidadMedida", "UnidadMedida")
                         .WithMany()
                         .HasForeignKey("UnidadMedidaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Acta");
 
@@ -832,9 +1707,103 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Construccion");
 
-                    b.Navigation("Material");
+                    b.Navigation("Insumo");
+
+                    b.Navigation("PresupuestoItem");
+
+                    b.Navigation("TipoUsuario");
 
                     b.Navigation("UnidadMedida");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Apu", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Concepto", "Concepto")
+                        .WithMany()
+                        .HasForeignKey("ConceptoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.UnidadMedida", "UnidadMedida")
+                        .WithMany()
+                        .HasForeignKey("UnidadMedidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Concepto");
+
+                    b.Navigation("UnidadMedida");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ApuGrupo", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Apu", "Apu")
+                        .WithMany("Grupos")
+                        .HasForeignKey("ApuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Apu");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ApuLinea", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.ApuGrupo", "Grupo")
+                        .WithMany("Lineas")
+                        .HasForeignKey("ApuGrupoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Cuadrilla", "Cuadrilla")
+                        .WithMany()
+                        .HasForeignKey("CuadrillaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
+                        .WithMany()
+                        .HasForeignKey("InsumoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Apu", "SubApu")
+                        .WithMany()
+                        .HasForeignKey("SubApuId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cuadrilla");
+
+                    b.Navigation("Grupo");
+
+                    b.Navigation("Insumo");
+
+                    b.Navigation("SubApu");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.CuadrillaCargo", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Cargo", "Cargo")
+                        .WithMany("Cuadrillas")
+                        .HasForeignKey("CargoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Cuadrilla", "Cuadrilla")
+                        .WithMany("Integrantes")
+                        .HasForeignKey("CuadrillaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cargo");
+
+                    b.Navigation("Cuadrilla");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.InsumoPrecioHistorial", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
+                        .WithMany("Historial")
+                        .HasForeignKey("InsumoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Insumo");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.MenuOpcion", b =>
@@ -866,11 +1835,80 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("TipoUsuario");
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Presupuesto", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Construccion", "Construccion")
+                        .WithMany()
+                        .HasForeignKey("ConstruccionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Presupuesto", null)
+                        .WithMany()
+                        .HasForeignKey("PresupuestoOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Construccion");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoCapitulo", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Presupuesto", "Presupuesto")
+                        .WithMany("Capitulos")
+                        .HasForeignKey("PresupuestoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Presupuesto");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoItem", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Apu", "Apu")
+                        .WithMany()
+                        .HasForeignKey("ApuId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.PresupuestoCapitulo", "Capitulo")
+                        .WithMany("Items")
+                        .HasForeignKey("CapituloId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Concepto", "Concepto")
+                        .WithMany()
+                        .HasForeignKey("ConceptoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.UnidadMedida", "UnidadMedida")
+                        .WithMany()
+                        .HasForeignKey("UnidadMedidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Apu");
+
+                    b.Navigation("Capitulo");
+
+                    b.Navigation("Concepto");
+
+                    b.Navigation("UnidadMedida");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoMedicion", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.PresupuestoItem", "Item")
+                        .WithMany("Mediciones")
+                        .HasForeignKey("PresupuestoItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.ProveedorMaterial", b =>
                 {
-                    b.HasOne("Arquitectos.Domain.Entidades.Material", "Material")
+                    b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
                         .WithMany()
-                        .HasForeignKey("MaterialId")
+                        .HasForeignKey("InsumoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -880,18 +1918,50 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Material");
+                    b.Navigation("Insumo");
 
                     b.Navigation("Proveedor");
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.SesionUsuario", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Usuario", "Usuario")
+                        .WithMany("Sesiones")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Usuario", b =>
                 {
+                    b.HasOne("Arquitectos.Domain.Entidades.Arquitecto", "Arquitecto")
+                        .WithMany()
+                        .HasForeignKey("ArquitectoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Contratista", "Contratista")
+                        .WithMany()
+                        .HasForeignKey("ContratistaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Revisor", "Revisor")
+                        .WithMany()
+                        .HasForeignKey("RevisorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Arquitectos.Domain.Entidades.TipoUsuario", "TipoUsuario")
                         .WithMany("Usuarios")
                         .HasForeignKey("TipoUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Arquitecto");
+
+                    b.Navigation("Contratista");
+
+                    b.Navigation("Revisor");
 
                     b.Navigation("TipoUsuario");
                 });
@@ -901,11 +1971,51 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("Detalles");
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Apu", b =>
+                {
+                    b.Navigation("Grupos");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.ApuGrupo", b =>
+                {
+                    b.Navigation("Lineas");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Cargo", b =>
+                {
+                    b.Navigation("Cuadrillas");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Cuadrilla", b =>
+                {
+                    b.Navigation("Integrantes");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>
+                {
+                    b.Navigation("Historial");
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.MenuOpcion", b =>
                 {
                     b.Navigation("Hijos");
 
                     b.Navigation("TiposUsuario");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Presupuesto", b =>
+                {
+                    b.Navigation("Capitulos");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoCapitulo", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.PresupuestoItem", b =>
+                {
+                    b.Navigation("Mediciones");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Proveedor", b =>
@@ -918,6 +2028,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("OpcionesMenu");
 
                     b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Usuario", b =>
+                {
+                    b.Navigation("Sesiones");
                 });
 #pragma warning restore 612, 618
         }

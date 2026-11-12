@@ -2,6 +2,7 @@ using Arquitectos.Application;
 using Arquitectos.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using QuestPDF.Infrastructure;
 
 namespace Arquitectos.Tests;
 
@@ -43,6 +44,26 @@ public class ComposicionTests
         var resultado = services.AddInfrastructure(configuration);
 
         Assert.Same(services, resultado);
+    }
+
+    [Theory]
+    [InlineData(null, LicenseType.Community)]
+    [InlineData("", LicenseType.Community)]
+    [InlineData("community", LicenseType.Community)]
+    [InlineData("Professional", LicenseType.Professional)]
+    [InlineData("Enterprise", LicenseType.Enterprise)]
+    public void La_licencia_de_QuestPdf_sale_de_la_configuracion(string? valor, LicenseType esperada)
+    {
+        Assert.Equal(esperada, Arquitectos.Infrastructure.DependencyInjection.LicenciaQuestPdf(valor));
+    }
+
+    [Fact]
+    public void Una_licencia_de_QuestPdf_desconocida_falla()
+    {
+        var excepcion = Assert.Throws<InvalidOperationException>(
+            () => Arquitectos.Infrastructure.DependencyInjection.LicenciaQuestPdf("Trial"));
+
+        Assert.Contains("QuestPdf:Licencia", excepcion.Message);
     }
 
     private sealed class FuenteMemoria : IConfigurationSource

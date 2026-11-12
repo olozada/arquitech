@@ -37,6 +37,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return item is null ? NoEncontrado() : Ok(item);
     }
 
+    [Authorize(Roles = "Administrador")]
     [HttpPost]
     public async Task<IActionResult> Crear(TSolicitud solicitud, CancellationToken cancellationToken)
     {
@@ -56,6 +57,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return Created($"{Request.Path}/{resultado.Valor!.Id}", resultado.Valor);
     }
 
+    [Authorize(Roles = "Administrador")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, TSolicitud solicitud, CancellationToken cancellationToken)
     {
@@ -70,6 +72,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return error ?? Ok(resultado.Valor);
     }
 
+    [Authorize(Roles = "Administrador")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Eliminar(int id, CancellationToken cancellationToken)
     {

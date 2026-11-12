@@ -21,7 +21,7 @@ public class ProveedorMaterialTests
     {
         var resultado = _agregar.Validate(
         [
-            new AgregarMaterialSolicitud { MaterialId = 1, Precio = 0 }
+            new AgregarMaterialSolicitud { InsumoId = 1, Precio = 0 }
         ]);
 
         Assert.False(resultado.IsValid);
@@ -33,7 +33,7 @@ public class ProveedorMaterialTests
     {
         var resultado = _agregar.Validate(
         [
-            new AgregarMaterialSolicitud { MaterialId = 1, Precio = 1500.5m }
+            new AgregarMaterialSolicitud { InsumoId = 1, Precio = 1500.5m }
         ]);
 
         Assert.True(resultado.IsValid);

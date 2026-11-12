@@ -37,7 +37,7 @@ export function MaterialesProveedor() {
   })
 
   const agregar = useMutation({
-    mutationFn: async (materiales: { materialId: number; precio: number }[]) => {
+    mutationFn: async (materiales: { insumoId: number; precio: number }[]) => {
       await cliente.post(`/api/proveedores/${proveedorId}/materiales`, materiales)
     },
     onSuccess: async () => {
@@ -78,7 +78,7 @@ export function MaterialesProveedor() {
     }
 
     const materiales = marcados.map((material) => ({
-      materialId: material.id,
+      insumoId: material.id,
       precio: numero(precios[material.id] ?? '') ?? 0,
     }))
     if (materiales.some((material) => material.precio <= 0)) {

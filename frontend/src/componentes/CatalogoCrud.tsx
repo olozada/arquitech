@@ -21,6 +21,7 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
   const consultas = useQueryClient()
   const [seleccionId, setSeleccionId] = useState<number | null>(null)
   const [pagina, setPagina] = useState(1)
+  const [busqueda, setBusqueda] = useState('')
   const esquema = useMemo(() => crearEsquema(configuracion.campos), [configuracion])
   const vacios = useMemo(() => valoresVacios(configuracion.campos), [configuracion])
   const {
@@ -59,8 +60,15 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
       await consultas.invalidateQueries({ queryKey: ['catalogo', configuracion.recurso] })
       const registros =
         consultas.getQueryData<RegistroCatalogo[]>(['catalogo', configuracion.recurso]) ?? []
-      const indice = registros.findIndex((item) => item.id === registro.id)
-      setPagina(indice < 0 ? 1 : Math.floor(indice / TAMANO_PAGINA) + 1)
+      const visibles = filtrarRegistros(registros, configuracion.columnas, busqueda)
+      const indiceVisible = visibles.findIndex((item) => item.id === registro.id)
+      if (indiceVisible < 0) {
+        setBusqueda('')
+        const indice = registros.findIndex((item) => item.id === registro.id)
+        setPagina(indice < 0 ? 1 : Math.floor(indice / TAMANO_PAGINA) + 1)
+      } else {
+        setPagina(Math.floor(indiceVisible / TAMANO_PAGINA) + 1)
+      }
       setSeleccionId(null)
       reset(vacios)
       await Swal.fire({ icon: 'success', title: '¡Finalizado!', confirmButtonColor: '#1abb9c' })
@@ -96,9 +104,13 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
   })
 
   const registros = lista.data ?? []
-  const totalPaginas = Math.max(1, Math.ceil(registros.length / TAMANO_PAGINA))
+  const visibles = useMemo(
+    () => filtrarRegistros(registros, configuracion.columnas, busqueda),
+    [registros, configuracion.columnas, busqueda],
+  )
+  const totalPaginas = Math.max(1, Math.ceil(visibles.length / TAMANO_PAGINA))
   const paginaVisible = Math.min(pagina, totalPaginas)
-  const filas = registros.slice((paginaVisible - 1) * TAMANO_PAGINA, paginaVisible * TAMANO_PAGINA)
+  const filas = visibles.slice((paginaVisible - 1) * TAMANO_PAGINA, paginaVisible * TAMANO_PAGINA)
   const ocupado = isSubmitting || guardar.isPending || quitar.isPending
 
   function seleccionar(registro: RegistroCatalogo) {
@@ -184,57 +196,74 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
         {lista.isSuccess && registros.length === 0 && <p>No hay registros.</p>}
         {lista.isSuccess && registros.length > 0 && (
           <>
-            <div className="table-responsive">
-              <Table hover className="catalogo-tabla mb-0">
-                <thead>
-                  <tr>
-                    <th>Seleccionar</th>
-                    {configuracion.columnas.map((columna) => (
-                      <th key={columna.clave}>{columna.titulo}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map((registro) => (
-                    <tr key={registro.id} className={registro.id === seleccionId ? 'table-active' : undefined}>
-                      <td>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={registro.id === seleccionId ? 'primary' : 'outline-primary'}
-                          onClick={() => seleccionar(registro)}
-                        >
-                          Seleccionar
-                        </Button>
-                      </td>
-                      {configuracion.columnas.map((columna) => (
-                        <td key={columna.clave}>{texto(registro[columna.clave])}</td>
+            {registros.length > TAMANO_PAGINA && (
+              <Form.Control
+                className="mb-3"
+                type="search"
+                placeholder={`Buscar por ${configuracion.columnas.map((columna) => columna.titulo.toLocaleLowerCase('es')).join(', ')}`}
+                value={busqueda}
+                onChange={(evento) => {
+                  setBusqueda(evento.target.value)
+                  setPagina(1)
+                }}
+              />
+            )}
+            {visibles.length === 0 && <p className="mb-0">No hay registros.</p>}
+            {visibles.length > 0 && (
+              <>
+                <div className="table-responsive">
+                  <Table hover className="catalogo-tabla mb-0">
+                    <thead>
+                      <tr>
+                        <th>Seleccionar</th>
+                        {configuracion.columnas.map((columna) => (
+                          <th key={columna.clave}>{columna.titulo}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filas.map((registro) => (
+                        <tr key={registro.id} className={registro.id === seleccionId ? 'table-active' : undefined}>
+                          <td>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={registro.id === seleccionId ? 'primary' : 'outline-primary'}
+                              onClick={() => seleccionar(registro)}
+                            >
+                              Seleccionar
+                            </Button>
+                          </td>
+                          {configuracion.columnas.map((columna) => (
+                            <td key={columna.clave}>{texto(registro[columna.clave])}</td>
+                          ))}
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-            {totalPaginas > 1 && (
-              <Pagination className="catalogo-paginacion">
-                <Pagination.Prev
-                  disabled={paginaVisible === 1}
-                  onClick={() => setPagina(paginaVisible - 1)}
-                />
-                {Array.from({ length: totalPaginas }, (_, indice) => (
-                  <Pagination.Item
-                    key={indice + 1}
-                    active={paginaVisible === indice + 1}
-                    onClick={() => setPagina(indice + 1)}
-                  >
-                    {indice + 1}
-                  </Pagination.Item>
-                ))}
-                <Pagination.Next
-                  disabled={paginaVisible === totalPaginas}
-                  onClick={() => setPagina(paginaVisible + 1)}
-                />
-              </Pagination>
+                    </tbody>
+                  </Table>
+                </div>
+                {totalPaginas > 1 && (
+                  <Pagination className="catalogo-paginacion">
+                    <Pagination.Prev
+                      disabled={paginaVisible === 1}
+                      onClick={() => setPagina(paginaVisible - 1)}
+                    />
+                    {Array.from({ length: totalPaginas }, (_, indice) => (
+                      <Pagination.Item
+                        key={indice + 1}
+                        active={paginaVisible === indice + 1}
+                        onClick={() => setPagina(indice + 1)}
+                      >
+                        {indice + 1}
+                      </Pagination.Item>
+                    ))}
+                    <Pagination.Next
+                      disabled={paginaVisible === totalPaginas}
+                      onClick={() => setPagina(paginaVisible + 1)}
+                    />
+                  </Pagination>
+                )}
+              </>
             )}
           </>
         )}
@@ -260,15 +289,34 @@ function valoresVacios(campos: CampoCatalogo[]): Valores {
 }
 
 function aSolicitud(campos: CampoCatalogo[], valores: Valores) {
-  const cuerpo: Record<string, string | null> = {}
+  const cuerpo: Record<string, string | number | null> = {}
   for (const campo of campos) {
     const textoLimpio = valores[campo.nombre]?.trim() ?? ''
-    cuerpo[campo.nombre] = textoLimpio === '' ? null : textoLimpio
+    if (campo.numero) {
+      cuerpo[campo.nombre] = textoLimpio === '' ? null : Number(textoLimpio)
+    } else {
+      cuerpo[campo.nombre] = textoLimpio === '' ? null : textoLimpio
+    }
   }
 
   return cuerpo
 }
 
+function filtrarRegistros(registros: RegistroCatalogo[], columnas: ConfiguracionCatalogo['columnas'], busqueda: string) {
+  const consulta = normalizar(busqueda.trim())
+  if (!consulta) {
+    return registros
+  }
+
+  return registros.filter((registro) =>
+    columnas.some((columna) => normalizar(texto(registro[columna.clave])).includes(consulta)),
+  )
+}
+
 function texto(valor: string | number | boolean | null | undefined) {
   return valor == null || valor === '' ? '' : String(valor)
+}
+
+function normalizar(valor: string) {
+  return valor.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es')
 }

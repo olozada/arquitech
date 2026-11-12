@@ -22,6 +22,8 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
 
     protected ArquitectosDbContext Context => _context;
 
+    protected string ArticuloYNombre => _articuloYNombre;
+
     protected string MensajeDuplicado =>
         $"Ya existe {_articuloYNombre} con {(_campo == "nombre" ? "ese" : "esa")} {_campo}.";
 
@@ -51,6 +53,12 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
         var inactivo = await BuscarInactivoAsync(valor, cancellationToken);
         if (inactivo is not null)
         {
+            var conflictoInactivo = await ConflictoAdicionalAsync(solicitud, inactivo.Id, cancellationToken);
+            if (conflictoInactivo is not null)
+            {
+                return ResultadoCatalogo<TDto>.Conflicto(conflictoInactivo);
+            }
+
             inactivo.Activo = true;
             Aplicar(inactivo, solicitud, esNuevo: true);
             if (!await GuardarAsync(cancellationToken))
@@ -64,6 +72,12 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
         if (await ExisteDuplicadoAsync(valor, 0, cancellationToken))
         {
             return ResultadoCatalogo<TDto>.Conflicto(MensajeDuplicado);
+        }
+
+        var conflicto = await ConflictoAdicionalAsync(solicitud, 0, cancellationToken);
+        if (conflicto is not null)
+        {
+            return ResultadoCatalogo<TDto>.Conflicto(conflicto);
         }
 
         var entidad = Activator.CreateInstance<TEntity>();
@@ -91,6 +105,12 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
         if (await ExisteDuplicadoAsync(valor, id, cancellationToken))
         {
             return ResultadoCatalogo<TDto>.Conflicto(MensajeDuplicado);
+        }
+
+        var conflicto = await ConflictoAdicionalAsync(solicitud, id, cancellationToken);
+        if (conflicto is not null)
+        {
+            return ResultadoCatalogo<TDto>.Conflicto(conflicto);
         }
 
         Aplicar(entidad, solicitud, esNuevo: false);
@@ -121,6 +141,18 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
         return string.IsNullOrEmpty(texto) ? null : texto;
     }
 
+    protected static string? Documento(string? valor)
+    {
+        var texto = TextoOpcional(valor);
+        if (texto is null)
+        {
+            return null;
+        }
+
+        var limpio = new string(texto.Where(caracter => caracter is not ' ' and not '.').ToArray());
+        return limpio.Length == 0 ? null : limpio;
+    }
+
     protected abstract IOrderedQueryable<TEntity> Ordenar(IQueryable<TEntity> consulta);
 
     protected abstract string ValorUnico(TSolicitud solicitud);
@@ -132,6 +164,17 @@ public abstract class CatalogoServicioBase<TEntity, TDto, TSolicitud> : ICatalog
     protected abstract TDto Mapear(TEntity entidad);
 
     protected abstract void Aplicar(TEntity entidad, TSolicitud solicitud, bool esNuevo);
+
+    protected virtual Task<string?> ConflictoAdicionalAsync(
+        TSolicitud solicitud,
+        int exceptoId,
+        CancellationToken cancellationToken)
+    {
+        _ = solicitud;
+        _ = exceptoId;
+        _ = cancellationToken;
+        return Task.FromResult<string?>(null);
+    }
 
     private async Task<bool> GuardarAsync(CancellationToken cancellationToken)
     {

@@ -15,7 +15,8 @@ public interface IDashboardServicio
         DateOnly desde,
         DateOnly hasta,
         int? conceptoId,
-        int? materialId,
+        int? insumoId,
+        bool? cerrada,
         CancellationToken cancellationToken);
 
     Task<byte[]> ExportarAsync(FiltroDashboard filtro, CancellationToken cancellationToken);

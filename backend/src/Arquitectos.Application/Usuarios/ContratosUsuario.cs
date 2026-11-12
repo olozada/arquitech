@@ -6,7 +6,8 @@ public sealed record UsuarioDto(
     string Nombre,
     int TipoUsuarioId,
     string TipoUsuario,
-    bool Activo);
+    bool Activo,
+    int? PerfilId);
 
 public sealed record TipoUsuarioDto(int Id, string Nombre);
 
@@ -19,6 +20,8 @@ public sealed class CrearUsuarioSolicitud
     public string Password { get; set; } = "";
 
     public int TipoUsuarioId { get; set; }
+
+    public int? PerfilId { get; set; }
 }
 
 public sealed class ActualizarUsuarioSolicitud
@@ -30,6 +33,8 @@ public sealed class ActualizarUsuarioSolicitud
     public string? Password { get; set; }
 
     public int TipoUsuarioId { get; set; }
+
+    public int? PerfilId { get; set; }
 
     public bool? Activo { get; set; }
 }
@@ -71,7 +76,7 @@ public sealed class ResultadoUsuario<T>
 
 public static class MensajesUsuario
 {
-    public const int LongitudMinima = 8;
+    public const int LongitudMinima = 10;
 
     public const string Usuario = "Debe ingresar el usuario.";
 
@@ -83,9 +88,21 @@ public static class MensajesUsuario
 
     public const string Password = "Debe ingresar la contraseña.";
 
-    public const string PasswordCorta = "La contraseña debe tener al menos 8 caracteres.";
+    public const string PasswordCorta = "La contraseña debe tener al menos 10 caracteres.";
+
+    public const string PasswordComposicion = "La contraseña debe incluir letras y números.";
+
+    public const string PasswordIgualUsuario = "La contraseña no puede ser igual al usuario.";
+
+    public const string PasswordComun = "La contraseña es demasiado común.";
 
     public const string Tipo = "Debe seleccionar el tipo de usuario.";
+
+    public const string Perfil = "Debe seleccionar la persona del perfil.";
+
+    public const string PerfilInvalido = "La persona seleccionada no está activa.";
+
+    public const string PerfilOcupado = "Esa persona ya tiene un usuario activo.";
 
     public const string Duplicado = "Ya existe un usuario con ese nombre de usuario.";
 

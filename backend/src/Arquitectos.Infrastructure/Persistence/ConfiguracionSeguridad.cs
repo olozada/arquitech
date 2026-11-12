@@ -23,11 +23,46 @@ public sealed class UsuarioConfiguracion : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Nombre).HasMaxLength(150).IsRequired();
         builder.Property(u => u.PasswordHash).HasMaxLength(200).IsRequired();
         builder.Property(u => u.Activo).HasDefaultValue(true);
+        builder.Property(u => u.IntentosFallidos).HasDefaultValue(0);
+        builder.Property(u => u.BloqueadoHasta).HasColumnType("datetime2");
+        builder.Property(u => u.DebeCambiarContrasena).HasDefaultValue(false);
         builder.HasIndex(u => u.NombreUsuario).IsUnique();
         builder.HasOne(u => u.TipoUsuario)
             .WithMany(t => t.Usuarios)
             .HasForeignKey(u => u.TipoUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(u => u.Arquitecto)
+            .WithMany()
+            .HasForeignKey(u => u.ArquitectoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(u => u.Contratista)
+            .WithMany()
+            .HasForeignKey(u => u.ContratistaId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(u => u.Revisor)
+            .WithMany()
+            .HasForeignKey(u => u.RevisorId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class SesionUsuarioConfiguracion : IEntityTypeConfiguration<SesionUsuario>
+{
+    public void Configure(EntityTypeBuilder<SesionUsuario> builder)
+    {
+        builder.ToTable("SesionesUsuario");
+        builder.Property(s => s.HashToken).HasMaxLength(64).IsRequired();
+        builder.Property(s => s.Expira).HasColumnType("datetime2");
+        builder.Property(s => s.CreadoEn).HasColumnType("datetime2");
+        builder.Property(s => s.RevocadoEn).HasColumnType("datetime2");
+        builder.Property(s => s.Ip).HasMaxLength(64);
+        builder.Property(s => s.UserAgent).HasMaxLength(256);
+        builder.HasIndex(s => s.HashToken).IsUnique();
+        builder.HasIndex(s => s.UsuarioId);
+        builder.HasOne(s => s.Usuario)
+            .WithMany(u => u.Sesiones)
+            .HasForeignKey(s => s.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

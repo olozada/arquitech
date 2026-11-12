@@ -42,6 +42,7 @@ public sealed class ProveedorMaterialesController : ControllerBase
         return Traducir(resultado);
     }
 
+    [Authorize(Roles = "Administrador")]
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -62,6 +63,7 @@ public sealed class ProveedorMaterialesController : ControllerBase
         return Traducir(resultado);
     }
 
+    [Authorize(Roles = "Administrador")]
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

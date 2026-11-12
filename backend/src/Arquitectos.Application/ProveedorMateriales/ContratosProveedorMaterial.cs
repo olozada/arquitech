@@ -6,7 +6,7 @@ public sealed record MaterialDisponibleDto(int Id, string Descripcion);
 
 public sealed class AgregarMaterialSolicitud
 {
-    public int MaterialId { get; set; }
+    public int InsumoId { get; set; }
 
     public decimal Precio { get; set; }
 }

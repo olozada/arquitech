@@ -55,7 +55,11 @@ function textoComplemento(kpi: Kpi) {
   }
 
   if (kpi.codigo === 'K8') {
-    return 'A1 a A4. '
+    return 'A1 a A8. '
+  }
+
+  if (kpi.codigo === 'K10' && kpi.complemento !== null) {
+    return `${formatoPct(kpi.complemento)} del presupuesto. `
   }
 
   return ''
@@ -68,6 +72,10 @@ function presentar(valor: number, formato: Kpi['formato']) {
 
   if (formato === 'dias') {
     return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(valor)} días`
+  }
+
+  if (formato === 'pct') {
+    return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(valor)} %`
   }
 
   return formatoEntero(valor)

@@ -4,6 +4,8 @@ import { Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { z } from 'zod'
 import { cliente, mensajeError } from '../api/cliente'
+import { useSesion } from '../auth/contextoSesion'
+import { errorContrasena } from '../auth/contrasena'
 
 const esquema = z
   .object({
@@ -11,7 +13,12 @@ const esquema = z
     contrasenaNueva: z
       .string()
       .min(1, 'Debe ingresar la contraseña nueva.')
-      .refine((valor) => valor.length >= 8, 'La contraseña debe tener al menos 8 caracteres.'),
+      .superRefine((valor, contexto) => {
+        const mensaje = errorContrasena(valor)
+        if (mensaje) {
+          contexto.addIssue({ code: 'custom', message: mensaje })
+        }
+      }),
     confirmacion: z.string().min(1, 'Debe confirmar la contraseña.'),
   })
   .refine((valores) => valores.contrasenaNueva === valores.confirmacion, {
@@ -22,6 +29,7 @@ const esquema = z
 type Valores = z.infer<typeof esquema>
 
 export function CambiarContrasena() {
+  const { sesion, iniciarSesion } = useSesion()
   const {
     register,
     handleSubmit,
@@ -38,6 +46,9 @@ export function CambiarContrasena() {
         contrasenaActual: valores.contrasenaActual,
         contrasenaNueva: valores.contrasenaNueva,
       })
+      if (sesion) {
+        iniciarSesion({ ...sesion, debeCambiarContrasena: false })
+      }
       reset()
       await Swal.fire({ icon: 'success', title: '¡Finalizado!', confirmButtonColor: '#1abb9c' })
     } catch (error) {

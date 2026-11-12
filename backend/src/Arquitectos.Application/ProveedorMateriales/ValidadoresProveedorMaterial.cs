@@ -16,7 +16,7 @@ public sealed class AgregarMaterialesValidador : AbstractValidator<List<AgregarM
 
         RuleForEach(materiales => materiales).ChildRules(material =>
         {
-            material.RuleFor(item => item.MaterialId)
+            material.RuleFor(item => item.InsumoId)
                 .GreaterThan(0)
                 .WithMessage(MensajeSeleccion);
 

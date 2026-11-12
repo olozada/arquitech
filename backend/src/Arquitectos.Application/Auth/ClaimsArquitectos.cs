@@ -9,4 +9,6 @@ public static class ClaimsArquitectos
     public const string TipoUsuario = "tipoUsuario";
 
     public const string TipoUsuarioId = "tipoUsuarioId";
+
+    public const string Sesion = "sid";
 }

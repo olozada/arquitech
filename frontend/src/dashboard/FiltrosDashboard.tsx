@@ -15,6 +15,7 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
   const construcciones = useCatalogo('construcciones')
   const contratistas = useCatalogo('contratistas')
   const arquitectos = useCatalogo('arquitectos')
+  const revisores = useCatalogo('revisores')
 
   function cambiar(parcial: Partial<FiltroDashboard>) {
     alCambiar({ ...filtro, ...parcial })
@@ -28,15 +29,15 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
   return (
     <section className="catalogo-panel">
       <Row className="g-2 align-items-end">
-        <Col md={6} lg={2}>
+        <Col xs={6} md={4} xl>
           <Form.Label>Desde</Form.Label>
           <Form.Control type="date" value={filtro.desde} onChange={(evento) => cambiar({ desde: evento.target.value })} />
         </Col>
-        <Col md={6} lg={2}>
+        <Col xs={6} md={4} xl>
           <Form.Label>Hasta</Form.Label>
           <Form.Control type="date" value={filtro.hasta} onChange={(evento) => cambiar({ hasta: evento.target.value })} />
         </Col>
-        <Col md={4} lg={2}>
+        <Col xs={6} md={4} xl>
           <Form.Label>Construcción</Form.Label>
           <Selector
             valor={filtro.construccionId}
@@ -44,7 +45,7 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
             alCambiar={(construccionId) => cambiar({ construccionId })}
           />
         </Col>
-        <Col md={4} lg={2}>
+        <Col xs={6} md={4} xl>
           <Form.Label>Contratista</Form.Label>
           <Selector
             valor={filtro.contratistaId}
@@ -52,7 +53,7 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
             alCambiar={(contratistaId) => cambiar({ contratistaId })}
           />
         </Col>
-        <Col md={4} lg={2}>
+        <Col xs={6} md={4} xl>
           <Form.Label>Arquitecto</Form.Label>
           <Selector
             valor={filtro.arquitectoId}
@@ -60,7 +61,23 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
             alCambiar={(arquitectoId) => cambiar({ arquitectoId })}
           />
         </Col>
-        <Col lg={2} className="d-grid">
+        <Col xs={6} md={4} xl>
+          <Form.Label>Revisor</Form.Label>
+          <Selector
+            valor={filtro.revisorId}
+            opciones={revisores.data ?? []}
+            alCambiar={(revisorId) => cambiar({ revisorId })}
+          />
+        </Col>
+        <Col xs={6} md={4} xl>
+          <Form.Label>Estado</Form.Label>
+          <Form.Select value={filtro.estado} onChange={(evento) => cambiar({ estado: evento.target.value === 'abierta' || evento.target.value === 'cerrada' ? evento.target.value : '' })}>
+            <option value="">Todos</option>
+            <option value="abierta">Abierta</option>
+            <option value="cerrada">Cerrada</option>
+          </Form.Select>
+        </Col>
+        <Col xs={12} md={4} xl className="d-grid">
           <Button type="button" onClick={alExportar} disabled={exportando}>
             {exportando ? 'Exportando…' : 'Exportar'}
           </Button>

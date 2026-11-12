@@ -22,13 +22,19 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             httpContext.Request.Method,
             httpContext.Request.Path);
 
+        var correlationId = Correlacion.Leer(httpContext);
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        httpContext.Response.Headers[Correlacion.Encabezado] = correlationId;
 
         await Results.Problem(
             title: "Error interno",
             detail: "Ocurrió un error inesperado.",
             statusCode: StatusCodes.Status500InternalServerError,
-            instance: httpContext.Request.Path
+            instance: httpContext.Request.Path,
+            extensions: new Dictionary<string, object?>
+            {
+                ["correlationId"] = correlationId
+            }
         ).ExecuteAsync(httpContext);
 
         return true;

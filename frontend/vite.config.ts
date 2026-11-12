@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/Web/' : '/',
@@ -13,5 +13,9 @@ export default defineConfig(({ command }) => ({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
   },
 }))

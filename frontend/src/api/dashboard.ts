@@ -101,10 +101,16 @@ export function useAlertas(filtro: FiltroDashboard, tipo: string, severidad: str
   })
 }
 
-export function usePrecioUnitario(desde: string, hasta: string, conceptoId: number, materialId: number) {
+export function usePrecioUnitario(
+  desde: string,
+  hasta: string,
+  conceptoId: number,
+  insumoId: number,
+  estado: FiltroDashboard['estado'],
+) {
   return useQuery({
-    queryKey: ['dashboard-precio', desde, hasta, conceptoId, materialId],
-    enabled: conceptoId > 0 || materialId > 0,
+    queryKey: ['dashboard-precio', desde, hasta, conceptoId, insumoId, estado],
+    enabled: conceptoId > 0 || insumoId > 0,
     queryFn: async () =>
       (
         await cliente.get<PuntoPrecio[]>('/api/dashboard/precio-unitario', {
@@ -112,7 +118,8 @@ export function usePrecioUnitario(desde: string, hasta: string, conceptoId: numb
             desde,
             hasta,
             conceptoId: conceptoId > 0 ? conceptoId : undefined,
-            materialId: materialId > 0 ? materialId : undefined,
+            insumoId: insumoId > 0 ? insumoId : undefined,
+            estado: estado || undefined,
           },
         })
       ).data,
@@ -126,5 +133,7 @@ function parametrosDe(filtro: FiltroDashboard) {
     construccionId: filtro.construccionId > 0 ? filtro.construccionId : undefined,
     contratistaId: filtro.contratistaId > 0 ? filtro.contratistaId : undefined,
     arquitectoId: filtro.arquitectoId > 0 ? filtro.arquitectoId : undefined,
+    revisorId: filtro.revisorId > 0 ? filtro.revisorId : undefined,
+    estado: filtro.estado || undefined,
   }
 }

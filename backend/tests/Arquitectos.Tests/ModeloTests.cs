@@ -3,6 +3,7 @@ using Arquitectos.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Arquitectos.Tests;
 
@@ -29,10 +30,23 @@ public class ModeloTests
             "Construcciones",
             "UnidadesMedida",
             "Conceptos",
-            "Materiales",
             "ProveedorMateriales",
             "Actas",
-            "ActaDetalles"
+            "ActaDetalles",
+            "Insumos",
+            "InsumoPreciosHistorial",
+            "PrestacionesSociales",
+            "ParametrosManoObra",
+            "Cargos",
+            "Cuadrillas",
+            "CuadrillaCargos",
+            "Apus",
+            "ApuGrupos",
+            "ApuLineas",
+            "Presupuestos",
+            "PresupuestoCapitulos",
+            "PresupuestoItems",
+            "PresupuestoMediciones"
         ];
 
         foreach (var tabla in esperadas)
@@ -47,7 +61,7 @@ public class ModeloTests
         using var context = CrearContexto();
 
         Assert.NotNull(Propiedad<Concepto>(context, nameof(Concepto.Activo)));
-        Assert.NotNull(Propiedad<Material>(context, nameof(Material.Activo)));
+        Assert.NotNull(Propiedad<Insumo>(context, nameof(Insumo.Activo)));
         Assert.NotNull(Propiedad<UnidadMedida>(context, nameof(UnidadMedida.Activo)));
 
         Assert.Contains(
@@ -79,10 +93,28 @@ public class ModeloTests
         var menu = modelo.FindEntityType(typeof(MenuOpcion))!.GetSeedData().ToList();
 
         Assert.Contains(usuarios, fila => Equals(fila[nameof(Usuario.NombreUsuario)], "admin"));
-        Assert.Equal(17, menu.Count);
+        // 22 opciones: la 12 se eliminó; 18 a 22 son el módulo de presupuesto y la 23 es el reporte por materiales.
+        Assert.Equal(22, menu.Count);
+        Assert.DoesNotContain(menu, fila => Equals(fila[nameof(MenuOpcion.Id)], 12));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/actas"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/admin/usuarios"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/cuenta/contrasena"));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/presupuestos"));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/presupuesto/apu"));
+    }
+
+    [Fact]
+    public void El_snapshot_esta_sincronizado_con_el_modelo()
+    {
+        using var context = CrearContexto();
+        var snapshot = context.GetService<IMigrationsAssembly>().ModelSnapshot!.Model;
+        var inicializado = context.GetService<IModelRuntimeInitializer>().Initialize(snapshot);
+        var diferencias = context.GetService<IMigrationsModelDiffer>().GetDifferences(
+            inicializado.GetRelationalModel(),
+            context.GetService<IDesignTimeModel>().Model.GetRelationalModel());
+
+        Assert.Empty(diferencias);
     }
 
     private static IProperty Propiedad<T>(ArquitectosDbContext context, string nombre) =>

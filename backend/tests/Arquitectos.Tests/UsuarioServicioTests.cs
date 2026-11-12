@@ -1,3 +1,4 @@
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Usuarios;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Persistence;
@@ -10,8 +11,8 @@ namespace Arquitectos.Tests;
 
 public sealed class UsuarioServicioTests : IDisposable
 {
-    private const string ClaveInicial = "Clave1234";
-    private const string ClaveNueva = "Otra1234";
+    private const string ClaveInicial = "Clave12345";
+    private const string ClaveNueva = "Otra123456";
 
     private readonly SqliteConnection _conexion;
     private readonly ArquitectosDbContext _context;
@@ -26,7 +27,7 @@ public sealed class UsuarioServicioTests : IDisposable
             .Options;
         _context = new ArquitectosDbContext(opciones);
         _context.Database.EnsureCreated();
-        _servicio = new UsuarioServicio(_context);
+        _servicio = new UsuarioServicio(_context, new RevocacionNula());
     }
 
     [Fact]
@@ -103,6 +104,11 @@ public sealed class UsuarioServicioTests : IDisposable
     {
         _context.Dispose();
         _conexion.Dispose();
+    }
+
+    private sealed class RevocacionNula : IRevocacionSesiones
+    {
+        public Task RevocarUsuarioAsync(int usuarioId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private static CrearUsuarioSolicitud Solicitud(string usuario) => new()

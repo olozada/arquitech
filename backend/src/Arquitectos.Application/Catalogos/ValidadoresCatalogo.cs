@@ -14,6 +14,42 @@ public sealed class CatalogoNombreValidador : AbstractValidator<CatalogoNombreSo
     }
 }
 
+public sealed class CatalogoPersonaValidador : AbstractValidator<CatalogoPersonaSolicitud>
+{
+    public const string MensajeCedula = "La cédula no puede superar 20 caracteres.";
+
+    public CatalogoPersonaValidador()
+    {
+        RuleFor(solicitud => solicitud.Nombre)
+            .NotEmpty()
+            .WithMessage("Debe ingresar el nombre.")
+            .MaximumLength(150)
+            .WithMessage("El nombre no puede superar 150 caracteres.");
+
+        RuleFor(solicitud => solicitud.Cedula)
+            .MaximumLength(20)
+            .WithMessage(MensajeCedula);
+    }
+}
+
+public sealed class ProveedorValidador : AbstractValidator<ProveedorSolicitud>
+{
+    public const string MensajeNit = "El NIT no puede superar 20 caracteres.";
+
+    public ProveedorValidador()
+    {
+        RuleFor(solicitud => solicitud.Nombre)
+            .NotEmpty()
+            .WithMessage("Debe ingresar el nombre.")
+            .MaximumLength(150)
+            .WithMessage("El nombre no puede superar 150 caracteres.");
+
+        RuleFor(solicitud => solicitud.Nit)
+            .MaximumLength(20)
+            .WithMessage(MensajeNit);
+    }
+}
+
 public sealed class ConstruccionValidador : AbstractValidator<ConstruccionSolicitud>
 {
     public ConstruccionValidador()

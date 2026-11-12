@@ -25,6 +25,10 @@ export function inicioDeMesIso() {
   return aIso(new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1))
 }
 
+export function fechaConsulta(usar: boolean, valor: string) {
+  return usar && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : undefined
+}
+
 export function numero(texto: string) {
   const limpio = texto.trim().replace(/\s/g, '').replace(',', '.')
   if (!/^\d+(\.\d+)?$/.test(limpio)) {

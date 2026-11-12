@@ -1,10 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Arquitectos.Api.Configuracion;
 using Arquitectos.Application.Auth;
 using Arquitectos.Application.Usuarios;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Arquitectos.Api.Controllers;
 
@@ -31,6 +33,7 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(LoginRespuesta), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -47,8 +50,8 @@ public sealed class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var respuesta = await _autenticacion.IniciarSesion(solicitud, cancellationToken);
-        if (respuesta is null)
+        var credenciales = await _autenticacion.IniciarSesion(solicitud, Ip(), Agente(), cancellationToken);
+        if (credenciales is null)
         {
             return Problem(
                 title: "Usuario o contraseña inválidos.",
@@ -56,7 +59,44 @@ public sealed class AuthController : ControllerBase
                 statusCode: StatusCodes.Status401Unauthorized);
         }
 
-        return Ok(respuesta);
+        CookiesSesion.Escribir(HttpContext, credenciales);
+        return Ok(credenciales.Datos);
+    }
+
+    [HttpPost("renovar")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Renovar(CancellationToken cancellationToken)
+    {
+        if (!Request.Cookies.TryGetValue(CookiesSesion.Renovacion, out var token) ||
+            string.IsNullOrWhiteSpace(token))
+        {
+            CookiesSesion.Borrar(HttpContext);
+            return Unauthorized();
+        }
+
+        var credenciales = await _autenticacion.RenovarAsync(token, Ip(), Agente(), cancellationToken);
+        if (credenciales is null)
+        {
+            CookiesSesion.Borrar(HttpContext);
+            return Unauthorized();
+        }
+
+        CookiesSesion.Escribir(HttpContext, credenciales);
+        return NoContent();
+    }
+
+    [HttpPost("salir")]
+    [Authorize]
+    public async Task<IActionResult> Salir(CancellationToken cancellationToken)
+    {
+        var sid = User.FindFirstValue(ClaimsArquitectos.Sesion);
+        if (long.TryParse(sid, out var sesionId))
+        {
+            await _autenticacion.SalirAsync(sesionId, cancellationToken);
+        }
+
+        CookiesSesion.Borrar(HttpContext);
+        return NoContent();
     }
 
     [HttpPost("cambiar-contrasena")]
@@ -101,6 +141,10 @@ public sealed class AuthController : ControllerBase
             detail: resultado.Mensaje,
             statusCode: StatusCodes.Status400BadRequest);
     }
+
+    private string? Ip() => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    private string Agente() => Request.Headers.UserAgent.ToString();
 
     private static string ACamelCase(string nombre)
     {

@@ -1,3 +1,5 @@
+*"Documento histórico; el estado vigente está en docs/ARQUITECTURA.md"*
+
 # Migración "Arquitectos": ASP.NET WebForms (VB.NET) → React + .NET 8 Web API + SQL Server
 
 > Documento de contexto para **Cursor**. Léelo completo antes de generar código.

@@ -1,20 +1,30 @@
 using System.Globalization;
 using System.Text;
+using System.Threading.RateLimiting;
 using Arquitectos.Api.Configuracion;
+using Arquitectos.Infrastructure.Seguridad;
 using Arquitectos.Application;
+using Arquitectos.Application.Auth;
 using Arquitectos.Infrastructure;
 using Arquitectos.Infrastructure.Configuration;
 using Arquitectos.Infrastructure.Persistence;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .CreateBootstrapLogger();
+    .CreateLogger();
 
 try
 {
@@ -22,16 +32,52 @@ try
     ArchivoEnv.AplicarConexion(builder.Configuration, builder.Environment.ContentRootPath);
 
     builder.Host.UseSerilog((context, configuration) =>
+    {
+        var ruta = Path.Combine(context.HostingEnvironment.ContentRootPath, "logs", "arquitectos-.log");
         configuration
             .ReadFrom.Configuration(context.Configuration)
             .Enrich.FromLogContext()
-            .WriteTo.Console());
+            .Enrich.WithCorrelationId()
+            .Enrich.With(new UsuarioIdEnricher())
+            .WriteTo.Console()
+            .WriteTo.File(
+                new CompactJsonFormatter(),
+                ruta,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                retainedFileTimeLimit: TimeSpan.FromDays(30),
+                shared: true);
+
+        var seq = context.Configuration["Observabilidad:Seq"];
+        if (!string.IsNullOrWhiteSpace(seq))
+        {
+            configuration.WriteTo.Seq(seq, apiKey: context.Configuration["Observabilidad:SeqApiKey"]);
+        }
+
+        var insights = context.Configuration["Observabilidad:ApplicationInsights"];
+        if (!string.IsNullOrWhiteSpace(insights))
+        {
+            configuration.WriteTo.ApplicationInsights(
+                new TelemetryConfiguration { ConnectionString = insights },
+                new TraceTelemetryConverter());
+        }
+    });
 
     var jwtKey = builder.Configuration["Jwt:Key"];
     if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
     {
+        var indicacion = builder.Environment.IsProduction()
+            ? "En IIS defínela como variable de entorno Jwt__Key (mínimo 32 caracteres)."
+            : "Defínela con dotnet user-secrets (mínimo 32 caracteres).";
         throw new InvalidOperationException(
-            "Jwt:Key no está configurada o es demasiado corta. Defínela con dotnet user-secrets (mínimo 32 caracteres).");
+            $"Jwt:Key no está configurada o es demasiado corta. {indicacion}");
+    }
+
+    if (builder.Environment.IsProduction() &&
+        string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Arquitectos")))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:Arquitectos no está configurada. En IIS defínela como variable de entorno ConnectionStrings__Arquitectos.");
     }
 
     var cultura = new CultureInfo("es-CO");
@@ -46,6 +92,12 @@ try
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            builder.Configuration.GetConnectionString("Arquitectos")!,
+            healthQuery: "SELECT 1;",
+            name: "sqlserver",
+            timeout: TimeSpan.FromSeconds(3));
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -59,12 +111,47 @@ try
                 ValidateLifetime = true,
                 ValidIssuer = builder.Configuration["Jwt:Issuer"],
                 ValidAudience = builder.Configuration["Jwt:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)) { KeyId = "arquitectos" },
+                IssuerSigningKeyResolver = (_, _, _, _) =>
+                {
+                    var clave = builder.Configuration["Jwt:Key"] ?? jwtKey;
+                    return [new SymmetricSecurityKey(Encoding.UTF8.GetBytes(clave)) { KeyId = "arquitectos" }];
+                },
                 ClockSkew = TimeSpan.FromMinutes(1),
                 NameClaimType = "nombre",
                 RoleClaimType = "tipoUsuario"
             };
             opciones.MapInboundClaims = false;
+            opciones.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = contexto =>
+                {
+                    if (string.IsNullOrEmpty(contexto.Token) &&
+                        contexto.Request.Cookies.TryGetValue(CookiesSesion.Acceso, out var acceso))
+                    {
+                        contexto.Token = acceso;
+                    }
+
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = async contexto =>
+                {
+                    var sub = contexto.Principal?.FindFirst("sub")?.Value
+                        ?? contexto.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    var sid = contexto.Principal?.FindFirst(ClaimsArquitectos.Sesion)?.Value;
+                    if (!int.TryParse(sub, out var usuarioId) || !long.TryParse(sid, out var sesionId))
+                    {
+                        contexto.Fail("Sesión inválida");
+                        return;
+                    }
+
+                    var validador = contexto.HttpContext.RequestServices.GetRequiredService<ValidadorSesion>();
+                    if (!await validador.VigenteAsync(usuarioId, sesionId, contexto.HttpContext.RequestAborted))
+                    {
+                        contexto.Fail("Sesión inválida");
+                    }
+                }
+            };
         });
 
     builder.Services.AddAuthorization(opciones =>
@@ -74,16 +161,50 @@ try
             .Build();
     });
 
+    builder.Services.AddRateLimiter(opciones =>
+    {
+        opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        opciones.OnRejected = async (contexto, cancellationToken) =>
+        {
+            contexto.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await contexto.HttpContext.Response.WriteAsJsonAsync(
+                new
+                {
+                    title = "Demasiados intentos. Espere un minuto.",
+                    detail = "Demasiados intentos. Espere un minuto."
+                },
+                cancellationToken);
+        };
+        opciones.AddPolicy("login", contexto => RateLimitPartition.GetFixedWindowLimiter(
+            contexto.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+    });
+
     const string politicaCors = "Frontend";
+    var origenes = builder.Configuration.GetSection("Cors:Origenes").Get<string[]>() ?? [];
     builder.Services.AddCors(opciones =>
     {
         opciones.AddPolicy(politicaCors, policy =>
-            policy.WithOrigins("http://localhost:5173")
+        {
+            if (origenes.Length == 0)
+            {
+                return;
+            }
+
+            policy.WithOrigins(origenes)
                 .AllowAnyHeader()
-                .AllowAnyMethod());
+                .AllowAnyMethod();
+        });
     });
 
-    builder.Services.AddControllers()
+    builder.Services.AddControllers(opciones =>
+        {
+            opciones.ModelBinderProviders.Insert(0, new FechaOpcionalModelBinderProvider());
+        })
         .AddJsonOptions(opciones =>
         {
             opciones.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -108,40 +229,90 @@ try
             BearerFormat = "JWT"
         });
 
-        opciones.AddSecurityRequirement(new OpenApiSecurityRequirement
+        opciones.AddSecurityRequirement(documento => new OpenApiSecurityRequirement
         {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
+            [new OpenApiSecuritySchemeReference("Bearer", documento)] = []
         });
     });
 
     var app = builder.Build();
 
-    if (args.Contains("--seed-demo"))
+    // En IIS la API queda como aplicación en /api, y ese prefijo pasa a PathBase.
+    // Los controladores ya incluyen "api/...", así que la ruta pública sigue siendo /api/auth/login.
+    // UseRouting va justo después: si queda antes, la ruta se resuelve sin el prefijo y el login responde 401.
+    app.Use((context, next) =>
+    {
+        var pathBase = context.Request.PathBase;
+        if (pathBase.HasValue)
+        {
+            context.Request.Path = pathBase + context.Request.Path;
+            context.Request.PathBase = PathString.Empty;
+        }
+
+        return next(context);
+    });
+    app.UseRouting();
+
+    if (args.Contains("--reset") || args.Contains("--seed-demo"))
     {
         if (!app.Environment.IsDevelopment())
         {
-            throw new InvalidOperationException("La semilla de demostración solo está disponible en Development.");
+            throw new InvalidOperationException("El reinicio y la semilla de demostración solo están disponibles en Development.");
         }
 
         await using var alcance = app.Services.CreateAsyncScope();
         var contexto = alcance.ServiceProvider.GetRequiredService<ArquitectosDbContext>();
+        if (args.Contains("--reset"))
+        {
+            await ReinicioDatos.VaciarYSembrarInicialAsync(contexto);
+            Log.Information("Se vaciaron las tablas y se restauró el usuario admin y el menú.");
+        }
+
         var mensaje = await SemillaDemo.AplicarAsync(contexto);
         Log.Information(mensaje);
         return;
     }
 
+    if (args.Contains("--seed-plantilla"))
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException("La plantilla de vivienda solo se siembra en Development.");
+        }
+
+        await using var alcancePlantilla = app.Services.CreateAsyncScope();
+        var contextoPlantilla = alcancePlantilla.ServiceProvider.GetRequiredService<ArquitectosDbContext>();
+        Log.Information(await SemillaPlantilla.AplicarAsync(contextoPlantilla));
+        return;
+    }
+
+    if (args.Contains("--importar-murillo"))
+    {
+        if (!app.Environment.IsDevelopment())
+        {
+            throw new InvalidOperationException("La importación de Casa Murillo solo está disponible en Development.");
+        }
+
+        await using var alcanceMurillo = app.Services.CreateAsyncScope();
+        var contextoMurillo = alcanceMurillo.ServiceProvider.GetRequiredService<ArquitectosDbContext>();
+        Log.Information(await SemillaCasaMurillo.AplicarAsync(contextoMurillo));
+        return;
+    }
+
+    app.Use(async (contexto, siguiente) =>
+    {
+        Correlacion.Asegurar(contexto);
+        await siguiente();
+    });
     app.UseExceptionHandler();
-    app.UseSerilogRequestLogging();
+    app.UseSerilogRequestLogging(opciones =>
+    {
+        opciones.MessageTemplate = "HTTP {RequestMethod} {RequestPath} respondió {StatusCode} en {Elapsed:0.0000} ms";
+        opciones.GetLevel = (http, _, excepcion) =>
+            excepcion is not null || http.Response.StatusCode >= 500
+                ? LogEventLevel.Error
+                : LogEventLevel.Information;
+    });
 
     if (app.Environment.IsDevelopment())
     {
@@ -150,10 +321,55 @@ try
     }
 
     app.UseRequestLocalization();
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
+
+    app.Use(async (contexto, siguiente) =>
+    {
+        var cabeceras = contexto.Response.Headers;
+        cabeceras["X-Content-Type-Options"] = "nosniff";
+        cabeceras["X-Frame-Options"] = "DENY";
+        cabeceras["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        cabeceras["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        cabeceras["Content-Security-Policy"] =
+            "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'";
+        await siguiente();
+    });
     app.UseHttpsRedirection();
     app.UseCors(politicaCors);
+    app.UseRateLimiter();
+    app.Use(async (contexto, siguiente) =>
+    {
+        var metodo = contexto.Request.Method;
+        if ((HttpMethods.IsPost(metodo) || HttpMethods.IsPut(metodo) || HttpMethods.IsDelete(metodo)) &&
+            !string.Equals(contexto.Request.Headers[CookiesSesion.Encabezado], CookiesSesion.ValorEncabezado, StringComparison.Ordinal))
+        {
+            contexto.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await contexto.Response.WriteAsJsonAsync(new
+            {
+                title = "Solicitud rechazada.",
+                detail = "Solicitud rechazada."
+            });
+            return;
+        }
+
+        await siguiente();
+    });
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapHealthChecks("/api/health/ready", new HealthCheckOptions
+    {
+        ResponseWriter = async (contexto, reporte) =>
+        {
+            contexto.Response.ContentType = "application/json";
+            await contexto.Response.WriteAsJsonAsync(new
+            {
+                estado = reporte.Status == HealthStatus.Healthy ? "ok" : "no disponible"
+            });
+        }
+    }).AllowAnonymous();
     app.MapControllers();
 
     app.Run();

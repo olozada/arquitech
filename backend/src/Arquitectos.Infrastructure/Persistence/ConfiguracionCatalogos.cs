@@ -10,8 +10,10 @@ public sealed class ArquitectoConfiguracion : IEntityTypeConfiguration<Arquitect
     {
         builder.ToTable("Arquitectos");
         builder.Property(a => a.Nombre).HasMaxLength(150).IsRequired();
+        builder.Property(a => a.Cedula).HasMaxLength(20);
         builder.Property(a => a.Activo).HasDefaultValue(true);
         builder.HasIndex(a => a.Nombre).IsUnique();
+        builder.HasIndex(a => a.Cedula).IsUnique().HasFilter("[Cedula] IS NOT NULL");
     }
 }
 
@@ -21,8 +23,10 @@ public sealed class RevisorConfiguracion : IEntityTypeConfiguration<Revisor>
     {
         builder.ToTable("Revisores");
         builder.Property(r => r.Nombre).HasMaxLength(150).IsRequired();
+        builder.Property(r => r.Cedula).HasMaxLength(20);
         builder.Property(r => r.Activo).HasDefaultValue(true);
         builder.HasIndex(r => r.Nombre).IsUnique();
+        builder.HasIndex(r => r.Cedula).IsUnique().HasFilter("[Cedula] IS NOT NULL");
     }
 }
 
@@ -32,8 +36,10 @@ public sealed class ContratistaConfiguracion : IEntityTypeConfiguration<Contrati
     {
         builder.ToTable("Contratistas");
         builder.Property(c => c.Nombre).HasMaxLength(150).IsRequired();
+        builder.Property(c => c.Cedula).HasMaxLength(20);
         builder.Property(c => c.Activo).HasDefaultValue(true);
         builder.HasIndex(c => c.Nombre).IsUnique();
+        builder.HasIndex(c => c.Cedula).IsUnique().HasFilter("[Cedula] IS NOT NULL");
     }
 }
 
@@ -43,8 +49,10 @@ public sealed class ProveedorConfiguracion : IEntityTypeConfiguration<Proveedor>
     {
         builder.ToTable("Proveedores");
         builder.Property(p => p.Nombre).HasMaxLength(150).IsRequired();
+        builder.Property(p => p.Nit).HasMaxLength(20);
         builder.Property(p => p.Activo).HasDefaultValue(true);
         builder.HasIndex(p => p.Nombre).IsUnique();
+        builder.HasIndex(p => p.Nit).IsUnique().HasFilter("[Nit] IS NOT NULL");
     }
 }
 
@@ -85,19 +93,6 @@ public sealed class ConceptoConfiguracion : IEntityTypeConfiguration<Concepto>
     }
 }
 
-public sealed class MaterialConfiguracion : IEntityTypeConfiguration<Material>
-{
-    public void Configure(EntityTypeBuilder<Material> builder)
-    {
-        builder.ToTable("Materiales");
-        builder.Property(m => m.Codigo).HasMaxLength(30);
-        builder.Property(m => m.Descripcion).HasMaxLength(200).IsRequired();
-        builder.Property(m => m.Unidad).HasMaxLength(20);
-        builder.Property(m => m.Activo).HasDefaultValue(true);
-        builder.HasIndex(m => m.Descripcion).IsUnique();
-    }
-}
-
 public sealed class ProveedorMaterialConfiguracion : IEntityTypeConfiguration<ProveedorMaterial>
 {
     public void Configure(EntityTypeBuilder<ProveedorMaterial> builder)
@@ -106,15 +101,15 @@ public sealed class ProveedorMaterialConfiguracion : IEntityTypeConfiguration<Pr
         {
             tabla.HasCheckConstraint("CK_ProveedorMateriales_Precio", "[Precio] > 0");
         });
-        builder.HasKey(p => new { p.ProveedorId, p.MaterialId });
+        builder.HasKey(p => new { p.ProveedorId, p.InsumoId });
         builder.Property(p => p.Precio).HasPrecision(18, 2);
         builder.HasOne(p => p.Proveedor)
             .WithMany(p => p.Materiales)
             .HasForeignKey(p => p.ProveedorId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(p => p.Material)
+        builder.HasOne(p => p.Insumo)
             .WithMany()
-            .HasForeignKey(p => p.MaterialId)
+            .HasForeignKey(p => p.InsumoId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
