@@ -219,3 +219,7 @@ DROP DATABASE [ARQUITECTOS_RESTAURACION];
 - Dejar `ARQUITECTOS` en recuperación FULL y crear los dos trabajos del Agente.
 - Copiar `D:\Respaldos\ARQUITECTOS` fuera del servidor.
 - Restaurar en `ARQUITECTOS_RESTAURACION`, revisar los conteos y borrar esa base.
+
+## Iconos del menú
+
+La migración `IconosLucide` cambia `MenuOpciones.Icono`: deja de guardar la clase de Font Awesome y guarda el nombre del ícono de Lucide. Aplique `backend/scripts/actualizar_local.sql` junto con la publicación del frontend nuevo. El frontend nuevo todavía dibuja el ícono si la columna conserva la clase anterior. El frontend publicado no entiende los nombres de Lucide, así que no aplique esa parte del script antes de copiar el frontend.

@@ -9,3 +9,5 @@ dotnet run --project backend/src/Arquitectos.Api --launch-profile http -- --seed
 ```
 
 Ese comando usa la cadena de conexión de Development. No lo apuntes a la base del sitio.
+
+`recrear_tablas.sql` y `recrear_pruebas.sql` hacen DROP y CREATE fuera de EF. No están en git. No los ejecutes contra la base del sitio.
