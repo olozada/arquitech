@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Arquitectos.Application;
 using Arquitectos.Application.Presupuestos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +21,14 @@ public sealed class InsumosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] string? tipo, [FromQuery] bool incluirInactivos, CancellationToken cancellationToken) =>
-        Ok(await _servicio.ListarAsync(tipo, incluirInactivos, cancellationToken));
+    public async Task<IActionResult> Listar(
+        [FromQuery] string? tipo,
+        [FromQuery] bool incluirInactivos,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = Paginacion.TamanoDefecto,
+        [FromQuery] string? texto = null,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _servicio.ListarAsync(tipo, incluirInactivos, cancellationToken, pagina, tamano, texto));
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Obtener(int id, CancellationToken cancellationToken)
@@ -181,8 +188,14 @@ public sealed class ApusController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] string? texto, [FromQuery] bool incluirInactivos, CancellationToken cancellationToken) =>
-        Ok(await _servicio.ListarAsync(texto, incluirInactivos, cancellationToken));
+    public async Task<IActionResult> Listar(
+        [FromQuery] string? texto,
+        [FromQuery] bool incluirInactivos,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = Paginacion.TamanoDefecto,
+        [FromQuery] bool? esSubanalisis = null,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _servicio.ListarAsync(texto, incluirInactivos, cancellationToken, pagina, tamano, esSubanalisis));
 
     [HttpGet("buscar")]
     public async Task<IActionResult> Buscar([FromQuery] string? texto, [FromQuery] int? unidadId, [FromQuery] int top, CancellationToken cancellationToken) =>

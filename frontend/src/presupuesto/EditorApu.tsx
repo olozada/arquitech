@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Form, Table } from 'react-bootstrap'
@@ -117,14 +117,13 @@ export function EditorApu({
   const [conceptoId, setConceptoId] = useState<number | null>(null)
   const [activo, setActivo] = useState(true)
   const [origen, setOrigen] = useState<number | null>(null)
+  const [aplicado, setAplicado] = useState<number | null>(null)
   const [listo, setListo] = useState(apuId == null)
   const consultas = useQueryClient()
   const navegar = useNavigate()
 
-  useEffect(() => {
-    if (!consulta.data || listo) {
-      return
-    }
+  if (consulta.data && !listo && aplicado !== consulta.data.id) {
+    setAplicado(consulta.data.id)
     setCodigo(consulta.data.codigo)
     setDescripcion(consulta.data.descripcion)
     setUnidadMedidaId(consulta.data.unidadMedidaId)
@@ -134,17 +133,14 @@ export function EditorApu({
     setActivo(consulta.data.activo)
     setGrupos(desdeServidor(consulta.data))
     setListo(true)
-  }, [consulta.data, listo])
+  }
 
-  useEffect(() => {
-    if (unidadMedidaId != null || !unidadInicial || !unidades.data) {
-      return
-    }
+  if (unidadMedidaId == null && unidadInicial && unidades.data) {
     const coincidencia = unidades.data.find((item) => item.nombre.toLowerCase() === unidadInicial.toLowerCase())
     if (coincidencia) {
       setUnidadMedidaId(coincidencia.id)
     }
-  }, [unidadInicial, unidadMedidaId, unidades.data])
+  }
 
   const gruposActuales = grupos
   const unidad = (unidades.data ?? []).find((item) => item.id === unidadMedidaId)?.nombre ?? consulta.data?.unidad ?? unidadInicial ?? ''

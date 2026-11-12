@@ -6,7 +6,6 @@ import { consultas } from './api/consultas'
 import { SesionProvider } from './auth/SesionProvider'
 import { App } from './App'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import 'font-awesome/css/font-awesome.min.css'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import './index.css'
 

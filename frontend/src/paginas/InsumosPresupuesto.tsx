@@ -4,8 +4,11 @@ import { Button, Form, Modal, Nav, Table } from 'react-bootstrap'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
+import { tamanoListado } from '../api/pagina'
+import type { Pagina } from '../api/pagina'
 import { dinero } from '../actas/formato'
 import { precioUnitarioInsumo } from '../presupuesto/calculadoraApu'
+import { Paginador } from '../componentes/Paginador'
 
 const tipos = ['Material', 'Equipo', 'Herramienta', 'Laboratorio', 'Transporte', 'ManoObraDestajo', 'Otro']
 
@@ -42,17 +45,18 @@ const vacio = (): Insumo => ({
 export function InsumosPresupuesto() {
   const [tipo, setTipo] = useState('Material')
   const [texto, setTexto] = useState('')
+  const [pagina, setPagina] = useState(1)
   const [seleccionado, setSeleccionado] = useState<Insumo | null>(null)
   const [historial, setHistorial] = useState<Historial[] | null>(null)
   const consultas = useQueryClient()
   const lista = useQuery({
-    queryKey: ['insumos'],
-    queryFn: async () => (await cliente.get<Insumo[]>('/api/insumos')).data,
+    queryKey: ['insumos', tipo, texto, pagina],
+    queryFn: async () =>
+      (await cliente.get<Pagina<Insumo>>('/api/insumos', {
+        params: { tipo, texto: texto.trim() || undefined, pagina, tamano: tamanoListado },
+      })).data,
   })
-  const filtro = texto.trim().toLowerCase()
-  const visibles = (lista.data ?? []).filter(
-    (insumo) => insumo.tipo === tipo && `${insumo.codigo ?? ''} ${insumo.descripcion}`.toLowerCase().includes(filtro),
-  )
+  const visibles = lista.data?.items ?? []
 
   async function guardar(insumo: Insumo) {
     try {
@@ -115,14 +119,14 @@ export function InsumosPresupuesto() {
           <Button type="button" onClick={() => setSeleccionado({ ...vacio(), tipo })}>+ Nuevo insumo</Button>
         </div>
       </div>
-      <Nav variant="tabs" activeKey={tipo} onSelect={(clave) => clave && setTipo(clave)} className="mb-3">
+      <Nav variant="tabs" activeKey={tipo} onSelect={(clave) => { if (clave) { setPagina(1); setTipo(clave) } }} className="mb-3">
         {tipos.map((item) => (
           <Nav.Item key={item}>
-            <Nav.Link eventKey={item}>{item} ({(lista.data ?? []).filter((insumo) => insumo.tipo === item).length})</Nav.Link>
+            <Nav.Link eventKey={item}>{item}{item === tipo ? ` (${lista.data?.total ?? 0})` : ''}</Nav.Link>
           </Nav.Item>
         ))}
       </Nav>
-      <Form.Control className="mb-3" placeholder="Buscar por código o descripción" value={texto} onChange={(evento) => setTexto(evento.target.value)} />
+      <Form.Control className="mb-3" placeholder="Buscar por código o descripción" value={texto} onChange={(evento) => { setPagina(1); setTexto(evento.target.value) }} />
       <div className="catalogo-panel">
         <Table responsive hover size="sm" className="mb-0">
           <thead>
@@ -150,6 +154,7 @@ export function InsumosPresupuesto() {
             ))}
           </tbody>
         </Table>
+        <Paginador pagina={pagina} total={lista.data?.total ?? 0} tamano={lista.data?.tamano ?? tamanoListado} alCambiar={setPagina} />
       </div>
       {seleccionado && (
         <Form className="catalogo-panel mt-3" onSubmit={(evento) => { evento.preventDefault(); void guardar(seleccionado) }}>

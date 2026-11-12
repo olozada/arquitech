@@ -1,0 +1,404 @@
+using System.Globalization;
+using System.Linq.Expressions;
+using System.Text;
+using Arquitectos.Application.Actas;
+using Arquitectos.Application.Auditoria;
+using Arquitectos.Application.Usuarios;
+using Arquitectos.Domain.Entidades;
+using Arquitectos.Infrastructure.Auditoria;
+using Arquitectos.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Arquitectos.Infrastructure.Actas;
+
+public sealed partial class ActaServicio : IActaServicio
+{
+    public async Task<ResultadoActa<ConsultaActasDto>> ConsultarAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken,
+        int pagina = 1,
+        int tamano = Paginacion.TamanoDefecto,
+        string? numero = null,
+        string? nombreArquitecto = null,
+        string? nombreRevisor = null,
+        string? nombreContratista = null,
+        string? orden = null,
+        bool descendente = true)
+    {
+        var fechas = ValidarRango(desde, hasta);
+        if (fechas is not null)
+        {
+            return ResultadoActa<ConsultaActasDto>.Invalido(fechas);
+        }
+
+        var actor = await CargarActorAsync(usuarioId, cancellationToken);
+        if (actor is null)
+        {
+            return ResultadoActa<ConsultaActasDto>.Invalido("No se encontró el usuario.");
+        }
+
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
+        var consulta = Filtrar(
+            _context.Actas.AsNoTracking(),
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            cerrada,
+            actor);
+        var filas = await consulta
+            .Select(acta => new FilaActa(
+                acta.NumeroActa,
+                acta.FechaInicial,
+                acta.FechaFinal,
+                acta.Contratista.Nombre,
+                acta.Observacion,
+                acta.Cerrada,
+                acta.Arquitecto.Nombre,
+                acta.Revisor.Nombre))
+            .ToListAsync(cancellationToken);
+
+        var numeroTexto = Normalizar(numero);
+        var arquitectoTexto = Normalizar(nombreArquitecto);
+        var revisorTexto = Normalizar(nombreRevisor);
+        var contratistaTexto = Normalizar(nombreContratista);
+        var filtradas = filas.Where(fila =>
+            (numeroTexto.Length == 0 || fila.NumeroActa.ToString().Contains(numeroTexto, StringComparison.Ordinal))
+            && Contiene(fila.Arquitecto, arquitectoTexto)
+            && Contiene(fila.Revisor, revisorTexto)
+            && Contiene(fila.Contratista, contratistaTexto)).ToList();
+        filtradas = OrdenarActas(filtradas, orden, descendente);
+
+        var ids = filtradas.Select(fila => fila.NumeroActa).ToList();
+        var totales = ids.Count == 0
+            ? new Dictionary<int, decimal>()
+            : await _context.ActaDetalles
+                .AsNoTracking()
+                .Where(detalle => detalle.Aprobado && ids.Contains(detalle.NumeroActa))
+                .GroupBy(detalle => detalle.NumeroActa)
+                .Select(grupo => new { Numero = grupo.Key, Total = grupo.Sum(detalle => detalle.Subtotal) })
+                .ToDictionaryAsync(grupo => grupo.Numero, grupo => grupo.Total, cancellationToken);
+
+        var paginaFilas = filtradas.Skip((paginaOk - 1) * tamanoOk).Take(tamanoOk);
+        var actas = paginaFilas
+            .Select(fila => new ActaResumenDto(
+                fila.NumeroActa,
+                fila.FechaInicial,
+                fila.FechaFinal,
+                fila.Contratista,
+                fila.Observacion,
+                totales.GetValueOrDefault(fila.NumeroActa),
+                fila.Cerrada,
+                fila.Arquitecto,
+                fila.Revisor))
+            .ToList();
+
+        return ResultadoActa<ConsultaActasDto>.Ok(
+            new ConsultaActasDto(actas, filtradas.Count, paginaOk, tamanoOk, totales.Values.Sum()));
+    }
+
+    public async Task<ResultadoActa<ActaDto>> ObtenerAsync(
+        int numeroActa,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var actor = await CargarActorAsync(usuarioId, cancellationToken);
+        if (actor is null)
+        {
+            return ResultadoActa<ActaDto>.Invalido("No se encontró el usuario.");
+        }
+
+        var acta = await CargarAsync(numeroActa, cancellationToken);
+        return acta is null || !PuedeVer(acta, actor)
+            ? ResultadoActa<ActaDto>.NoEncontrado("No se encontró el acta.")
+            : ResultadoActa<ActaDto>.Ok(acta);
+    }
+
+    public async Task<ResultadoActa<byte[]>> GenerarPdfAsync(
+        int numeroActa,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var acta = await ObtenerAsync(numeroActa, usuarioId, cancellationToken);
+        return acta.Estado != EstadoActa.Ok
+            ? acta.Estado == EstadoActa.NoEncontrado
+                ? ResultadoActa<byte[]>.NoEncontrado(acta.Mensaje ?? "No se encontró el acta.")
+                : ResultadoActa<byte[]>.Invalido(acta.Mensaje ?? "No se encontró el usuario.")
+            : ResultadoActa<byte[]>.Ok(GeneradorPdfActa.Generar(acta.Valor!));
+    }
+
+    public async Task<ResultadoActa<byte[]>> ExportarAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var acumulado = new List<ActaResumenDto>();
+        ConsultaActasDto? primera = null;
+        for (var pagina = 1; ; pagina++)
+        {
+            var consulta = await ConsultarAsync(
+                desde, hasta, arquitectoId, revisorId, contratistaId, construccionId, cerrada, usuarioId, cancellationToken,
+                pagina, Paginacion.TamanoMaximo);
+            if (consulta.Estado != EstadoActa.Ok)
+            {
+                return ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
+            }
+
+            primera ??= consulta.Valor;
+            acumulado.AddRange(consulta.Valor!.Items);
+            if (acumulado.Count >= consulta.Valor.Total || consulta.Valor.Items.Count == 0)
+            {
+                break;
+            }
+        }
+
+        return ResultadoActa<byte[]>.Ok(GeneradorExcelActas.Generar(primera! with { Items = acumulado }));
+    }
+
+
+    private async Task<ActorActa?> CargarActorAsync(int usuarioId, CancellationToken cancellationToken)
+    {
+        return await _context.Usuarios
+            .AsNoTracking()
+            .Where(usuario => usuario.Id == usuarioId && usuario.Activo)
+            .Select(usuario => new ActorActa(
+                usuario.TipoUsuarioId,
+                usuario.ArquitectoId,
+                usuario.ContratistaId,
+                usuario.RevisorId))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool PuedeVer(Acta acta, ActorActa actor) =>
+        PuedeVer(acta.ArquitectoId, acta.ContratistaId, acta.RevisorId, actor);
+
+    private static bool PuedeVer(ActaDto acta, ActorActa actor) =>
+        PuedeVer(acta.ArquitectoId, acta.ContratistaId, acta.RevisorId, actor);
+
+    private static bool PuedeVer(int arquitectoId, int contratistaId, int revisorId, ActorActa actor) =>
+        PermisosActa.PuedeVer(actor.TipoUsuarioId, actor.ArquitectoId, actor.ContratistaId, actor.RevisorId, arquitectoId, contratistaId, revisorId);
+
+    private IQueryable<Acta> Filtrar(
+        IQueryable<Acta> consulta,
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        ActorActa actor)
+    {
+        consulta = actor.TipoUsuarioId switch
+        {
+            PerfilesUsuario.Arquitecto => consulta.Where(acta => acta.ArquitectoId == actor.ArquitectoId),
+            PerfilesUsuario.Contratista => consulta.Where(acta => acta.ContratistaId == actor.ContratistaId),
+            PerfilesUsuario.Revisor => consulta.Where(acta => acta.RevisorId == actor.RevisorId),
+            PerfilesUsuario.Administrador => consulta,
+            _ => consulta.Where(acta => false)
+        };
+
+        if (desde is DateOnly inicio)
+        {
+            consulta = consulta.Where(acta => acta.FechaFinal >= inicio);
+        }
+
+        if (hasta is DateOnly fin)
+        {
+            consulta = consulta.Where(acta => acta.FechaInicial <= fin);
+        }
+
+        if (arquitectoId is > 0)
+        {
+            consulta = consulta.Where(acta => acta.ArquitectoId == arquitectoId);
+        }
+
+        if (revisorId is > 0)
+        {
+            consulta = consulta.Where(acta => acta.RevisorId == revisorId);
+        }
+
+        if (contratistaId is > 0)
+        {
+            consulta = consulta.Where(acta => acta.ContratistaId == contratistaId);
+        }
+
+        if (construccionId is > 0)
+        {
+            consulta = consulta.Where(acta => acta.Detalles.Any(detalle => detalle.ConstruccionId == construccionId));
+        }
+
+        if (cerrada is bool estado)
+        {
+            consulta = consulta.Where(acta => acta.Cerrada == estado);
+        }
+
+        return consulta;
+    }
+
+    private async Task<ActaDto?> CargarAsync(int numeroActa, CancellationToken cancellationToken)
+    {
+        var acta = await _context.Actas
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(item => item.Arquitecto)
+            .Include(item => item.Revisor)
+            .Include(item => item.Contratista)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.Construccion)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.Concepto)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.UnidadMedida)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.Insumo)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.TipoUsuario)
+            .Include(item => item.Detalles).ThenInclude(detalle => detalle.PresupuestoItem)
+            .SingleOrDefaultAsync(item => item.NumeroActa == numeroActa, cancellationToken);
+
+        if (acta is null)
+        {
+            return null;
+        }
+
+        var detalles = acta.Detalles
+            .OrderBy(detalle => detalle.Construccion.Descripcion)
+            .ThenBy(detalle => detalle.Id)
+            .Select(detalle => new LineaActaDto(
+                detalle.Id,
+                detalle.ConstruccionId,
+                detalle.Construccion.Descripcion,
+                detalle.ConceptoId,
+                detalle.Concepto.Descripcion,
+                detalle.UnidadMedidaId,
+                detalle.UnidadMedida?.Nombre ?? "",
+                detalle.InsumoId,
+                detalle.Insumo?.Descripcion,
+                detalle.Cantidad,
+                detalle.Precio,
+                detalle.Descripcion,
+                detalle.Aprobado ? detalle.Subtotal : 0,
+                detalle.TipoUsuarioId,
+                detalle.TipoUsuario.Nombre,
+                detalle.Aprobado,
+                detalle.PresupuestoItemId,
+                detalle.PresupuestoItem is null ? null : detalle.PresupuestoItem.Codigo + " " + detalle.PresupuestoItem.Descripcion))
+            .ToList();
+
+        return new ActaDto(
+            acta.NumeroActa,
+            acta.FechaInicial,
+            acta.FechaFinal,
+            acta.ArquitectoId,
+            acta.Arquitecto.Nombre,
+            acta.RevisorId,
+            acta.Revisor.Nombre,
+            acta.ContratistaId,
+            acta.Contratista.Nombre,
+            acta.Observacion,
+            acta.FechaRegistro,
+            acta.UsuarioRegistroId,
+            TotalActa(detalles.Select(detalle => (detalle.Subtotal, detalle.Aprobado))),
+            detalles,
+            acta.Cerrada,
+            Convert.ToBase64String(acta.RowVersion ?? []));
+    }
+
+
+    private sealed record ActorActa(int TipoUsuarioId, int? ArquitectoId, int? ContratistaId, int? RevisorId);
+
+
+    private static List<FilaActa> OrdenarActas(List<FilaActa> filas, string? orden, bool descendente)
+    {
+        IEnumerable<FilaActa> ordenadas = orden switch
+        {
+            "fechaInicial" => descendente
+                ? filas.OrderByDescending(fila => fila.FechaInicial).ThenByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => fila.FechaInicial).ThenBy(fila => fila.NumeroActa),
+            "fechaFinal" => descendente
+                ? filas.OrderByDescending(fila => fila.FechaFinal).ThenByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => fila.FechaFinal).ThenBy(fila => fila.NumeroActa),
+            "arquitecto" => descendente
+                ? filas.OrderByDescending(fila => Normalizar(fila.Arquitecto), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => Normalizar(fila.Arquitecto), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
+            "revisor" => descendente
+                ? filas.OrderByDescending(fila => Normalizar(fila.Revisor), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => Normalizar(fila.Revisor), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
+            "contratista" => descendente
+                ? filas.OrderByDescending(fila => Normalizar(fila.Contratista), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => Normalizar(fila.Contratista), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
+            _ => descendente
+                ? filas.OrderByDescending(fila => fila.NumeroActa)
+                : filas.OrderBy(fila => fila.NumeroActa),
+        };
+        return ordenadas.ToList();
+    }
+
+    private static bool Contiene(string? texto, string filtro) =>
+        filtro.Length == 0 || Normalizar(texto).Contains(filtro, StringComparison.Ordinal);
+
+    private static string Normalizar(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            return "";
+        }
+
+        var forma = valor.Trim().Normalize(NormalizationForm.FormD);
+        return string.Concat(forma.Where(caracter => CharUnicodeInfo.GetUnicodeCategory(caracter) != UnicodeCategory.NonSpacingMark))
+            .ToLowerInvariant();
+    }
+
+    private sealed record FilaActa(
+        int NumeroActa,
+        DateOnly FechaInicial,
+        DateOnly FechaFinal,
+        string Contratista,
+        string? Observacion,
+        bool Cerrada,
+        string Arquitecto,
+        string Revisor);
+
+    private static string? ValidarRango(DateOnly? desde, DateOnly? hasta) =>
+        desde is DateOnly inicio && hasta is DateOnly fin && fin < inicio
+            ? CrearActaValidador.MensajeFechas
+            : null;
+
+    private static string? Texto(string? valor)
+    {
+        var texto = valor?.Trim();
+        return string.IsNullOrEmpty(texto) ? null : texto;
+    }
+
+    private static async Task<bool> ExisteActivo<TEntidad>(
+        IQueryable<TEntidad> consulta,
+        int id,
+        CancellationToken cancellationToken)
+        where TEntidad : class, ICatalogo =>
+        await consulta.AnyAsync(entidad => entidad.Id == id && entidad.Activo, cancellationToken);
+
+    private static async Task<bool> TodosActivos<TEntidad>(
+        IQueryable<TEntidad> consulta,
+        IEnumerable<int> ids,
+        CancellationToken cancellationToken)
+        where TEntidad : class, ICatalogo
+    {
+        var distintos = ids.Distinct().ToList();
+        var encontrados = await consulta.CountAsync(
+            entidad => distintos.Contains(entidad.Id) && entidad.Activo,
+            cancellationToken);
+        return encontrados == distintos.Count;
+    }
+
+}

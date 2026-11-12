@@ -99,10 +99,11 @@ a {
   color: #fff;
 }
 
-.menu-enlace i,
-.menu-titulo i {
+.menu-enlace svg,
+.menu-titulo svg {
   width: 1.1rem;
-  text-align: center;
+  height: 1.1rem;
+  flex: 0 0 auto;
 }
 
 .menu-titulo span,

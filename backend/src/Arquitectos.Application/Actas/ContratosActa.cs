@@ -57,7 +57,12 @@ public sealed record ActaResumenDto(
     string Arquitecto,
     string Revisor);
 
-public sealed record ConsultaActasDto(IReadOnlyList<ActaResumenDto> Actas, decimal TotalGeneral);
+public sealed record ConsultaActasDto(
+    IReadOnlyList<ActaResumenDto> Items,
+    int Total,
+    int Pagina,
+    int Tamano,
+    decimal TotalGeneral);
 
 public sealed record ItemInformeDto(
     int? Id,

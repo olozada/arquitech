@@ -2,7 +2,7 @@ namespace Arquitectos.Application.Usuarios;
 
 public interface IUsuarioServicio
 {
-    Task<IReadOnlyList<UsuarioDto>> ListarAsync(bool incluirInactivos, CancellationToken cancellationToken);
+    Task<PaginaDto<UsuarioDto>> ListarAsync(bool incluirInactivos, CancellationToken cancellationToken, int pagina = 1, int tamano = Paginacion.TamanoDefecto);
 
     Task<IReadOnlyList<TipoUsuarioDto>> ListarTiposAsync(CancellationToken cancellationToken);
 

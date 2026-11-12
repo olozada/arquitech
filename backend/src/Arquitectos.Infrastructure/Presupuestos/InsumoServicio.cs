@@ -14,8 +14,15 @@ public sealed class InsumoServicio : IInsumoServicio
         _context = context;
     }
 
-    public async Task<IReadOnlyList<InsumoDto>> ListarAsync(string? tipo, bool incluirInactivos, CancellationToken cancellationToken)
+    public async Task<PaginaDto<InsumoDto>> ListarAsync(
+        string? tipo,
+        bool incluirInactivos,
+        CancellationToken cancellationToken,
+        int pagina = 1,
+        int tamano = Paginacion.TamanoDefecto,
+        string? texto = null)
     {
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
         var consulta = _context.Insumos.AsNoTracking();
         if (!incluirInactivos)
         {
@@ -27,8 +34,20 @@ public sealed class InsumoServicio : IInsumoServicio
             consulta = consulta.Where(insumo => insumo.Tipo == tipoInsumo);
         }
 
-        var items = await consulta.OrderBy(insumo => insumo.Descripcion).ToListAsync(cancellationToken);
-        return items.Select(Mapa).ToList();
+        if (!string.IsNullOrWhiteSpace(texto))
+        {
+            var filtro = texto.Trim().ToLower();
+            consulta = consulta.Where(insumo =>
+                insumo.Descripcion.ToLower().Contains(filtro) || (insumo.Codigo != null && insumo.Codigo.ToLower().Contains(filtro)));
+        }
+
+        var total = await consulta.CountAsync(cancellationToken);
+        var items = await consulta
+            .OrderBy(insumo => insumo.Descripcion)
+            .Skip((paginaOk - 1) * tamanoOk)
+            .Take(tamanoOk)
+            .ToListAsync(cancellationToken);
+        return new PaginaDto<InsumoDto>(items.Select(Mapa).ToList(), total, paginaOk, tamanoOk);
     }
 
     public async Task<InsumoDto?> ObtenerAsync(int id, CancellationToken cancellationToken)

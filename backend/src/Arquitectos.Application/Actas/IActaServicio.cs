@@ -29,7 +29,15 @@ public interface IActaServicio
         int? construccionId,
         bool? cerrada,
         int usuarioId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        int pagina = 1,
+        int tamano = Paginacion.TamanoDefecto,
+        string? numero = null,
+        string? nombreArquitecto = null,
+        string? nombreRevisor = null,
+        string? nombreContratista = null,
+        string? orden = null,
+        bool descendente = true);
 
     Task<ResultadoActa<ActaDto>> ObtenerAsync(int numeroActa, int usuarioId, CancellationToken cancellationToken);
 

@@ -81,7 +81,7 @@ public sealed class UsuarioServicioTests : IDisposable
         Assert.Equal(creado.Valor.Id, recreado.Valor!.Id);
         Assert.Equal("Ana Ruiz", recreado.Valor.Nombre);
         Assert.True(recreado.Valor.Activo);
-        Assert.Contains(listado, usuario => usuario.Id == creado.Valor.Id && usuario.Usuario == "ana");
+        Assert.Contains(listado.Items, usuario => usuario.Id == creado.Valor.Id && usuario.Usuario == "ana");
         Assert.Equal(2, await _context.Usuarios.CountAsync());
     }
 

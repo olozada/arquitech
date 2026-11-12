@@ -1,6 +1,5 @@
 using Arquitectos.Application.Dashboard;
-using Arquitectos.Infrastructure.Dashboard;
-using Arquitectos.Infrastructure.Presupuestos;
+using Arquitectos.Application.Presupuestos;
 
 namespace Arquitectos.Tests;
 

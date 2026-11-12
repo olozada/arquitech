@@ -17,7 +17,7 @@ public static class GeneradorExcelActas
         }
 
         var fila = 2;
-        foreach (var acta in consulta.Actas)
+        foreach (var acta in consulta.Items)
         {
             hoja.Cell(fila, 1).Value = acta.NumeroActa;
             hoja.Cell(fila, 2).Value = acta.FechaInicial.ToDateTime(TimeOnly.MinValue);

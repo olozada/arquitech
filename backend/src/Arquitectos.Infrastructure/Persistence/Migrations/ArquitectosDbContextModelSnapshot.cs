@@ -146,15 +146,15 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("InsumoId");
 
-                    b.HasIndex("NumeroActa");
-
-                    b.HasIndex("PresupuestoItemId");
-
                     b.HasIndex("TipoUsuarioId");
 
                     b.HasIndex("UnidadMedidaId");
 
                     b.HasIndex("ConstruccionId", "ConceptoId");
+
+                    b.HasIndex("NumeroActa", "InsumoId");
+
+                    b.HasIndex("PresupuestoItemId", "Aprobado");
 
                     b.HasIndex("ConceptoId", "UnidadMedidaId", "InsumoId");
 
@@ -692,7 +692,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 17,
                             Descripcion = "Dashboard",
-                            Icono = "fa fa-tachometer",
+                            Icono = "layout-dashboard",
                             Orden = 0,
                             Url = "/"
                         },
@@ -700,14 +700,14 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 1,
                             Descripcion = "Administración",
-                            Icono = "fa fa-cogs",
+                            Icono = "settings",
                             Orden = 1
                         },
                         new
                         {
                             Id = 2,
                             Descripcion = "Arquitectos",
-                            Icono = "fa fa-user",
+                            Icono = "pencil-ruler",
                             Orden = 1,
                             PadreId = 1,
                             Url = "/admin/arquitectos"
@@ -716,7 +716,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 3,
                             Descripcion = "Revisores",
-                            Icono = "fa fa-eye",
+                            Icono = "clipboard-check",
                             Orden = 2,
                             PadreId = 1,
                             Url = "/admin/revisores"
@@ -725,7 +725,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 4,
                             Descripcion = "Contratistas",
-                            Icono = "fa fa-briefcase",
+                            Icono = "hard-hat",
                             Orden = 3,
                             PadreId = 1,
                             Url = "/admin/contratistas"
@@ -734,7 +734,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 5,
                             Descripcion = "Proveedores",
-                            Icono = "fa fa-truck",
+                            Icono = "truck",
                             Orden = 4,
                             PadreId = 1,
                             Url = "/admin/proveedores"
@@ -743,7 +743,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 6,
                             Descripcion = "Construcciones",
-                            Icono = "fa fa-building",
+                            Icono = "building-2",
                             Orden = 5,
                             PadreId = 1,
                             Url = "/admin/construcciones"
@@ -752,7 +752,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 7,
                             Descripcion = "Conceptos",
-                            Icono = "fa fa-list",
+                            Icono = "list-tree",
                             Orden = 6,
                             PadreId = 1,
                             Url = "/admin/conceptos"
@@ -761,7 +761,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 8,
                             Descripcion = "Insumos",
-                            Icono = "fa fa-cubes",
+                            Icono = "package",
                             Orden = 7,
                             PadreId = 1,
                             Url = "/presupuesto/insumos"
@@ -770,7 +770,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 9,
                             Descripcion = "Unidades de medida",
-                            Icono = "fa fa-balance-scale",
+                            Icono = "ruler",
                             Orden = 8,
                             PadreId = 1,
                             Url = "/admin/unidades-medida"
@@ -779,7 +779,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 10,
                             Descripcion = "Materiales por proveedor",
-                            Icono = "fa fa-tags",
+                            Icono = "badge-dollar-sign",
                             Orden = 9,
                             PadreId = 1,
                             Url = "/admin/proveedores-materiales"
@@ -788,7 +788,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 15,
                             Descripcion = "Usuarios",
-                            Icono = "fa fa-users",
+                            Icono = "users",
                             Orden = 10,
                             PadreId = 1,
                             Url = "/admin/usuarios"
@@ -797,7 +797,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 16,
                             Descripcion = "Cambiar contraseña",
-                            Icono = "fa fa-key",
+                            Icono = "key-round",
                             Orden = 11,
                             PadreId = 1,
                             Url = "/cuenta/contrasena"
@@ -806,7 +806,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 11,
                             Descripcion = "Actas",
-                            Icono = "fa fa-file-text",
+                            Icono = "file-pen-line",
                             Orden = 2,
                             Url = "/actas"
                         },
@@ -814,14 +814,14 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 13,
                             Descripcion = "Informes",
-                            Icono = "fa fa-bar-chart",
+                            Icono = "chart-column",
                             Orden = 3
                         },
                         new
                         {
                             Id = 14,
                             Descripcion = "Reporte de actas",
-                            Icono = "fa fa-table",
+                            Icono = "table",
                             Orden = 1,
                             PadreId = 13,
                             Url = "/informes/actas"
@@ -830,7 +830,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 23,
                             Descripcion = "Reporte por materiales",
-                            Icono = "fa fa-cubes",
+                            Icono = "brick-wall",
                             Orden = 2,
                             PadreId = 13,
                             Url = "/informes/materiales"
@@ -839,14 +839,14 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 18,
                             Descripcion = "Presupuestos",
-                            Icono = "fa fa-calculator",
+                            Icono = "wallet",
                             Orden = 4
                         },
                         new
                         {
                             Id = 19,
                             Descripcion = "Presupuestos de obra",
-                            Icono = "fa fa-file-text-o",
+                            Icono = "file-spreadsheet",
                             Orden = 1,
                             PadreId = 18,
                             Url = "/presupuestos"
@@ -855,7 +855,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 20,
                             Descripcion = "Insumos",
-                            Icono = "fa fa-cubes",
+                            Icono = "package",
                             Orden = 2,
                             PadreId = 18,
                             Url = "/presupuesto/insumos"
@@ -864,7 +864,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 21,
                             Descripcion = "Mano de obra",
-                            Icono = "fa fa-users",
+                            Icono = "hammer",
                             Orden = 3,
                             PadreId = 18,
                             Url = "/presupuesto/mano-obra"
@@ -873,7 +873,7 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         {
                             Id = 22,
                             Descripcion = "Análisis de precios",
-                            Icono = "fa fa-list-alt",
+                            Icono = "calculator",
                             Orden = 4,
                             PadreId = 18,
                             Url = "/presupuesto/apu"

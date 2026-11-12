@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Arquitectos.Application;
 using Arquitectos.Application.Usuarios;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -27,11 +28,13 @@ public sealed class UsuariosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<UsuarioDto>>> Listar(
+    public async Task<ActionResult<PaginaDto<UsuarioDto>>> Listar(
         [FromQuery] bool incluirInactivos,
-        CancellationToken cancellationToken)
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = Paginacion.TamanoDefecto,
+        CancellationToken cancellationToken = default)
     {
-        return Ok(await _servicio.ListarAsync(incluirInactivos, cancellationToken));
+        return Ok(await _servicio.ListarAsync(incluirInactivos, cancellationToken, pagina, tamano));
     }
 
     [HttpGet("tipos")]

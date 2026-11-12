@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Col, Form, Row } from 'react-bootstrap'
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { cliente } from '../api/cliente'
+import { listarTodo } from '../api/pagina'
 import { dinero } from '../actas/formato'
 import { usePrecioUnitario } from '../api/dashboard'
 
@@ -13,7 +14,7 @@ export function GraficoPrecio({ desde, hasta, estado }: { desde: string; hasta: 
   const insumos = useQuery({
     queryKey: ['insumos-precio'],
     queryFn: async () =>
-      (await cliente.get<Array<{ id: number; codigo: string | null; descripcion: string; activo: boolean }>>('/api/insumos')).data.filter(
+      (await listarTodo<{ id: number; codigo: string | null; descripcion: string; activo: boolean }>('/api/insumos')).filter(
         (insumo) => insumo.activo,
       ),
   })

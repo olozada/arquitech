@@ -447,7 +447,7 @@ public sealed record InformeImportacionDto(
 
 public interface IInsumoServicio
 {
-    Task<IReadOnlyList<InsumoDto>> ListarAsync(string? tipo, bool incluirInactivos, CancellationToken cancellationToken);
+    Task<PaginaDto<InsumoDto>> ListarAsync(string? tipo, bool incluirInactivos, CancellationToken cancellationToken, int pagina = 1, int tamano = Paginacion.TamanoDefecto, string? texto = null);
 
     Task<InsumoDto?> ObtenerAsync(int id, CancellationToken cancellationToken);
 
@@ -566,7 +566,7 @@ public sealed class VersionSolicitud
 
 public interface IApuServicio
 {
-    Task<IReadOnlyList<ApuResumenDto>> ListarAsync(string? texto, bool incluirInactivos, CancellationToken cancellationToken);
+    Task<PaginaDto<ApuResumenDto>> ListarAsync(string? texto, bool incluirInactivos, CancellationToken cancellationToken, int pagina = 1, int tamano = Paginacion.TamanoDefecto, bool? esSubanalisis = null);
 
     Task<IReadOnlyList<ApuResumenDto>> BuscarAsync(string? texto, int? unidadId, int top, CancellationToken cancellationToken);
 

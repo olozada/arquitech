@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Form, Modal, Nav } from 'react-bootstrap'
 import { cliente } from '../api/cliente'
+import { listarTodo } from '../api/pagina'
 import { dinero as formatoDinero } from '../actas/formato'
 
 function dinero(valor: number) {
@@ -53,7 +54,7 @@ export function SelectorOrigenLinea({
   const [texto, setTexto] = useState('')
   const insumos = useQuery({
     queryKey: ['insumos-origen'],
-    queryFn: async () => (await cliente.get<Insumo[]>('/api/insumos', { params: { incluirInactivos: false } })).data,
+    queryFn: async () => listarTodo<Insumo>('/api/insumos', { incluirInactivos: false }),
   })
   const cuadrillas = useQuery({
     queryKey: ['cuadrillas-origen'],
@@ -61,7 +62,7 @@ export function SelectorOrigenLinea({
   })
   const apus = useQuery({
     queryKey: ['apus-origen'],
-    queryFn: async () => (await cliente.get<Apu[]>('/api/apu')).data,
+    queryFn: async () => listarTodo<Apu>('/api/apu'),
   })
   const filtro = texto.trim().toLowerCase()
   const permitidos = tiposPorGrupo[grupo] ?? []

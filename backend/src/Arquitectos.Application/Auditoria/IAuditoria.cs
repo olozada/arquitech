@@ -22,6 +22,7 @@ public interface IConsultaAuditoria
         DateOnly? hasta,
         int? usuarioId,
         int pagina,
+        int tamano,
         CancellationToken cancellationToken);
 }
 
@@ -36,4 +37,4 @@ public sealed record AuditoriaDto(
     string? CambiosJson,
     string? Ip);
 
-public sealed record PaginaAuditoriaDto(IReadOnlyList<AuditoriaDto> Registros, int Total, int Pagina, int Tamano);
+public sealed record PaginaAuditoriaDto(IReadOnlyList<AuditoriaDto> Items, int Total, int Pagina, int Tamano);

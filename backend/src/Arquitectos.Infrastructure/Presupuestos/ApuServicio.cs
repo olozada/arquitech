@@ -16,12 +16,24 @@ public sealed class ApuServicio : IApuServicio
         _motor = motor;
     }
 
-    public async Task<IReadOnlyList<ApuResumenDto>> ListarAsync(string? texto, bool incluirInactivos, CancellationToken cancellationToken)
+    public async Task<PaginaDto<ApuResumenDto>> ListarAsync(
+        string? texto,
+        bool incluirInactivos,
+        CancellationToken cancellationToken,
+        int pagina = 1,
+        int tamano = Paginacion.TamanoDefecto,
+        bool? esSubanalisis = null)
     {
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
         var consulta = _context.Apus.AsNoTracking();
         if (!incluirInactivos)
         {
             consulta = consulta.Where(apu => apu.Activo);
+        }
+
+        if (esSubanalisis is bool subanalisis)
+        {
+            consulta = consulta.Where(apu => apu.EsSubanalisis == subanalisis);
         }
 
         if (!string.IsNullOrWhiteSpace(texto))
@@ -30,22 +42,30 @@ public sealed class ApuServicio : IApuServicio
             consulta = consulta.Where(apu => apu.Descripcion.Contains(filtro) || (apu.Codigo != null && apu.Codigo.Contains(filtro)));
         }
 
-        var apus = await consulta.OrderBy(apu => apu.Codigo).ThenBy(apu => apu.Descripcion).ToListAsync(cancellationToken);
+        var total = await consulta.CountAsync(cancellationToken);
+        var apus = await consulta
+            .OrderBy(apu => apu.Codigo)
+            .ThenBy(apu => apu.Descripcion)
+            .Skip((paginaOk - 1) * tamanoOk)
+            .Take(tamanoOk)
+            .ToListAsync(cancellationToken);
         var contexto = await _motor.CargarAsync(cancellationToken);
+        var ids = apus.Select(apu => apu.Id).ToList();
         var enItems = await _context.Set<PresupuestoItem>().AsNoTracking()
-            .Where(item => item.ApuId != null)
+            .Where(item => item.ApuId != null && ids.Contains(item.ApuId.Value))
             .Select(item => item.ApuId!.Value)
             .ToListAsync(cancellationToken);
         var enLineas = await _context.Set<ApuLinea>().AsNoTracking()
-            .Where(linea => linea.SubApuId != null)
+            .Where(linea => linea.SubApuId != null && ids.Contains(linea.SubApuId.Value))
             .Select(linea => linea.SubApuId!.Value)
             .ToListAsync(cancellationToken);
         var usos = enItems.Concat(enLineas).GroupBy(id => id).ToDictionary(grupo => grupo.Key, grupo => grupo.Count());
-        return apus.Select(apu =>
+        var items = apus.Select(apu =>
         {
             var costo = MotorCostos.Calcular(apu.Id, contexto)?.Total ?? 0;
             return new ApuResumenDto(apu.Id, apu.Codigo, apu.Descripcion, apu.Unidad, apu.EsSubanalisis, costo, apu.Activo, usos.GetValueOrDefault(apu.Id));
         }).ToList();
+        return new PaginaDto<ApuResumenDto>(items, total, paginaOk, tamanoOk);
     }
 
     public async Task<IReadOnlyList<ApuResumenDto>> BuscarAsync(string? texto, int? unidadId, int top, CancellationToken cancellationToken)

@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Arquitectos.Application;
 using Arquitectos.Application.Actas;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,15 @@ public sealed class ActasController : ControllerBase
         [FromQuery] int? contratistaId,
         [FromQuery] int? construccionId,
         [FromQuery] string? estado,
-        CancellationToken cancellationToken)
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = Paginacion.TamanoDefecto,
+        [FromQuery] string? numero = null,
+        [FromQuery] string? nombreArquitecto = null,
+        [FromQuery] string? nombreRevisor = null,
+        [FromQuery] string? nombreContratista = null,
+        [FromQuery] string? orden = null,
+        [FromQuery] bool descendente = true,
+        CancellationToken cancellationToken = default)
     {
         if (LeerUsuarioId() is not int usuarioId)
         {
@@ -47,7 +56,15 @@ public sealed class ActasController : ControllerBase
             construccionId,
             Cerrada(estado),
             usuarioId,
-            cancellationToken);
+            cancellationToken,
+            pagina,
+            tamano,
+            numero,
+            nombreArquitecto,
+            nombreRevisor,
+            nombreContratista,
+            orden,
+            descendente);
         return Traducir(resultado);
     }
 

@@ -1,5 +1,4 @@
 using Arquitectos.Application.Dashboard;
-using Arquitectos.Infrastructure.Dashboard;
 
 namespace Arquitectos.Tests;
 

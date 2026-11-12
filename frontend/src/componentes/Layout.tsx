@@ -4,6 +4,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { obtenerMenu } from '../api/menu'
 import { useSesion } from '../auth/contextoSesion'
 import { MenuLateral } from './MenuLateral'
+import { Menu as IconoMenu } from './iconosMenu'
 
 export function Layout() {
   const { sesion, cerrarSesion } = useSesion()
@@ -41,7 +42,7 @@ export function Layout() {
             aria-label="Abrir menú"
             onClick={() => setMenuAbierto(true)}
           >
-            <i className="fa fa-bars" aria-hidden="true" />
+            <IconoMenu size={20} aria-hidden="true" />
           </button>
           <div className="cabecera-acciones">
             <Link className="cabecera-enlace" to="/cuenta/contrasena">

@@ -1,4 +1,4 @@
-namespace Arquitectos.Infrastructure.Presupuestos;
+namespace Arquitectos.Application.Presupuestos;
 
 public sealed record LineaCalculo(
     ModoCalculo Modo,

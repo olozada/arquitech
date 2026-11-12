@@ -1,48 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import axios from 'axios'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Col, Form, Modal, Row, Table } from 'react-bootstrap'
+import { Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
+import { listarTodo } from '../api/pagina'
 import { HistorialAuditoria } from '../componentes/HistorialAuditoria'
 import { useSesion } from '../auth/contextoSesion'
 import { esAdministrador, esRevisor, perfilArquitecto, perfilDeNuevoItem } from '../auth/perfiles'
 import { abrirPdf } from '../api/archivos'
-import { dinero, numero, redondear } from '../actas/formato'
+import { numero, redondear } from '../actas/formato'
+import { EncabezadoActa } from '../actas/EncabezadoActa'
+import type { ItemPresupuestoActa, LineaFormulario } from '../actas/lineaActa'
+import { lineaVacia } from '../actas/lineaActa'
+import { ModalItemActa } from '../actas/ModalItemActa'
+import { useCatalogo } from '../actas/useCatalogo'
+import { TablaItemsActa } from '../actas/TablaItemsActa'
+import { borradorVacio, descartarBorradorActa, leerBorrador, marcaDeActaNueva, useBorradorActa, type LineaBorrador } from '../actas/useBorradorActa'
 import type { RegistroCatalogo } from '../catalogos/definiciones'
 
-type LineaBorrador = {
-  clave: string
-  id: number | null
-  tipoUsuarioId: number
-  tipoUsuario: string
-  construccionId: number
-  construccion: string
-  conceptoId: number
-  concepto: string
-  unidadMedidaId: number | null
-  unidadMedida: string
-  insumoId: number | null
-  insumo: string | null
-  cantidad: number
-  precio: number
-  descripcion: string
-  aprobado: boolean
-  presupuestoItemId: number | null
-}
-
-type Borrador = {
-  fechaInicial: string
-  fechaFinal: string
-  arquitectoId: number
-  revisorId: number
-  contratistaId: number
-  observacion: string
-  detalles: LineaBorrador[]
-}
-
-const CLAVE = 'arquitectos.borradorActa'
 const mensajeFechas = 'La fecha final debe ser mayor o igual que la fecha inicial.'
 
 function imprimir(numero: number) {
@@ -64,10 +41,6 @@ function prepararVisor() {
   )
   ventana.document.close()
   return ventana
-}
-
-export function descartarBorradorActa() {
-  localStorage.removeItem(CLAVE)
 }
 
 type ActaGuardada = {
@@ -140,7 +113,7 @@ export function TomaActas() {
   const insumos = useQuery({
     queryKey: ['insumos-acta'],
     queryFn: async () => {
-      const { data } = await cliente.get<Array<{ id: number; codigo: string | null; descripcion: string; activo: boolean }>>('/api/insumos')
+      const data = await listarTodo<{ id: number; codigo: string | null; descripcion: string; activo: boolean }>('/api/insumos')
       return data
         .filter((insumo) => insumo.activo)
         .map((insumo) => ({
@@ -164,45 +137,15 @@ export function TomaActas() {
     queryFn: async () => (await cliente.get<ActaGuardada>(`/api/actas/${numeroRuta}`)).data,
   })
 
-  useEffect(() => {
-    if (!editando || hidratada || !actaConsulta.data) {
-      return
-    }
-
-    aplicarActa(actaConsulta.data)
-    setHidratada(true)
-  }, [editando, hidratada, actaConsulta.data])
-
-  useEffect(() => {
-    if (marcaNueva === marcaAplicada) {
-      return
-    }
-
-    setMarcaAplicada(marcaNueva)
-    limpiarFormulario()
-    setNumeroActa(null)
-    setModalAbierto(false)
-    setLineaClave(null)
-    setLinea(lineaVacia())
-    descartarBorradorActa()
-  }, [marcaNueva, marcaAplicada])
-
-  useEffect(() => {
-    if (editando || marcaNueva !== marcaAplicada) {
-      return
-    }
-
-    const borrador: Borrador = {
-      fechaInicial,
-      fechaFinal,
-      arquitectoId,
-      revisorId,
-      contratistaId,
-      observacion,
-      detalles,
-    }
-    localStorage.setItem(CLAVE, JSON.stringify(borrador))
-  }, [editando, marcaNueva, marcaAplicada, fechaInicial, fechaFinal, arquitectoId, revisorId, contratistaId, observacion, detalles])
+  useBorradorActa(editando, marcaNueva, marcaAplicada, {
+    fechaInicial,
+    fechaFinal,
+    arquitectoId,
+    revisorId,
+    contratistaId,
+    observacion,
+    detalles,
+  })
 
   const hayRechazo = detalles.some((item) => !item.aprobado)
   const todosRechazados = detalles.length > 0 && detalles.every((item) => !item.aprobado)
@@ -328,7 +271,7 @@ export function TomaActas() {
       const { data } = await cliente.post<{ numeroActa: number }>('/api/actas', cuerpo)
       limpiarFormulario()
       setNumeroActa(data.numeroActa)
-      localStorage.removeItem(CLAVE)
+      descartarBorradorActa()
       await consultas.invalidateQueries({ queryKey: ['actas'] })
       await Swal.fire({
         icon: 'success',
@@ -365,7 +308,7 @@ export function TomaActas() {
     if (!editando) {
       limpiarFormulario()
       setNumeroActa(null)
-      localStorage.removeItem(CLAVE)
+      descartarBorradorActa()
     }
 
     navegar('/actas')
@@ -452,6 +395,21 @@ export function TomaActas() {
     setConflicto(false)
   }
 
+  if (editando && !hidratada && actaConsulta.data) {
+    aplicarActa(actaConsulta.data)
+    setHidratada(true)
+  }
+
+  if (marcaNueva !== marcaAplicada) {
+    setMarcaAplicada(marcaNueva)
+    limpiarFormulario()
+    setNumeroActa(null)
+    setModalAbierto(false)
+    setLineaClave(null)
+    setLinea(lineaVacia())
+    descartarBorradorActa()
+  }
+
   if (editando && actaConsulta.isError) {
     return (
       <section>
@@ -504,99 +462,9 @@ export function TomaActas() {
         <HistorialAuditoria entidad="Acta" entidadId={String(numeroRuta)} />
       ) : (
       <>
-      <div className="catalogo-panel">
-        <Row className="g-3">
-          <Col md={6}>
-            <Form.Group controlId="acta-fecha-inicial">
-              <Form.Label>Fecha inicial</Form.Label>
-              <Form.Control type="date" value={fechaInicial} disabled={cerrada || (editando && !administrador)} onChange={(evento) => setFechaInicial(evento.target.value)} />
-            </Form.Group>
-          </Col>
-          <Col md={6}>
-            <Form.Group controlId="acta-fecha-final">
-              <Form.Label>Fecha final</Form.Label>
-              <Form.Control type="date" value={fechaFinal} disabled={cerrada || (editando && !administrador)} onChange={(evento) => setFechaFinal(evento.target.value)} />
-            </Form.Group>
-          </Col>
-          <Col md={4}>
-            <Selector id="acta-arquitecto" etiqueta="Arquitecto" valor={arquitectoId} opciones={arquitectos.data} campo="nombre" deshabilitado={cerrada || (editando && !administrador)} alCambiar={setArquitectoId} />
-          </Col>
-          <Col md={4}>
-            <Selector id="acta-revisor" etiqueta="Revisor" valor={revisorId} opciones={revisores.data} campo="nombre" deshabilitado={cerrada || (editando && !administrador)} alCambiar={setRevisorId} />
-          </Col>
-          <Col md={4}>
-            <Selector id="acta-contratista" etiqueta="Contratista" valor={contratistaId} opciones={contratistas.data} campo="nombre" deshabilitado={cerrada || (editando && !administrador)} alCambiar={setContratistaId} />
-          </Col>
-        </Row>
-        {!revisor && !cerrada && (
-          <Button type="button" className="mt-3" onClick={abrirNuevaLinea}>
-            Agregar ítems
-          </Button>
-        )}
-      </div>
+      <EncabezadoActa fechaInicial={fechaInicial} fechaFinal={fechaFinal} arquitectoId={arquitectoId} revisorId={revisorId} contratistaId={contratistaId} cerrada={cerrada} editando={editando} administrador={administrador} revisor={revisor} arquitectos={arquitectos.data} revisores={revisores.data} contratistas={contratistas.data} alFechaInicial={setFechaInicial} alFechaFinal={setFechaFinal} alArquitecto={setArquitectoId} alRevisor={setRevisorId} alContratista={setContratistaId} alAgregar={abrirNuevaLinea} />
 
-      <div className="catalogo-panel">
-        {detalles.length === 0 ? (
-          <p>No hay ítems.</p>
-        ) : (
-          <div className="table-responsive">
-            <Table hover className="catalogo-tabla mb-0">
-              <thead>
-                <tr>
-                  <th>{revisor ? 'Revisión' : 'Seleccionar'}</th>
-                  <th>Perfil</th>
-                  <th>Estado</th>
-                  <th>Construcción</th>
-                  <th>Concepto</th>
-                  <th>Insumo</th>
-                  <th>UM</th>
-                  <th>Cantidad</th>
-                  <th>Precio</th>
-                  <th>Descripción</th>
-                  <th>Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detalles.map((item) => (
-                  <tr key={item.clave}>
-                    <td>
-                      {cerrada ? null : revisor ? (
-                        <div className="d-flex gap-1">
-                          <Button type="button" size="sm" variant={item.aprobado ? 'success' : 'outline-success'} onClick={() => revisarLinea(item.clave, true)}>
-                            Aprobar
-                          </Button>
-                          <Button type="button" size="sm" variant={!item.aprobado ? 'danger' : 'outline-danger'} onClick={() => revisarLinea(item.clave, false)}>
-                            Rechazar
-                          </Button>
-                        </div>
-                      ) : (
-                        (administrador || item.tipoUsuarioId === perfilDeNuevoItem(sesion?.tipoUsuario).id) && (
-                          <Button type="button" size="sm" variant="outline-primary" onClick={() => abrirLinea(item)}>
-                            Seleccionar
-                          </Button>
-                        )
-                      )}
-                    </td>
-                    <td>{item.tipoUsuario}</td>
-                    <td>{item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
-                    <td>{item.construccion}</td>
-                    <td>{item.concepto}</td>
-                    <td>{item.insumo ?? ''}</td>
-                    <td>{item.unidadMedida}</td>
-                    <td>{item.cantidad}</td>
-                    <td>{dinero(item.precio, 2)}</td>
-                    <td>{item.descripcion}</td>
-                    <td>{dinero(item.aprobado ? item.cantidad * item.precio : 0, 2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-        )}
-        <p className="total-acta">Total: {dinero(total, 2)}</p>
-        {todosRechazados && <p>Todos los ítems están rechazados. El valor del acta es 0.</p>}
-        {hayRechazo && !todosRechazados && <p>Los ítems rechazados suman 0.</p>}
-      </div>
+      <TablaItemsActa detalles={detalles} revisor={revisor} cerrada={cerrada} administrador={administrador} tipoUsuario={sesion?.tipoUsuario} total={total} todosRechazados={todosRechazados} hayRechazo={hayRechazo} alRevisar={revisarLinea} alAbrir={abrirLinea} />
 
       <div className="catalogo-panel">
         <Form.Group controlId="acta-comentario">
@@ -625,145 +493,10 @@ export function TomaActas() {
         </div>
       </div>
 
-      <Modal show={modalAbierto} onHide={() => setModalAbierto(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{lineaClave ? 'Modificar ítem' : 'Agregar ítem'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Selector id="linea-construccion" etiqueta="Construcción" valor={Number(linea.construccionId)} opciones={construcciones.data} campo="descripcion" alCambiar={(id) => setLinea({ ...linea, construccionId: id ? String(id) : '', presupuestoItemId: '' })} />
-          {(itemsPresupuesto.data?.length ?? 0) > 0 && (
-            <Form.Group className="mb-3" controlId="linea-presupuesto">
-              <Form.Label>Ítem presupuesto</Form.Label>
-              <Form.Select
-                value={linea.presupuestoItemId}
-                onChange={(evento) => {
-                  const id = Number(evento.target.value)
-                  const item = itemsPresupuesto.data?.find((fila) => fila.id === id)
-                  if (!item) {
-                    setLinea({ ...linea, presupuestoItemId: '' })
-                    return
-                  }
-                  setLinea({
-                    ...linea,
-                    presupuestoItemId: String(item.id),
-                    conceptoId: item.conceptoId ? String(item.conceptoId) : linea.conceptoId,
-                    unidadMedidaId: item.unidadMedidaId ? String(item.unidadMedidaId) : linea.unidadMedidaId,
-                    descripcion: item.descripcion,
-                    precio: item.precio == null ? linea.precio : String(item.precio),
-                  })
-                }}
-              >
-                <option value="">Sin ligar</option>
-                {itemsPresupuesto.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.codigo} · {item.descripcion}
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-          )}
-          <Selector id="linea-concepto" etiqueta="Concepto" valor={Number(linea.conceptoId)} opciones={conceptos.data} campo="descripcion" alCambiar={(id) => setLinea({ ...linea, conceptoId: id ? String(id) : '' })} />
-          <Selector id="linea-um" etiqueta="Unidad de medida" valor={Number(linea.unidadMedidaId)} opciones={unidades.data} campo="nombre" alCambiar={(id) => setLinea({ ...linea, unidadMedidaId: id ? String(id) : '' })} />
-          <Selector id="linea-material" etiqueta="Insumo" valor={Number(linea.insumoId)} opciones={insumos.data} campo="descripcion" alCambiar={(id) => setLinea({ ...linea, insumoId: id ? String(id) : '' })} />
-          <Form.Group className="mb-3" controlId="linea-precio">
-            <Form.Label>Precio</Form.Label>
-            <Form.Control value={linea.precio} inputMode="decimal" onChange={(evento) => setLinea({ ...linea, precio: evento.target.value })} />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="linea-cantidad">
-            <Form.Label>Cantidad</Form.Label>
-            <Form.Control value={linea.cantidad} inputMode="decimal" onChange={(evento) => setLinea({ ...linea, cantidad: evento.target.value })} />
-          </Form.Group>
-          <Form.Group controlId="linea-descripcion">
-            <Form.Label>Descripción</Form.Label>
-            <Form.Control value={linea.descripcion} maxLength={500} onChange={(evento) => setLinea({ ...linea, descripcion: evento.target.value })} />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          {lineaClave == null ? (
-            <Button type="button" onClick={guardarLinea}>
-              Agregar
-            </Button>
-          ) : (
-            <>
-              <Button type="button" onClick={guardarLinea}>
-                Modificar
-              </Button>
-              <Button type="button" variant="danger" onClick={eliminarLinea}>
-                Eliminar
-              </Button>
-            </>
-          )}
-          <Button type="button" variant="outline-secondary" onClick={() => setModalAbierto(false)}>
-            Cancelar
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ModalItemActa abierto={modalAbierto} lineaClave={lineaClave} linea={linea} construcciones={construcciones.data} conceptos={conceptos.data} unidades={unidades.data} insumos={insumos.data} itemsPresupuesto={itemsPresupuesto.data} alCerrar={() => setModalAbierto(false)} alLinea={setLinea} alGuardar={guardarLinea} alEliminar={eliminarLinea} />
       </>
       )}
     </section>
-  )
-}
-
-type LineaFormulario = {
-  construccionId: string
-  conceptoId: string
-  unidadMedidaId: string
-  insumoId: string
-  cantidad: string
-  precio: string
-  descripcion: string
-  presupuestoItemId: string
-}
-
-function lineaVacia(): LineaFormulario {
-  return {
-    construccionId: '',
-    conceptoId: '',
-    unidadMedidaId: '',
-    insumoId: '',
-    cantidad: '',
-    precio: '',
-    descripcion: '',
-    presupuestoItemId: '',
-  }
-}
-
-function useCatalogo(recurso: string) {
-  return useQuery({
-    queryKey: ['catalogo', recurso],
-    queryFn: async () => (await cliente.get<RegistroCatalogo[]>(`/api/${recurso}`)).data,
-  })
-}
-
-function Selector({
-  id,
-  etiqueta,
-  valor,
-  opciones,
-  campo,
-  deshabilitado = false,
-  alCambiar,
-}: {
-  id: string
-  etiqueta: string
-  valor: number
-  opciones: RegistroCatalogo[] | undefined
-  campo: 'nombre' | 'descripcion'
-  deshabilitado?: boolean
-  alCambiar: (id: number) => void
-}) {
-  return (
-    <Form.Group className="mb-3" controlId={id}>
-      <Form.Label>{etiqueta}</Form.Label>
-      <Form.Select value={valor || ''} disabled={deshabilitado} onChange={(evento) => alCambiar(Number(evento.target.value))}>
-        <option value="">Seleccione</option>
-        {(opciones ?? []).map((opcion) => (
-          <option key={opcion.id} value={opcion.id}>
-            {String(opcion[campo] ?? '')}
-          </option>
-        ))}
-      </Form.Select>
-    </Form.Group>
   )
 }
 
@@ -892,62 +625,6 @@ function lineaDesdeServidor(item: ActaGuardada['detalles'][number]): LineaBorrad
     descripcion: item.descripcion,
     aprobado: item.aprobado !== false,
     presupuestoItemId: item.presupuestoItemId ?? null,
-  }
-}
-
-type ItemPresupuestoActa = {
-  id: number
-  codigo: string
-  descripcion: string
-  unidad: string
-  conceptoId: number | null
-  unidadMedidaId: number | null
-  precio: number | null
-}
-
-function borradorVacio(): Borrador {
-  return {
-    fechaInicial: '',
-    fechaFinal: '',
-    arquitectoId: 0,
-    revisorId: 0,
-    contratistaId: 0,
-    observacion: '',
-    detalles: [],
-  }
-}
-
-function marcaDeActaNueva(estado: unknown) {
-  if (!estado || typeof estado !== 'object' || !('nueva' in estado)) {
-    return 0
-  }
-
-  const marca = (estado as { nueva?: unknown }).nueva
-  return typeof marca === 'number' ? marca : 0
-}
-
-function leerBorrador(): Borrador {
-  const vacio = borradorVacio()
-  try {
-    const texto = localStorage.getItem(CLAVE)
-    if (!texto) {
-      return vacio
-    }
-
-    const valor = JSON.parse(texto) as Partial<Borrador>
-    const detalles = Array.isArray(valor.detalles)
-      ? valor.detalles.map((item) => ({
-          ...item,
-          id: typeof item.id === 'number' ? item.id : null,
-          tipoUsuarioId: typeof item.tipoUsuarioId === 'number' ? item.tipoUsuarioId : perfilArquitecto,
-          tipoUsuario: typeof item.tipoUsuario === 'string' ? item.tipoUsuario : 'Arquitecto',
-          aprobado: item.aprobado !== false,
-          presupuestoItemId: typeof item.presupuestoItemId === 'number' ? item.presupuestoItemId : null,
-        }))
-      : []
-    return { ...vacio, ...valor, detalles }
-  } catch {
-    return vacio
   }
 }
 

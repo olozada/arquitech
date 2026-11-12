@@ -1,6 +1,6 @@
 using Arquitectos.Application.Dashboard;
 
-namespace Arquitectos.Infrastructure.Dashboard;
+namespace Arquitectos.Application.Dashboard;
 
 public static class ZonaHorariaDashboard
 {

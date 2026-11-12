@@ -1,3 +1,4 @@
+using Arquitectos.Application;
 using Arquitectos.Application.Auditoria;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +26,7 @@ public sealed class AuditoriaController : ControllerBase
         [FromQuery] DateOnly? hasta,
         [FromQuery] int? usuarioId,
         [FromQuery] int pagina = 1,
+        [FromQuery] int tamano = Paginacion.TamanoDefecto,
         CancellationToken cancellationToken = default) =>
-        await _consulta.ConsultarAsync(entidad, entidadId, desde, hasta, usuarioId, pagina, cancellationToken);
+        await _consulta.ConsultarAsync(entidad, entidadId, desde, hasta, usuarioId, pagina, tamano, cancellationToken);
 }

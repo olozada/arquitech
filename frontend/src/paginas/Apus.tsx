@@ -4,7 +4,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Button, Form, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
+import { tamanoListado } from '../api/pagina'
+import type { Pagina } from '../api/pagina'
 import { dinero as formatoDinero } from '../actas/formato'
+import { Paginador } from '../componentes/Paginador'
 
 function dinero(valor: number) {
   return formatoDinero(valor, 2)
@@ -29,20 +32,21 @@ export function Apus() {
 function ListadoApu() {
   const [texto, setTexto] = useState('')
   const [clase, setClase] = useState<'todos' | 'sub' | 'normales'>('todos')
+  const [pagina, setPagina] = useState(1)
   const navegar = useNavigate()
   const lista = useQuery({
-    queryKey: ['apus', texto],
-    queryFn: async () => (await cliente.get<Resumen[]>('/api/apu', { params: { texto: texto || undefined } })).data,
+    queryKey: ['apus', texto, clase, pagina],
+    queryFn: async () =>
+      (await cliente.get<Pagina<Resumen>>('/api/apu', {
+        params: {
+          texto: texto || undefined,
+          esSubanalisis: clase === 'todos' ? undefined : clase === 'sub',
+          pagina,
+          tamano: tamanoListado,
+        },
+      })).data,
   })
-  const filas = (lista.data ?? []).filter((apu) => {
-    if (clase === 'sub') {
-      return apu.esSubanalisis
-    }
-    if (clase === 'normales') {
-      return !apu.esSubanalisis
-    }
-    return true
-  })
+  const filas = lista.data?.items ?? []
 
   return (
     <section>
@@ -53,8 +57,8 @@ function ListadoApu() {
         </Button>
       </div>
       <div className="d-flex gap-2 mb-3">
-        <Form.Control placeholder="Buscar" value={texto} onChange={(evento) => setTexto(evento.target.value)} />
-        <Form.Select style={{ maxWidth: '14rem' }} value={clase} onChange={(evento) => setClase(evento.target.value as typeof clase)}>
+        <Form.Control placeholder="Buscar" value={texto} onChange={(evento) => { setPagina(1); setTexto(evento.target.value) }} />
+        <Form.Select style={{ maxWidth: '14rem' }} value={clase} onChange={(evento) => { setPagina(1); setClase(evento.target.value as typeof clase) }}>
           <option value="todos">Todos</option>
           <option value="sub">Sub-análisis</option>
           <option value="normales">Normales</option>
@@ -85,6 +89,7 @@ function ListadoApu() {
             ))}
           </tbody>
         </Table>
+        <Paginador pagina={pagina} total={lista.data?.total ?? 0} tamano={lista.data?.tamano ?? tamanoListado} alCambiar={setPagina} />
       </div>
     </section>
   )

@@ -1,17 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import axios from 'axios'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Form, Modal, Offcanvas, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
+import { listarTodo } from '../api/pagina'
 import { HistorialAuditoria } from '../componentes/HistorialAuditoria'
-import { descargarPresupuesto, usePresupuesto } from '../api/presupuesto'
-import type { CapituloPresupuesto, ItemPresupuesto, PresupuestoDetalle } from '../api/presupuesto'
+import { descargarPresupuesto } from '../api/presupuesto'
+import type { ItemPresupuesto, PresupuestoDetalle } from '../api/presupuesto'
 import { esAdministrador } from '../auth/perfiles'
 import { useSesion } from '../auth/contextoSesion'
-import { dinero, redondear } from '../actas/formato'
+import { dinero } from '../actas/formato'
 import { EditorApu } from '../presupuesto/EditorApu'
+import { useEditorPresupuesto } from '../presupuesto/useEditorPresupuesto'
+import { CapituloPresupuesto } from '../presupuesto/CapituloPresupuesto'
+import { ModalMover } from '../presupuesto/ModalMover'
+import { ResumenCostos } from '../presupuesto/ResumenCostos'
 
 type Recalculo = {
   actual: { total: number }
@@ -30,12 +34,21 @@ type Recalculo = {
 export function EditorPresupuesto() {
   const { id } = useParams()
   const presupuestoId = Number(id)
-  const consulta = usePresupuesto(presupuestoId)
-  const [borrador, setBorrador] = useState<PresupuestoDetalle | null>(null)
-  const [guardando, setGuardando] = useState(false)
-  const [sucio, setSucio] = useState(false)
-  const [avisoGuardado, setAvisoGuardado] = useState('')
-  const [conflicto, setConflicto] = useState(false)
+  const { sesion } = useSesion()
+  const administrador = esAdministrador(sesion?.tipoUsuario)
+  const {
+    consulta,
+    borrador,
+    setBorrador,
+    sucio,
+    setSucio,
+    guardando,
+    setGuardando,
+    avisoGuardado,
+    conflicto,
+    resumen,
+    guardar,
+  } = useEditorPresupuesto(presupuestoId, administrador)
   const [medicionItem, setMedicionItem] = useState<{ capitulo: number; item: number } | null>(null)
   const [buscarApu, setBuscarApu] = useState<number | null>(null)
   const [textoApu, setTextoApu] = useState('')
@@ -48,22 +61,13 @@ export function EditorPresupuesto() {
   const [textoConcepto, setTextoConcepto] = useState('')
   const [recalculo, setRecalculo] = useState<Recalculo | null>(null)
   const [resaltado, setResaltado] = useState<number | null>(null)
-  const espera = useRef<number | undefined>(undefined)
-  const consultas = useQueryClient()
-  const { sesion } = useSesion()
-  const administrador = esAdministrador(sesion?.tipoUsuario)
   const [pestana, setPestana] = useState<'editor' | 'historial'>('editor')
+  const consultas = useQueryClient()
   const apus = useQuery({
     queryKey: ['apus'],
     enabled: administrador,
-    queryFn: async () => (await cliente.get<Array<{ id: number; codigo: string | null; descripcion: string; unidad: string }>>('/api/apu')).data,
+    queryFn: async () => listarTodo<{ id: number; codigo: string | null; descripcion: string; unidad: string }>('/api/apu'),
   })
-
-  useEffect(() => {
-    if (consulta.data) {
-      setBorrador(structuredClone(consulta.data))
-    }
-  }, [consulta.data])
 
   useEffect(() => {
     if (resaltado == null) {
@@ -74,54 +78,12 @@ export function EditorPresupuesto() {
     return () => window.clearTimeout(temporizador)
   }, [resaltado])
 
-  const resumen = useMemo(() => (borrador ? calcular(borrador) : null), [borrador])
-  const editable = administrador && borrador?.estado === 'Borrador' 
+  const editable = administrador && borrador?.estado === 'Borrador'
   const validacion = useQuery({
     queryKey: ['presupuesto-validacion', presupuestoId, borrador?.rowVersion],
     enabled: presupuestoId > 0 && !sucio,
     queryFn: async () => (await cliente.get<Array<{ itemId: number | null; codigo: string; tipo: string; mensaje: string }>>(`/api/presupuestos/${presupuestoId}/validacion`)).data,
   })
-
-  useEffect(() => {
-    if (!sucio || !editable) {
-      return
-    }
-    window.clearTimeout(espera.current)
-    espera.current = window.setTimeout(() => {
-      void guardar(true)
-    }, 600)
-    return () => window.clearTimeout(espera.current)
-  }, [borrador, sucio, editable])
-
-  async function guardar(silencioso = false) {
-    if (!borrador) {
-      return
-    }
-    setGuardando(true)
-    setAvisoGuardado('Guardando…')
-    try {
-      const { data } = await cliente.put<PresupuestoDetalle>(`/api/presupuestos/${borrador.id}`, cuerpo(borrador))
-      setSucio(false)
-      setConflicto(false)
-      setBorrador(data)
-      setAvisoGuardado('Guardado')
-      await consultas.invalidateQueries({ queryKey: ['presupuesto', borrador.id] })
-      if (!silencioso) {
-        await Swal.fire({ icon: 'success', title: 'Presupuesto guardado', confirmButtonColor: '#1abb9c' })
-      }
-    } catch (error) {
-      setAvisoGuardado('Error')
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
-        setConflicto(true)
-        return
-      }
-      if (!silencioso) {
-        await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: mensajeError(error) })
-      }
-    } finally {
-      setGuardando(false)
-    }
-  }
 
   async function aprobar() {
     if (!borrador) {
@@ -284,168 +246,26 @@ export function EditorPresupuesto() {
         )}
       </p>
       {borrador.capitulos.map((capitulo, indiceCapitulo) => (
-        <details key={capitulo.id || indiceCapitulo} className="catalogo-panel mb-3" open>
-          <summary
-            draggable={editable}
-            onDragStart={(evento) => evento.dataTransfer.setData('text/plain', String(indiceCapitulo))}
-            onDragOver={(evento) => evento.preventDefault()}
-            onDrop={(evento) => {
-              evento.preventDefault()
-              const origen = Number(evento.dataTransfer.getData('text/plain'))
-              if (!Number.isInteger(origen) || origen === indiceCapitulo) {
-                return
-              }
-              const capitulos = [...borrador.capitulos]
-              const [movido] = capitulos.splice(origen, 1)
-              capitulos.splice(indiceCapitulo, 0, movido)
-              void cliente.put<PresupuestoDetalle>(`/api/presupuestos/${borrador.id}/orden`, {
-                rowVersion: borrador.rowVersion,
-                capitulos: capitulos.filter((capituloOrden) => capituloOrden.id > 0).map((capituloOrden, indice) => ({
-                  id: capituloOrden.id,
-                  orden: indice + 1,
-                  items: capituloOrden.items.map((fila) => fila.id).filter((itemId) => itemId > 0),
-                })),
-              }).then(({ data }) => setBorrador(data))
-            }}
-          >
-            <strong>
-              {capitulo.numero}. {capitulo.nombre}
-            </strong>{' '}
-            <span className="text-secondary">{dinero(totalCapitulo(capitulo), 2)}</span>
-          </summary>
-          <Table responsive size="sm" className="presupuesto-hoja mt-2 mb-0">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Descripción</th>
-                <th>Unidad</th>
-                <th>Cantidad</th>
-                <th>APU</th>
-                <th>Factor</th>
-                <th className="text-end">Material</th>
-                <th className="text-end">MO</th>
-                <th className="text-end">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {capitulo.items.map((item, indiceItem) => (
-                <tr
-                  key={item.id || `${indiceCapitulo}-${indiceItem}`}
-                  id={item.id > 0 ? `item-${item.id}` : undefined}
-                  className={resaltado === item.id ? 'table-warning' : undefined}
-                  hidden={filtroAvisos && !(validacion.data ?? []).some((aviso) => aviso.itemId === item.id)}
-                >
-                  <td>
-                    <Form.Control size="sm" value={item.codigo} disabled={!editable} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { codigo: evento.target.value })} />
-                  </td>
-                  <td>
-                    <Form.Control size="sm" value={item.descripcion} disabled={!editable} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { descripcion: evento.target.value })} />
-                    {item.avisoUnidad && <small className="text-danger">La unidad no coincide con el APU. Indique un factor de conversión.</small>}
-                  </td>
-                  <td>
-                    <Form.Control size="sm" value={item.unidad} disabled={!editable} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { unidad: evento.target.value })} />
-                  </td>
-                  <td>
-                    <Form.Control size="sm" value={item.cantidad} disabled={!editable || item.mediciones.length > 0} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { cantidad: Number(evento.target.value) || 0 })} />
-                    {editable && !borrador.esPlantilla && (
-                      <>
-                        <Button type="button" variant="link" size="sm" className="p-0" onClick={() => setMedicionItem({ capitulo: indiceCapitulo, item: indiceItem })}>
-                          Mediciones
-                        </Button>
-                        <Form.Select
-                          size="sm"
-                          value={item.cantidadOrigenItemId ?? ''}
-                          onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { cantidadOrigenItemId: Number(evento.target.value) || null })}
-                        >
-                          <option value="">Digitar</option>
-                          {borrador.capitulos.flatMap((grupo) => grupo.items).filter((candidato) => candidato.id > 0 && candidato.id !== item.id).map((candidato) => (
-                            <option key={candidato.id} value={candidato.id}>
-                              = {candidato.codigo} × {item.cantidadOrigenFactor}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </>
-                    )}
-                  </td>
-                  <td>
-                    <Form.Select size="sm" value={item.apuId ?? ''} disabled={!editable} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { apuId: Number(evento.target.value) || null, desdeApu: Number(evento.target.value) > 0 })}>
-                      <option value="">Valor directo</option>
-                      {(apus.data ?? []).map((apu) => (
-                        <option key={apu.id} value={apu.id}>
-                          {(apu.codigo ? `${apu.codigo} ` : '') + apu.descripcion}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </td>
-                  <td>
-                    <Form.Control size="sm" value={item.factorConversionApu} disabled={!editable} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { factorConversionApu: Number(evento.target.value) || 1 })} />
-                  </td>
-                  <td className="text-end">
-                    {editable && !item.desdeApu ? (
-                      <Form.Control size="sm" className="text-end" value={redondear(item.valorMaterialUnitario, 2)} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { valorMaterialUnitario: Number(evento.target.value) || 0 })} />
-                    ) : (
-                      dinero(item.valorMaterialUnitario, 2)
-                    )}
-                  </td>
-                  <td className="text-end">
-                    {editable && !item.desdeApu ? (
-                      <Form.Control size="sm" className="text-end" value={redondear(item.valorManoObraUnitario, 2)} onChange={(evento) => cambiar(indiceCapitulo, indiceItem, { valorManoObraUnitario: Number(evento.target.value) || 0 })} />
-                    ) : (
-                      dinero(item.valorManoObraUnitario, 2)
-                    )}
-                  </td>
-                  <td className="text-end">{dinero(item.cantidad * (item.valorMaterialUnitario + item.valorManoObraUnitario), 2)}</td>
-                  <td>
-                    {editable && item.id > 0 && (
-                      <>
-                        <Button type="button" size="sm" variant="link" onClick={() => void postAccion(`items/${item.id}/duplicar`, { rowVersion: borrador.rowVersion })}>
-                          Duplicar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="link"
-                          onClick={() => {
-                            setMover({ itemId: item.id, capituloId: capitulo.id })
-                            setDestinoCapitulo(borrador.capitulos.find((candidato) => candidato.id !== capitulo.id && candidato.id > 0)?.id ?? 0)
-                          }}
-                        >
-                          Mover
-                        </Button>
-                        <Button type="button" size="sm" variant="link" onClick={() => { setConceptoItem({ capitulo: indiceCapitulo, item: indiceItem }); setTextoConcepto('') }}>
-                          Concepto
-                        </Button>
-                        {item.apuId != null && item.apuId > 0 && (
-                          <Button type="button" size="sm" variant="link" onClick={() => setPanelApu({ modo: 'editar', apuId: item.apuId ?? 0 })}>
-                            Editar APU
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    {(validacion.data ?? []).filter((aviso) => aviso.itemId === item.id).map((aviso) => (
-                      <div key={aviso.tipo} className="text-danger small" title={aviso.mensaje}>
-                        {aviso.mensaje}
-                      </div>
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          {editable && !borrador.esPlantilla && (
-            <div className="d-flex gap-2">
-              <Button type="button" variant="link" onClick={() => agregarItem(indiceCapitulo)}>
-                Ítem manual
-              </Button>
-              <Button type="button" variant="link" onClick={() => { setBuscarApu(indiceCapitulo); setElegidos([]) }}>
-                Desde APU
-              </Button>
-              <Button type="button" variant="link" onClick={() => setPanelApu({ modo: 'crear', capitulo: indiceCapitulo, unidad: capitulo.items.at(-1)?.unidad ?? '' })}>
-                Crear APU
-              </Button>
-            </div>
-          )}
-        </details>
+        <CapituloPresupuesto
+          key={capitulo.id || indiceCapitulo}
+          indiceCapitulo={indiceCapitulo}
+          borrador={borrador}
+          editable={!!editable}
+          resaltado={resaltado}
+          filtroAvisos={filtroAvisos}
+          avisos={validacion.data ?? []}
+          apus={apus.data ?? []}
+          alActualizar={(data) => setBorrador(data)}
+          alCambiar={(item, cambios) => cambiar(indiceCapitulo, item, cambios)}
+          alAgregarItem={() => agregarItem(indiceCapitulo)}
+          alBuscarApu={() => { setBuscarApu(indiceCapitulo); setElegidos([]) }}
+          alCrearApu={() => setPanelApu({ modo: 'crear', capitulo: indiceCapitulo, unidad: capitulo.items.at(-1)?.unidad ?? '' })}
+          alMedicion={(item) => setMedicionItem({ capitulo: indiceCapitulo, item })}
+          alDuplicar={(itemId) => void postAccion(`items/${itemId}/duplicar`, { rowVersion: borrador.rowVersion })}
+          alMover={(itemId, destino) => { setMover({ itemId, capituloId: capitulo.id }); setDestinoCapitulo(destino) }}
+          alConcepto={(item) => { setConceptoItem({ capitulo: indiceCapitulo, item }); setTextoConcepto('') }}
+          alEditarApu={(apuId) => setPanelApu({ modo: 'editar', apuId })}
+        />
       ))}
       {editable && (
         <Button
@@ -462,13 +282,7 @@ export function EditorPresupuesto() {
           Agregar capítulo
         </Button>
       )}
-      <div className="catalogo-panel presupuesto-resumen">
-        <p>Subtotal {dinero(resumen.subtotal, 2)}</p>
-        <p>Imprevistos {dinero(resumen.imprevistos, 2)} · Incremento {dinero(resumen.incremento, 2)}</p>
-        <p>Administración {dinero(resumen.administracion, 2)} · Utilidad {dinero(resumen.utilidad, 2)} · IVA {dinero(resumen.iva, 2)}</p>
-        <p className="presupuesto-total">Total {dinero(resumen.total, 2)}</p>
-        <p>Valor por m² {resumen.m2 == null ? '—' : dinero(resumen.m2, 2)}</p>
-      </div>
+      <ResumenCostos resumen={resumen} />
       <Modal show={medicionItem !== null} onHide={() => setMedicionItem(null)} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>Mediciones</Modal.Title>
@@ -541,22 +355,15 @@ export function EditorPresupuesto() {
           )}
         </Offcanvas.Body>
       </Offcanvas>
-      <Modal show={mover !== null} onHide={() => setMover(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Mover ítem</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Select value={destinoCapitulo} onChange={(evento) => setDestinoCapitulo(Number(evento.target.value))}>
-            {borrador.capitulos.filter((capitulo) => capitulo.id !== mover?.capituloId && capitulo.id > 0).map((capitulo) => (
-              <option key={capitulo.id} value={capitulo.id}>{capitulo.numero}. {capitulo.nombre}</option>
-            ))}
-          </Form.Select>
-          <div className="d-flex gap-2 mt-3">
-            <Button type="button" onClick={() => void confirmarMovimiento()}>Mover</Button>
-            <Button type="button" variant="outline-secondary" onClick={() => setMover(null)}>Cancelar</Button>
-          </div>
-        </Modal.Body>
-      </Modal>
+      <ModalMover
+        abierto={mover !== null}
+        capitulos={borrador.capitulos}
+        capituloId={mover?.capituloId}
+        destino={destinoCapitulo}
+        alDestino={setDestinoCapitulo}
+        alConfirmar={() => void confirmarMovimiento()}
+        alCerrar={() => setMover(null)}
+      />
       <Modal show={conceptoItem !== null} onHide={() => setConceptoItem(null)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Concepto</Modal.Title>
@@ -796,64 +603,6 @@ function Mediciones({
   function editar(indice: number, cambios: Partial<ItemPresupuesto['mediciones'][number]>) {
     alCambiar(item.mediciones.map((medicion, posicion) => (posicion === indice ? { ...medicion, ...cambios } : medicion)))
   }
-}
-
-function cuerpo(presupuesto: PresupuestoDetalle) {
-  return {
-    construccionId: presupuesto.construccionId,
-    nombre: presupuesto.nombre,
-    rowVersion: presupuesto.rowVersion,
-    fecha: presupuesto.fecha,
-    mesesProyecto: presupuesto.mesesProyecto,
-    areaConstruidaM2: presupuesto.areaConstruidaM2,
-    pctImprevistos: presupuesto.pctImprevistos,
-    pctIncremento: presupuesto.pctIncremento,
-    pctAdministracion: presupuesto.pctAdministracion,
-    pctUtilidad: presupuesto.pctUtilidad,
-    pctIvaUtilidad: presupuesto.pctIvaUtilidad,
-    capitulos: presupuesto.capitulos.map((capitulo) => ({
-      id: capitulo.id > 0 ? capitulo.id : null,
-      numero: capitulo.numero,
-      nombre: capitulo.nombre,
-      items: capitulo.items.map((item) => ({
-        id: item.id > 0 ? item.id : null,
-        codigo: item.codigo,
-        descripcion: item.descripcion,
-        unidad: item.unidad,
-        unidadMedidaId: item.unidadMedidaId,
-        apuId: item.apuId,
-        factorConversionApu: item.factorConversionApu || 1,
-        conceptoId: item.conceptoId,
-        cantidad: item.cantidad,
-        cantidadOrigenItemId: item.cantidadOrigenItemId,
-        cantidadOrigenFactor: item.cantidadOrigenFactor || 1,
-        valorMaterialUnitario: item.valorMaterialUnitario,
-        valorManoObraUnitario: item.valorManoObraUnitario,
-        mediciones: item.mediciones.map((medicion) => ({
-          ubicacion: medicion.ubicacion,
-          veces: medicion.veces || 1,
-          largo: medicion.largo,
-          ancho: medicion.ancho,
-          alto: medicion.alto,
-        })),
-      })),
-    })),
-  }
-}
-
-function calcular(presupuesto: PresupuestoDetalle) {
-  const subtotal = presupuesto.capitulos.reduce((suma, capitulo) => suma + totalCapitulo(capitulo), 0)
-  const imprevistos = subtotal * presupuesto.pctImprevistos
-  const incremento = subtotal * presupuesto.pctIncremento
-  const administracion = subtotal * presupuesto.pctAdministracion
-  const utilidad = subtotal * presupuesto.pctUtilidad
-  const iva = utilidad * presupuesto.pctIvaUtilidad
-  const total = subtotal + imprevistos + incremento + administracion + utilidad + iva
-  return { subtotal, imprevistos, incremento, administracion, utilidad, iva, total, m2: presupuesto.areaConstruidaM2 > 0 ? total / presupuesto.areaConstruidaM2 : null }
-}
-
-function totalCapitulo(capitulo: CapituloPresupuesto) {
-  return capitulo.items.reduce((suma, item) => suma + item.cantidad * (item.valorMaterialUnitario + item.valorManoObraUnitario), 0)
 }
 
 function parcial(veces: number, largo: number | null, ancho: number | null, alto: number | null) {

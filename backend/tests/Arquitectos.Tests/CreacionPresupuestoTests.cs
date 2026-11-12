@@ -78,7 +78,7 @@ public sealed class CreacionPresupuestoTests : IDisposable
             ConstruccionId = obra.Id,
             AreaConstruidaM2 = 40,
             Origen = "plantilla",
-            OrigenPresupuestoId = plantilla.Valor.Id
+            OrigenPresupuestoId = plantilla.Valor!.Id
         }, _admin, CancellationToken.None);
         var detalle = (await _servicio.ObtenerAsync(nuevo.Valor!.Id, _admin, CancellationToken.None)).Valor!;
         var item = detalle.Capitulos.Single().Items.Single();

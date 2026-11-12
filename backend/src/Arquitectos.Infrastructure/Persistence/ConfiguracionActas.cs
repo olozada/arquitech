@@ -64,6 +64,8 @@ public sealed class ActaDetalleConfiguracion : IEntityTypeConfiguration<ActaDeta
             .HasComputedColumnSql("[Cantidad] * [Precio]", stored: true);
         builder.HasIndex(d => new { d.ConstruccionId, d.ConceptoId });
         builder.HasIndex(d => new { d.ConceptoId, d.UnidadMedidaId, d.InsumoId });
+        builder.HasIndex(d => new { d.NumeroActa, d.InsumoId });
+        builder.HasIndex(d => new { d.PresupuestoItemId, d.Aprobado });
 
         builder.HasOne(d => d.Acta)
             .WithMany(a => a.Detalles)

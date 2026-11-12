@@ -75,7 +75,7 @@ public sealed class ActaServicioTests : IDisposable
 
         Assert.Equal(EstadoActa.Ok, creada.Estado);
         Assert.Equal(250m, consulta.Valor!.TotalGeneral);
-        Assert.Equal(250m, consulta.Valor.Actas.Single().Total);
+        Assert.Equal(250m, consulta.Valor.Items.Single().Total);
         Assert.Equal(250m, acta.Valor!.Total);
         Assert.Equal(200m, acta.Valor.Detalles[0].Subtotal);
         Assert.Equal(50m, acta.Valor.Detalles[1].Subtotal);
@@ -285,7 +285,7 @@ public sealed class ActaServicioTests : IDisposable
         Assert.Contains(actualizada.Valor.Detalles, detalle =>
             detalle.Descripcion == "Trabajo del contratista" &&
             detalle.TipoUsuarioId == SemillaInicial.TipoContratistaId);
-        Assert.Equal(numero, listado.Valor!.Actas.Single().NumeroActa);
+        Assert.Equal(numero, listado.Valor!.Items.Single().NumeroActa);
         Assert.Equal(EstadoActa.NoEncontrado, ajeno.Estado);
     }
 
@@ -345,7 +345,7 @@ public sealed class ActaServicioTests : IDisposable
         Assert.Equal(150m, revisada.Valor.Detalles.Single(detalle => detalle.Id == segunda.Id).Subtotal);
         Assert.Equal(primera.Cantidad, revisada.Valor.Detalles.Single(detalle => detalle.Id == primera.Id).Cantidad);
         Assert.Equal(0m, todoRechazado.Valor!.Total);
-        Assert.Equal(0m, listado.Valor!.Actas.Single().Total);
+        Assert.Equal(0m, listado.Valor!.Items.Single().Total);
         Assert.Equal(0m, listado.Valor.TotalGeneral);
     }
 
@@ -416,11 +416,11 @@ public sealed class ActaServicioTests : IDisposable
         var abiertas = await Consultar(incluida, null, null, null, null, false);
         var cerradas = await Consultar(incluida, null, null, null, null, true);
 
-        Assert.Equal(creada.Valor.NumeroActa, porObra.Actas.Single().NumeroActa);
-        Assert.Equal(creada.Valor.NumeroActa, porContratista.Actas.Single().NumeroActa);
-        Assert.Equal(creada.Valor.NumeroActa, porRevisor.Actas.Single().NumeroActa);
-        Assert.Equal(creadaOtra.Valor!.NumeroActa, abiertas.Actas.Single().NumeroActa);
-        Assert.Equal(creada.Valor.NumeroActa, cerradas.Actas.Single().NumeroActa);
+        Assert.Equal(creada.Valor.NumeroActa, porObra.Items.Single().NumeroActa);
+        Assert.Equal(creada.Valor.NumeroActa, porContratista.Items.Single().NumeroActa);
+        Assert.Equal(creada.Valor.NumeroActa, porRevisor.Items.Single().NumeroActa);
+        Assert.Equal(creadaOtra.Valor!.NumeroActa, abiertas.Items.Single().NumeroActa);
+        Assert.Equal(creada.Valor.NumeroActa, cerradas.Items.Single().NumeroActa);
     }
 
     [Fact]

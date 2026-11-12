@@ -6,6 +6,9 @@ import { useForm } from 'react-hook-form'
 import Swal from 'sweetalert2'
 import { z } from 'zod'
 import { cliente, mensajeError } from '../api/cliente'
+import { Paginador } from '../componentes/Paginador'
+import { tamanoListado } from '../api/pagina'
+import type { Pagina } from '../api/pagina'
 import { errorContrasena } from '../auth/contrasena'
 import { useSesion } from '../auth/contextoSesion'
 
@@ -75,10 +78,11 @@ export function Usuarios() {
     enabled: sesion?.tipoUsuario === 'Administrador',
   })
 
+  const [pagina, setPagina] = useState(1)
   const lista = useQuery({
-    queryKey: ['usuarios'],
+    queryKey: ['usuarios', pagina],
     queryFn: async () => {
-      const { data } = await cliente.get<Usuario[]>('/api/usuarios')
+      const { data } = await cliente.get<Pagina<Usuario>>('/api/usuarios', { params: { pagina, tamano: tamanoListado } })
       return data
     },
     enabled: sesion?.tipoUsuario === 'Administrador',
@@ -155,7 +159,7 @@ export function Usuarios() {
   }
 
   const ocupado = isSubmitting || guardar.isPending || quitar.isPending
-  const registros = lista.data ?? []
+  const registros = lista.data?.items ?? []
 
   function seleccionar(registro: Usuario) {
     setSeleccionId(registro.id)
@@ -328,6 +332,7 @@ export function Usuarios() {
                 ))}
               </tbody>
             </Table>
+            <Paginador pagina={pagina} total={lista.data?.total ?? 0} tamano={lista.data?.tamano ?? tamanoListado} alCambiar={setPagina} />
           </div>
         )}
       </div>

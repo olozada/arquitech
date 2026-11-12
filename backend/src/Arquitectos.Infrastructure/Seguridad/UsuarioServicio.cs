@@ -20,16 +20,24 @@ public sealed class UsuarioServicio : IUsuarioServicio
         _revocacion = revocacion;
     }
 
-    public async Task<IReadOnlyList<UsuarioDto>> ListarAsync(bool incluirInactivos, CancellationToken cancellationToken)
+    public async Task<PaginaDto<UsuarioDto>> ListarAsync(
+        bool incluirInactivos,
+        CancellationToken cancellationToken,
+        int pagina = 1,
+        int tamano = Paginacion.TamanoDefecto)
     {
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
         var consulta = _context.Usuarios.AsNoTracking();
         if (!incluirInactivos)
         {
             consulta = consulta.Where(usuario => usuario.Activo);
         }
 
-        return await consulta
+        var total = await consulta.CountAsync(cancellationToken);
+        var items = await consulta
             .OrderBy(usuario => usuario.NombreUsuario)
+            .Skip((paginaOk - 1) * tamanoOk)
+            .Take(tamanoOk)
             .Select(usuario => new UsuarioDto(
                 usuario.Id,
                 usuario.NombreUsuario,
@@ -39,6 +47,7 @@ public sealed class UsuarioServicio : IUsuarioServicio
                 usuario.Activo,
                 usuario.ArquitectoId ?? usuario.ContratistaId ?? usuario.RevisorId))
             .ToListAsync(cancellationToken);
+        return new PaginaDto<UsuarioDto>(items, total, paginaOk, tamanoOk);
     }
 
     public async Task<IReadOnlyList<TipoUsuarioDto>> ListarTiposAsync(CancellationToken cancellationToken)

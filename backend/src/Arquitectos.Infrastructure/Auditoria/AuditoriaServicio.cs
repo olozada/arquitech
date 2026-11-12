@@ -10,7 +10,6 @@ namespace Arquitectos.Infrastructure.Auditoria;
 
 public sealed class AuditoriaServicio : IAuditoria, IConsultaAuditoria
 {
-    private const int Tamano = 50;
 
     private readonly ArquitectosDbContext _context;
     private readonly IHttpContextAccessor _acceso;
@@ -49,9 +48,10 @@ public sealed class AuditoriaServicio : IAuditoria, IConsultaAuditoria
         DateOnly? hasta,
         int? usuarioId,
         int pagina,
+        int tamano,
         CancellationToken cancellationToken)
     {
-        pagina = pagina < 1 ? 1 : pagina;
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
         var consulta = _context.Auditorias.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(entidad) && !string.IsNullOrWhiteSpace(entidadId))
         {
@@ -91,8 +91,8 @@ public sealed class AuditoriaServicio : IAuditoria, IConsultaAuditoria
         var filas = await consulta
             .OrderByDescending(registro => registro.Fecha)
             .ThenByDescending(registro => registro.Id)
-            .Skip((pagina - 1) * Tamano)
-            .Take(Tamano)
+            .Skip((paginaOk - 1) * tamanoOk)
+            .Take(tamanoOk)
             .ToListAsync(cancellationToken);
         var usuarios = await NombresAsync(filas, cancellationToken);
         return new PaginaAuditoriaDto(
@@ -107,8 +107,8 @@ public sealed class AuditoriaServicio : IAuditoria, IConsultaAuditoria
                 registro.CambiosJson,
                 registro.Ip)).ToList(),
             total,
-            pagina,
-            Tamano);
+            paginaOk,
+            tamanoOk);
     }
 
     private async Task<IQueryable<RegistroAuditoria>> IncluirRelacionados(

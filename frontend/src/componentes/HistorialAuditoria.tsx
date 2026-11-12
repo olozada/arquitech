@@ -16,7 +16,7 @@ export type RegistroAuditoria = {
 }
 
 type PaginaAuditoria = {
-  registros: RegistroAuditoria[]
+  items: RegistroAuditoria[]
   total: number
   pagina: number
   tamano: number
@@ -59,6 +59,7 @@ export function HistorialAuditoria({
           hasta: aplicado.hasta || undefined,
           usuarioId: aplicado.usuarioId || undefined,
           pagina,
+          tamano: 50,
         },
       })).data,
   })
@@ -105,10 +106,10 @@ export function HistorialAuditoria({
       )}
       {consulta.isPending && <p>Cargando historial…</p>}
       {consulta.isError && <p>No se pudo cargar el historial.</p>}
-      {consulta.data && consulta.data.registros.length === 0 && <p>No hay movimientos.</p>}
-      {consulta.data && consulta.data.registros.length > 0 && (
+      {consulta.data && consulta.data.items.length === 0 && <p>No hay movimientos.</p>}
+      {consulta.data && consulta.data.items.length > 0 && (
         <ol className="historial-linea">
-          {consulta.data.registros.map((registro) => (
+          {consulta.data.items.map((registro) => (
             <li key={registro.id}>
               <div className="d-flex justify-content-between gap-3 flex-wrap">
                 <strong>{registro.accion}</strong>

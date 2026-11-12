@@ -17,6 +17,8 @@ type Propiedades = {
   configuracion: ConfiguracionCatalogo
 }
 
+const sinRegistros: RegistroCatalogo[] = []
+
 export function CatalogoCrud({ configuracion }: Propiedades) {
   const consultas = useQueryClient()
   const [seleccionId, setSeleccionId] = useState<number | null>(null)
@@ -103,7 +105,7 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
     },
   })
 
-  const registros = lista.data ?? []
+  const registros = lista.data ?? sinRegistros
   const visibles = useMemo(
     () => filtrarRegistros(registros, configuracion.columnas, busqueda),
     [registros, configuracion.columnas, busqueda],

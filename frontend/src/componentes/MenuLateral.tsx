@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, createElement } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import type { OpcionMenu } from '../api/menu'
+import { ChevronDown, ChevronUp, iconoDeMenu } from './iconosMenu'
 
 type Propiedades = {
   opciones: OpcionMenu[]
@@ -34,9 +35,9 @@ function Nodo({ opcion, alNavegar }: { opcion: OpcionMenu; alNavegar: () => void
           aria-expanded={abierto}
           onClick={() => setAbierto((valor) => !valor)}
         >
-          <Icono clase={opcion.icono} />
+          <Icono nombre={opcion.icono} id={opcion.id} />
           <span>{opcion.descripcion}</span>
-          <i className={abierto ? 'fa fa-angle-up' : 'fa fa-angle-down'} aria-hidden="true" />
+          {abierto ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </button>
         {abierto && <MenuLateral opciones={hijos} alNavegar={alNavegar} />}
       </div>
@@ -46,7 +47,7 @@ function Nodo({ opcion, alNavegar }: { opcion: OpcionMenu; alNavegar: () => void
   if (!opcion.url) {
     return (
       <span className="menu-titulo">
-        <Icono clase={opcion.icono} />
+        <Icono nombre={opcion.icono} id={opcion.id} />
         <span>{opcion.descripcion}</span>
       </span>
     )
@@ -59,7 +60,7 @@ function Nodo({ opcion, alNavegar }: { opcion: OpcionMenu; alNavegar: () => void
       className={({ isActive }) => (isActive ? 'menu-enlace activo' : 'menu-enlace')}
       onClick={alNavegar}
     >
-      <Icono clase={opcion.icono} />
+      <Icono nombre={opcion.icono} id={opcion.id} />
       <span>{opcion.descripcion}</span>
     </NavLink>
   )
@@ -73,10 +74,11 @@ function contieneRuta(opcion: OpcionMenu, ruta: string): boolean {
   return (opcion.hijos ?? []).some((hijo) => contieneRuta(hijo, ruta))
 }
 
-function Icono({ clase }: { clase: string | null }) {
-  if (!clase) {
+function Icono({ nombre, id }: { nombre: string | null; id: number }) {
+  const icono = iconoDeMenu(nombre, id)
+  if (!icono) {
     return null
   }
 
-  return <i className={clase} aria-hidden="true" />
+  return createElement(icono, { size: 18, 'aria-hidden': true })
 }
