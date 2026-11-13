@@ -17,5 +17,11 @@ export default defineConfig(({ command }) => ({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.ts', 'src/api/esquema.ts'],
+    },
   },
 }))

@@ -1,3 +1,4 @@
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Dashboard;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Arquitectos.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.Tablero)]
 [Route("api/dashboard")]
 public sealed class DashboardController : ControllerBase
 {

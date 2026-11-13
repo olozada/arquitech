@@ -2,52 +2,14 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Col, Form, Pagination, Row, Table } from 'react-bootstrap'
-import Swal from 'sweetalert2'
+import { Button, Col, Form, Row } from 'react-bootstrap'
 import { cliente, mensajeDeError, mensajeError } from '../api/cliente'
-import { dinero, fecha, fechaConsulta, hoyIso, inicioDeMesIso } from '../actas/formato'
-import type { RegistroCatalogo } from '../catalogos/definiciones'
+import { hoyIso, inicioDeMesIso } from '../actas/formato'
 import type { EstadoActa } from '../dashboard/filtroUrl'
-
-type VistaInforme = 'detallado' | 'agrupado'
-
-type ItemMaterial = {
-  numeroActa: number | null
-  codigo: string
-  material: string
-  unidad: string
-  cantidad: number
-  precio: number
-  subtotal: number
-  aprobado: boolean
-}
-
-type InformeMateriales = {
-  agrupado: boolean
-  items: ItemMaterial[]
-  total: number
-  cantidad: number
-  pagina: number
-  tamano: number
-}
-
-type Filtro = {
-  usarFechas: boolean
-  desde: string
-  hasta: string
-  construccionId: number
-  contratistaId: number
-  arquitectoId: number
-  revisorId: number
-  proveedorId: number
-  estado: EstadoActa
-  vista: VistaInforme
-}
-
-type Campo = 'acta' | 'codigo' | 'material' | 'unidad' | 'cantidad' | 'precio' | 'estado' | 'subtotal'
-type Direccion = 'asc' | 'desc'
-
-const TAMANO_PAGINA = 20
+import { avisar, fechasInvalidas, useCatalogo } from '../informes/comun'
+import { SelectorInforme } from '../informes/SelectorInforme'
+import { TAMANO_PAGINA, lineasEncabezado, parametros, type Campo, type Direccion, type Filtro, type InformeMateriales, type VistaInforme } from '../informes/reporteMateriales'
+import { TablaMateriales } from '../informes/TablaReporteMateriales'
 
 export function ReporteMateriales() {
   const [usarFechas, setUsarFechas] = useState(false)
@@ -205,31 +167,31 @@ export function ReporteMateriales() {
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-construccion">
               <Form.Label>Construcción</Form.Label>
-              <Selector valor={construccionId} opciones={construcciones.data ?? []} alCambiar={setConstruccionId} />
+              <SelectorInforme valor={construccionId} opciones={construcciones.data ?? []} alCambiar={setConstruccionId} />
             </Form.Group>
           </Col>
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-arquitecto">
               <Form.Label>Arquitecto</Form.Label>
-              <Selector valor={arquitectoId} opciones={arquitectos.data ?? []} alCambiar={setArquitectoId} />
+              <SelectorInforme valor={arquitectoId} opciones={arquitectos.data ?? []} alCambiar={setArquitectoId} />
             </Form.Group>
           </Col>
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-revisor">
               <Form.Label>Revisor</Form.Label>
-              <Selector valor={revisorId} opciones={revisores.data ?? []} alCambiar={setRevisorId} />
+              <SelectorInforme valor={revisorId} opciones={revisores.data ?? []} alCambiar={setRevisorId} />
             </Form.Group>
           </Col>
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-contratista">
               <Form.Label>Contratista</Form.Label>
-              <Selector valor={contratistaId} opciones={contratistas.data ?? []} alCambiar={setContratistaId} />
+              <SelectorInforme valor={contratistaId} opciones={contratistas.data ?? []} alCambiar={setContratistaId} />
             </Form.Group>
           </Col>
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-proveedor">
               <Form.Label>Proveedor</Form.Label>
-              <Selector valor={proveedorId} opciones={proveedores.data ?? []} alCambiar={setProveedorId} />
+              <SelectorInforme valor={proveedorId} opciones={proveedores.data ?? []} alCambiar={setProveedorId} />
             </Form.Group>
           </Col>
           <Col xs={6} sm="auto" className="reporte-campo-corto">
@@ -307,201 +269,4 @@ export function ReporteMateriales() {
       )}
     </section>
   )
-}
-
-function TablaMateriales({
-  items,
-  total,
-  cantidad,
-  tamano,
-  detallado,
-  pagina,
-  campo,
-  direccion,
-  encabezado,
-  alCambiarPagina,
-  alOrdenar,
-}: {
-  items: ItemMaterial[]
-  total: number
-  cantidad: number
-  tamano: number
-  detallado: boolean
-  pagina: number
-  campo: Campo
-  direccion: Direccion
-  encabezado: string[]
-  alCambiarPagina: (pagina: number) => void
-  alOrdenar: (campo: Campo) => void
-}) {
-  const filas = items
-  const tamanoPagina = tamano > 0 ? tamano : TAMANO_PAGINA
-  const totalPaginas = Math.max(1, Math.ceil((cantidad || filas.length) / tamanoPagina))
-  const paginaVisible = Math.min(pagina, totalPaginas)
-
-  return (
-    <div className="catalogo-panel">
-      {encabezado.length > 0 && (
-        <div className="reporte-encabezado">
-          {encabezado.map((linea) => (
-            <p key={linea}>{linea}</p>
-          ))}
-        </div>
-      )}
-      <div className="table-responsive">
-        <Table hover className="catalogo-tabla reporte-items mb-0" style={{ width: detallado ? '62.5rem' : '58rem' }}>
-          <colgroup>
-            {detallado && <col className="reporte-col-acta" />}
-            <col className="reporte-col-um" />
-            <col className="reporte-col-material" />
-            <col className="reporte-col-um" />
-            <col className="reporte-col-cantidad" />
-            <col className="reporte-col-precio" />
-            <col className="reporte-col-estado" />
-            <col className="reporte-col-subtotal" />
-          </colgroup>
-          <thead>
-            <tr>
-              {detallado && (
-                <Encabezado campo="acta" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Acta</Encabezado>
-              )}
-              <Encabezado campo="codigo" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Código</Encabezado>
-              <Encabezado campo="material" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Material</Encabezado>
-              <Encabezado campo="unidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>UM</Encabezado>
-              <Encabezado campo="cantidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Cantidad</Encabezado>
-              <Encabezado campo="precio" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Precio</Encabezado>
-              <Encabezado campo="estado" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Estado</Encabezado>
-              <Encabezado campo="subtotal" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Subtotal</Encabezado>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((item, indice) => (
-              <tr key={`${item.numeroActa ?? ''}-${item.codigo}-${item.material}-${item.unidad}-${item.aprobado}-${indice}`}>
-                {detallado && <td>{item.numeroActa}</td>}
-                <td>{item.codigo}</td>
-                <td title={item.material}>{item.material}</td>
-                <td>{item.unidad}</td>
-                <td className="reporte-num">{item.cantidad}</td>
-                <td className="reporte-num">{dinero(item.precio)}</td>
-                <td>{item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
-                <td className="reporte-num">{dinero(item.subtotal)}</td>
-              </tr>
-            ))}
-            <tr className="reporte-total">
-              <th colSpan={detallado ? 7 : 6}>TOTAL</th>
-              <th className="reporte-total-valor">{dinero(total)}</th>
-            </tr>
-          </tbody>
-        </Table>
-      </div>
-      {totalPaginas > 1 && (
-        <div className="d-flex align-items-center gap-2 mt-3">
-          <Pagination className="catalogo-paginacion mb-0">
-            <Pagination.Prev disabled={paginaVisible === 1} onClick={() => alCambiarPagina(paginaVisible - 1)} />
-            <Pagination.Next disabled={paginaVisible === totalPaginas} onClick={() => alCambiarPagina(paginaVisible + 1)} />
-          </Pagination>
-          <span>Página {paginaVisible} de {totalPaginas}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Encabezado({
-  campo,
-  activo,
-  direccion,
-  alOrdenar,
-  numerico,
-  children,
-}: {
-  campo: Campo
-  activo: Campo
-  direccion: Direccion
-  alOrdenar: (campo: Campo) => void
-  numerico?: boolean
-  children: string
-}) {
-  const seleccionado = activo === campo
-  return (
-    <th className={numerico ? 'reporte-num' : undefined} aria-sort={seleccionado ? (direccion === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" className="actas-orden" onClick={() => alOrdenar(campo)}>
-        {children}
-        <span aria-hidden="true">{seleccionado ? (direccion === 'asc' ? '▲' : '▼') : '↕'}</span>
-      </button>
-    </th>
-  )
-}
-
-function lineasEncabezado(
-  filtro: Filtro,
-  construcciones: RegistroCatalogo[],
-  arquitectos: RegistroCatalogo[],
-  revisores: RegistroCatalogo[],
-  contratistas: RegistroCatalogo[],
-  proveedores: RegistroCatalogo[],
-) {
-  const lineas: string[] = []
-  const desde = fechaConsulta(filtro.usarFechas, filtro.desde)
-  const hasta = fechaConsulta(filtro.usarFechas, filtro.hasta)
-  if (desde && hasta) lineas.push(`Del ${fecha(desde)} al ${fecha(hasta)}`)
-  else if (desde) lineas.push(`Desde ${fecha(desde)}`)
-  else if (hasta) lineas.push(`Hasta ${fecha(hasta)}`)
-
-  const texto = (id: number, opciones: RegistroCatalogo[], etiqueta: string) => {
-    const opcion = opciones.find((item) => item.id === id)
-    const nombre = opcion ? String(opcion.nombre ?? opcion.descripcion ?? '') : ''
-    if (nombre) lineas.push(`${etiqueta}: ${nombre}`)
-  }
-
-  texto(filtro.construccionId, construcciones, 'Construcción')
-  texto(filtro.arquitectoId, arquitectos, 'Arquitecto')
-  texto(filtro.revisorId, revisores, 'Revisor')
-  texto(filtro.contratistaId, contratistas, 'Contratista')
-  texto(filtro.proveedorId, proveedores, 'Proveedor')
-  if (filtro.estado === 'abierta') lineas.push('Estado: Abierta')
-  if (filtro.estado === 'cerrada') lineas.push('Estado: Cerrada')
-  return lineas
-}
-
-function Selector({ valor, opciones, alCambiar }: { valor: number; opciones: RegistroCatalogo[]; alCambiar: (id: number) => void }) {
-  return (
-    <Form.Select value={valor} onChange={(evento) => alCambiar(Number(evento.target.value))}>
-      <option value={0}>Todos</option>
-      {opciones.map((opcion) => (
-        <option key={opcion.id} value={opcion.id}>
-          {String(opcion.nombre ?? opcion.descripcion ?? opcion.id)}
-        </option>
-      ))}
-    </Form.Select>
-  )
-}
-
-function useCatalogo(recurso: string) {
-  return useQuery({
-    queryKey: ['catalogo', recurso],
-    queryFn: async () => (await cliente.get<RegistroCatalogo[]>(`/api/${recurso}`)).data,
-  })
-}
-
-function fechasInvalidas(usarFechas: boolean, desde: string, hasta: string) {
-  return usarFechas && Boolean(fechaConsulta(true, desde)) && Boolean(fechaConsulta(true, hasta)) && hasta < desde
-}
-
-function parametros(filtro: Filtro) {
-  return {
-    desde: fechaConsulta(filtro.usarFechas, filtro.desde),
-    hasta: fechaConsulta(filtro.usarFechas, filtro.hasta),
-    construccionId: filtro.construccionId > 0 ? filtro.construccionId : undefined,
-    contratistaId: filtro.contratistaId > 0 ? filtro.contratistaId : undefined,
-    arquitectoId: filtro.arquitectoId > 0 ? filtro.arquitectoId : undefined,
-    revisorId: filtro.revisorId > 0 ? filtro.revisorId : undefined,
-    proveedorId: filtro.proveedorId > 0 ? filtro.proveedorId : undefined,
-    estado: filtro.estado || undefined,
-    vista: filtro.vista,
-  }
-}
-
-function avisar(texto: string) {
-  return Swal.fire({ icon: 'error', title: '¡Error!', text: texto, confirmButtonColor: '#1abb9c' })
 }

@@ -58,7 +58,11 @@ public sealed partial class DashboardServicio : IDashboardServicio
                 grupo.Count()))
             .ToList();
 
-        _cache.Set(clave, serie, TimeSpan.FromSeconds(60));
+        _cache.Set(clave, serie, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60),
+            Size = 1
+        });
         return serie;
     }
 

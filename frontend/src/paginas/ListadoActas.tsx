@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { descartarBorradorActa } from '../actas/useBorradorActa'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Col, Form, Row, Table } from 'react-bootstrap'
+import type { ConsultaActas } from '../api/actas'
 import { cliente, mensajeError } from '../api/cliente'
 import { tamanoListado } from '../api/pagina'
 import { useSesion } from '../auth/contextoSesion'
@@ -11,25 +12,7 @@ import { abrirPdf } from '../api/archivos'
 import { dinero, fecha } from '../actas/formato'
 import { Paginador } from '../componentes/Paginador'
 
-type ActaResumen = {
-  numeroActa: number
-  fechaInicial: string
-  fechaFinal: string
-  arquitecto: string
-  revisor: string
-  contratista: string
-  observacion: string | null
-  total: number
-  cerrada: boolean
-}
-
-type Consulta = {
-  items: ActaResumen[]
-  total: number
-  pagina: number
-  tamano: number
-  totalGeneral: number
-}
+type Consulta = ConsultaActas
 
 type CampoOrden = 'numero' | 'fechaInicial' | 'fechaFinal' | 'arquitecto' | 'revisor' | 'contratista'
 type Direccion = 'asc' | 'desc'

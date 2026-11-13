@@ -9,15 +9,7 @@ export type LineaFormulario = {
   presupuestoItemId: string
 }
 
-export type ItemPresupuestoActa = {
-  id: number
-  codigo: string
-  descripcion: string
-  unidad: string
-  conceptoId: number | null
-  unidadMedidaId: number | null
-  precio: number | null
-}
+export type { ItemPresupuestoActa } from '../api/actas'
 
 export function lineaVacia(): LineaFormulario {
   return {

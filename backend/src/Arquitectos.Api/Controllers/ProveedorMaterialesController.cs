@@ -1,3 +1,4 @@
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.ProveedorMateriales;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -42,7 +43,7 @@ public sealed class ProveedorMaterialesController : ControllerBase
         return Traducir(resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -63,7 +64,7 @@ public sealed class ProveedorMaterialesController : ControllerBase
         return Traducir(resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

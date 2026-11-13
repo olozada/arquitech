@@ -4,42 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Form, Table } from 'react-bootstrap'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { cliente } from '../api/cliente'
+import type { Seguimiento } from '../api/presupuesto'
 import { dinero as formatoDinero } from '../actas/formato'
 
 function dinero(valor: number) {
   return formatoDinero(valor, 2)
-}
-
-type Fila = {
-  itemId: number | null
-  capituloId: number | null
-  capitulo: string
-  codigo: string
-  descripcion: string
-  unidad: string
-  cantidadPresupuestada: number
-  cantidadEjecutada: number
-  avanceFisico: number
-  valorPresupuestado: number
-  valorEjecutado: number
-  avanceFinanciero: number
-  saldo: number
-  precioPresupuestado: number
-  precioActas: number
-  proyeccionCierre: number
-}
-
-type Seguimiento = {
-  presupuestoId: number
-  construccion: string
-  resumen: { total: number }
-  ejecutado: number
-  proyeccion: number
-  noPresupuestado: number
-  capitulos: Fila[]
-  items: Fila[]
-  noPresupuestados: Fila[]
-  acumuladoMensual: Array<{ anio: number; mes: number; ejecutado: number; acumulado: number }>
 }
 
 export function SeguimientoPresupuesto() {
@@ -107,7 +76,7 @@ export function SeguimientoPresupuesto() {
   )
 }
 
-function Tabla({ filas }: { filas: Fila[] }) {
+function Tabla({ filas }: { filas: Seguimiento['items'] }) {
   return (
     <div className="catalogo-panel">
       <Table responsive size="sm" className="mb-0">

@@ -76,7 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IManoObraServicio, ManoObraServicio>();
         services.AddScoped<IApuServicio, ApuServicio>();
         services.AddScoped<IPresupuestoServicio, PresupuestoServicio>();
-        services.AddMemoryCache();
+        services.AddMemoryCache(opciones => opciones.SizeLimit = 200);
         services.AddOptions<OpcionesPresupuesto>()
             .Bind(configuration.GetSection(OpcionesPresupuesto.Seccion))
             .ValidateDataAnnotations()

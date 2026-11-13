@@ -1,15 +1,19 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Arquitectos.Application;
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Presupuestos;
+using Arquitectos.Infrastructure.Presupuestos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Arquitectos.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/insumos")]
 public sealed class InsumosController : ControllerBase
 {
@@ -82,7 +86,7 @@ public sealed class InsumosController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/mano-obra")]
 public sealed class ManoObraController : ControllerBase
 {
@@ -111,7 +115,7 @@ public sealed class ManoObraController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/cargos")]
 public sealed class CargosController : ControllerBase
 {
@@ -140,7 +144,7 @@ public sealed class CargosController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/cuadrillas")]
 public sealed class CuadrillasController : ControllerBase
 {
@@ -176,7 +180,7 @@ public sealed class CuadrillasController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/apu")]
 public sealed class ApusController : ControllerBase
 {
@@ -230,7 +234,7 @@ public sealed class ApusController : ControllerBase
 }
 
 [ApiController]
-[Authorize(Roles = "Administrador,Arquitecto")]
+[Authorize(Policy = Politicas.GestionPresupuesto)]
 [Route("api/presupuestos")]
 public sealed class PresupuestosController : ControllerBase
 {
@@ -242,90 +246,99 @@ public sealed class PresupuestosController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<PresupuestoResumenDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar([FromQuery] int? construccionId, [FromQuery] string? estado, [FromQuery] bool plantillas, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.ListarAsync(construccionId, Usuario(), cancellationToken, estado, plantillas));
 
     [HttpGet("configuracion")]
+    [ProducesResponseType(typeof(OpcionesPresupuesto), StatusCodes.Status200OK)]
     public IActionResult Configuracion([FromServices] IOptions<OpcionesPresupuesto> opciones) =>
         Ok(opciones.Value);
 
     [HttpGet("plantillas")]
+    [ProducesResponseType(typeof(IReadOnlyList<PlantillaResumenDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Plantillas(CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.PlantillasAsync(Usuario(), cancellationToken));
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(PresupuestoDetalleDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Obtener(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.ObtenerAsync(id, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost]
+    [ProducesResponseType(typeof(PresupuestoCreadoDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Crear(CrearPresupuestoSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.CrearDesdeAsync(solicitud, Usuario(), cancellationToken), true);
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/guardar-como-plantilla")]
     public async Task<IActionResult> GuardarPlantilla(int id, NombrePlantillaSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.GuardarComoPlantillaAsync(id, solicitud.Nombre, Usuario(), cancellationToken), true);
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/capitulos/{capituloId:int}/items/desde-apu")]
     public async Task<IActionResult> DesdeApu(int id, int capituloId, ItemsDesdeApuSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.AgregarDesdeApuAsync(id, capituloId, solicitud, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/renumerar")]
     public async Task<IActionResult> Renumerar(int id, VersionSolicitud? solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.RenumerarAsync(id, solicitud?.RowVersion, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPut("{id:int}/orden")]
     public async Task<IActionResult> Orden(int id, OrdenPresupuestoSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.OrdenarAsync(id, solicitud, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/items/{itemId:int}/duplicar")]
     public async Task<IActionResult> DuplicarItem(int id, int itemId, VersionSolicitud? solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.DuplicarItemAsync(id, itemId, solicitud?.RowVersion, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/items/{itemId:int}/mover")]
     public async Task<IActionResult> MoverItem(int id, int itemId, MoverItemSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.MoverItemAsync(id, itemId, solicitud, Usuario(), cancellationToken));
 
     [HttpGet("{id:int}/validacion")]
+    [ProducesResponseType(typeof(IReadOnlyList<ValidacionPresupuestoDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Validacion(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.ValidarAsync(id, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(PresupuestoDetalleDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Actualizar(int id, PresupuestoSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.ActualizarAsync(id, solicitud, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Eliminar(int id, [FromQuery] string? rowVersion, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.EliminarAsync(id, Usuario(), cancellationToken, rowVersion));
 
     [HttpPost("{id:int}/recalcular")]
+    [ProducesResponseType(typeof(RecalculoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Recalcular(int id, [FromQuery] bool aplicar, [FromQuery] string? rowVersion, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.RecalcularAsync(id, aplicar, Usuario(), cancellationToken, rowVersion));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/aprobar")]
     public async Task<IActionResult> Aprobar(int id, [FromQuery] bool confirmarCantidadesCero, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.AprobarAsync(id, Usuario(), cancellationToken, confirmarCantidadesCero));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/nueva-version")]
     public async Task<IActionResult> NuevaVersion(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.NuevaVersionAsync(id, Usuario(), cancellationToken));
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("{id:int}/cerrar")]
     public async Task<IActionResult> Cerrar(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.CerrarAsync(id, Usuario(), cancellationToken));
 
     [HttpGet("{id:int}/seguimiento")]
+    [ProducesResponseType(typeof(SeguimientoDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Seguimiento(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.SeguimientoAsync(id, Usuario(), cancellationToken));
 
@@ -347,18 +360,57 @@ public sealed class PresupuestosController : ControllerBase
             : ResultadoHttp.Traducir(this, resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost("importar")]
-    [RequestSizeLimit(40_000_000)]
-    public async Task<IActionResult> Importar(IFormFile archivo, [FromForm] int construccionId, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(InformeImportacionDto), StatusCodes.Status201Created)]
+    [RequestSizeLimit(10_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 10_000_000)]
+    [ProblemaTamanoImportacion]
+    public async Task<IActionResult> Importar(
+        IFormFile archivo,
+        [FromForm] int construccionId,
+        [FromServices] IOptions<OpcionesPresupuesto> opciones,
+        CancellationToken cancellationToken)
     {
         if (archivo is null || archivo.Length == 0)
         {
             return Problem(title: "Solicitud inválida", detail: "Seleccione el libro de Excel.", statusCode: StatusCodes.Status400BadRequest);
         }
 
+        var maximo = opciones.Value.TamanoMaximoImportacion > 0 ? opciones.Value.TamanoMaximoImportacion : 10_000_000;
+        if (archivo.Length > maximo)
+        {
+            return Problem(title: "Archivo demasiado grande", detail: $"El libro no puede superar {maximo} bytes.", statusCode: StatusCodes.Status413PayloadTooLarge);
+        }
+
         await using var contenido = archivo.OpenReadStream();
-        return ResultadoHttp.Traducir(this, await _servicio.ImportarAsync(contenido, construccionId, Usuario(), cancellationToken), true);
+        Stream lectura = contenido;
+        MemoryStream? copia = null;
+        if (!contenido.CanSeek)
+        {
+            copia = new MemoryStream();
+            await contenido.CopyToAsync(copia, cancellationToken);
+            copia.Position = 0;
+            lectura = copia;
+        }
+
+        try
+        {
+            var error = ValidadorLibroExcel.Revisar(archivo.FileName, lectura);
+            if (error is not null)
+            {
+                return Problem(title: "Solicitud inválida", detail: error, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            return ResultadoHttp.Traducir(this, await _servicio.ImportarAsync(lectura, construccionId, Usuario(), cancellationToken), true);
+        }
+        finally
+        {
+            if (copia is not null)
+            {
+                await copia.DisposeAsync();
+            }
+        }
     }
 
     private int Usuario() =>
@@ -378,9 +430,10 @@ public sealed class ItemsActaController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<ItemActaDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar([FromQuery] int construccionId, CancellationToken cancellationToken)
     {
-        var administrador = User.IsInRole("Administrador");
+        var administrador = User.IsInRole(Perfiles.Administrador);
         return Ok(await _servicio.ItemsParaActaAsync(construccionId, administrador, cancellationToken));
     }
 }
@@ -397,4 +450,41 @@ public static class ResultadoHttp
             EstadoOperacion.Conflicto => controlador.Problem(title: "Conflicto", detail: resultado.Mensaje, statusCode: StatusCodes.Status409Conflict),
             _ => controlador.Problem(title: "Solicitud inválida", detail: resultado.Mensaje, statusCode: StatusCodes.Status400BadRequest)
         };
+}
+
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class ProblemaTamanoImportacionAttribute : Attribute, IAlwaysRunResultFilter
+{
+    public void OnResultExecuting(ResultExecutingContext contexto)
+    {
+        if (contexto.Controller is not ControllerBase controlador)
+        {
+            return;
+        }
+
+        var porAtributo = contexto.Result is StatusCodeResult { StatusCode: StatusCodes.Status413PayloadTooLarge };
+        var porFormulario = contexto.Result is ObjectResult { Value: ValidationProblemDetails detalles } &&
+            detalles.Errors.Values
+                .SelectMany(mensajes => mensajes)
+                .Any(mensaje => mensaje.Contains("Multipart body length limit", StringComparison.OrdinalIgnoreCase));
+        if (!porAtributo && !porFormulario)
+        {
+            return;
+        }
+
+        var maximo = contexto.HttpContext.RequestServices.GetRequiredService<IOptions<OpcionesPresupuesto>>().Value.TamanoMaximoImportacion;
+        if (maximo <= 0)
+        {
+            maximo = 10_000_000;
+        }
+
+        contexto.Result = controlador.Problem(
+            title: "Archivo demasiado grande",
+            detail: $"El libro no puede superar {maximo} bytes.",
+            statusCode: StatusCodes.Status413PayloadTooLarge);
+    }
+
+    public void OnResultExecuted(ResultExecutedContext contexto)
+    {
+    }
 }

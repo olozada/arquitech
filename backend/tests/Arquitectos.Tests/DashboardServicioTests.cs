@@ -27,7 +27,7 @@ public sealed class DashboardServicioTests : IDisposable
         _servicio = new DashboardServicio(
             _context,
             Options.Create(new OpcionesDashboard()),
-            new MemoryCache(new MemoryCacheOptions()));
+            new MemoryCache(new MemoryCacheOptions { SizeLimit = 200 }));
     }
 
     [Fact]

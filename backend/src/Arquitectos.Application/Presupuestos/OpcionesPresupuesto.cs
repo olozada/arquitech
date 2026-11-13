@@ -23,4 +23,10 @@ public sealed class OpcionesPresupuesto
 
     [Range(100, 60000)]
     public int AutoguardadoMs { get; set; } = 600;
+
+    [Range(typeof(long), "1", "10000000")]
+    public long TamanoMaximoImportacion { get; set; } = 10_000_000;
+
+    [Range(1, 20_000)]
+    public int FilasMaximas { get; set; } = 20_000;
 }

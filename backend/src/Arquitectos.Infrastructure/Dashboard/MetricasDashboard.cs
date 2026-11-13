@@ -32,7 +32,11 @@ public sealed partial class DashboardServicio : IDashboardServicio
         }
 
         var paquete = await CalcularAsync(filtro, cancellationToken);
-        _cache.Set(clave, paquete, TimeSpan.FromSeconds(60));
+        _cache.Set(clave, paquete, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60),
+            Size = 1
+        });
         return paquete;
     }
 

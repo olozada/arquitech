@@ -1,35 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Button, Form, Modal, Offcanvas, Table } from 'react-bootstrap'
+import { Button } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
 import { listarTodo } from '../api/pagina'
 import { HistorialAuditoria } from '../componentes/HistorialAuditoria'
-import { descargarPresupuesto } from '../api/presupuesto'
-import type { ItemPresupuesto, PresupuestoDetalle } from '../api/presupuesto'
+import type { ItemPresupuesto, PresupuestoDetalle, Recalculo } from '../api/presupuesto'
 import { esAdministrador } from '../auth/perfiles'
 import { useSesion } from '../auth/contextoSesion'
-import { dinero } from '../actas/formato'
-import { EditorApu } from '../presupuesto/EditorApu'
+import { BarraEditor } from '../presupuesto/BarraEditor'
 import { useEditorPresupuesto } from '../presupuesto/useEditorPresupuesto'
 import { CapituloPresupuesto } from '../presupuesto/CapituloPresupuesto'
-import { ModalMover } from '../presupuesto/ModalMover'
+import { ModalesEditor } from '../presupuesto/ModalesEditor'
 import { ResumenCostos } from '../presupuesto/ResumenCostos'
-
-type Recalculo = {
-  actual: { total: number }
-  propuesto: { total: number }
-  diferencias: Array<{
-    codigo: string
-    descripcion: string
-    materialActual: number
-    materialNuevo: number
-    manoObraActual: number
-    manoObraNueva: number
-    diferencia: number
-  }>
-}
 
 export function EditorPresupuesto() {
   const { id } = useParams()
@@ -166,55 +150,18 @@ export function EditorPresupuesto() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
-          <h1 className="mb-0">{borrador.nombre}</h1>
-          <p className="mb-0 text-secondary">
-            {borrador.construccion} · versión {borrador.version} · {borrador.estado}
-          </p>
-        </div>
-        <div className="d-flex gap-2 flex-wrap">
-          <Link className="btn btn-outline-secondary" to={`/presupuestos/${borrador.id}/seguimiento`}>
-            Seguimiento
-          </Link>
-          <Button type="button" variant="outline-primary" onClick={() => void descargarPresupuesto(borrador.id, 'excel')}>
-            Excel
-          </Button>
-          <Button type="button" variant="outline-primary" onClick={() => void descargarPresupuesto(borrador.id, 'pdf')}>
-            PDF
-          </Button>
-          {administrador && borrador.estado === 'Borrador' && !borrador.esPlantilla && (
-            <Button type="button" variant="outline-success" disabled={guardando} onClick={() => void aprobar()}>
-              Aprobar
-            </Button>
-          )}
-          {editable && (
-            <Button type="button" variant="outline-secondary" onClick={() => void postAccion('renumerar', { rowVersion: borrador.rowVersion })}>
-              Renumerar
-            </Button>
-          )}
-          {administrador && (
-            <Button type="button" variant="outline-secondary" onClick={() => void guardarPlantilla()}>
-              Plantilla
-            </Button>
-          )}
-          {administrador && (
-            <Button type="button" variant="outline-secondary" disabled={guardando} onClick={() => void accion('nueva-version', 'Nueva versión')}>
-              Nueva versión
-            </Button>
-          )}
-          {editable && (
-            <Button type="button" disabled={guardando} onClick={() => void guardar()}>
-              Guardar
-            </Button>
-          )}
-          {(borrador.estado === 'Borrador' || borrador.estado === 'Aprobado' || borrador.estado === 'Cerrado') && (
-            <Button type="button" variant="outline-primary" onClick={() => void previsualizarRecalculo()}>
-              {borrador.estado === 'Borrador' ? 'Recalcular con precios actuales' : '¿Cuánto costaría hoy?'}
-            </Button>
-          )}
-        </div>
-      </div>
+      <BarraEditor
+        borrador={borrador}
+        administrador={administrador}
+        guardando={guardando}
+        editable={editable}
+        aprobar={aprobar}
+        postAccion={postAccion}
+        guardarPlantilla={guardarPlantilla}
+        accion={accion}
+        guardar={guardar}
+        previsualizarRecalculo={previsualizarRecalculo}
+      />
       {administrador && (
         <div className="nav nav-tabs mb-3">
           <button type="button" className={pestana === 'editor' ? 'nav-link active' : 'nav-link'} onClick={() => setPestana('editor')}>
@@ -283,150 +230,36 @@ export function EditorPresupuesto() {
         </Button>
       )}
       <ResumenCostos resumen={resumen} />
-      <Modal show={medicionItem !== null} onHide={() => setMedicionItem(null)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Mediciones</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {medicionItem && (
-            <Mediciones
-              item={borrador.capitulos[medicionItem.capitulo].items[medicionItem.item]}
-              editable={editable}
-              alCambiar={(mediciones) => {
-                const cantidad = mediciones.reduce((suma, medicion) => suma + parcial(medicion.veces, medicion.largo, medicion.ancho, medicion.alto), 0)
-                cambiar(medicionItem.capitulo, medicionItem.item, { mediciones, cantidad: mediciones.length > 0 ? cantidad : borrador.capitulos[medicionItem.capitulo].items[medicionItem.item].cantidad })
-              }}
-            />
-          )}
-        </Modal.Body>
-      </Modal>
-      <Modal show={buscarApu !== null} onHide={() => setBuscarApu(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Biblioteca de APU</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Control className="mb-2" placeholder="Buscar" value={textoApu} onChange={(evento) => setTextoApu(evento.target.value)} />
-          {(apus.data ?? []).filter((apu) => `${apu.codigo ?? ''} ${apu.descripcion}`.toLowerCase().includes(textoApu.toLowerCase())).slice(0, 20).map((apu) => (
-            <Form.Check
-              key={apu.id}
-              label={`${apu.codigo ?? ''} ${apu.descripcion} · ${apu.unidad}`}
-              checked={elegidos.includes(apu.id)}
-              onChange={() => setElegidos((actual) => actual.includes(apu.id) ? actual.filter((id) => id !== apu.id) : [...actual, apu.id])}
-            />
-          ))}
-          <Button
-            type="button"
-            className="mt-3"
-            disabled={elegidos.length === 0 || buscarApu === null}
-            onClick={() => {
-              const capitulo = borrador.capitulos[buscarApu ?? 0]
-              void postAccion(`capitulos/${capitulo.id}/items/desde-apu`, { apuIds: elegidos, rowVersion: borrador.rowVersion })
-              setBuscarApu(null)
-            }}
-          >
-            Agregar
-          </Button>
-        </Modal.Body>
-      </Modal>
-      <Offcanvas show={panelApu !== null} onHide={() => setPanelApu(null)} placement="end" className="panel-lateral">
-        <Offcanvas.Header closeButton>
-          <Offcanvas.Title>{panelApu?.modo === 'editar' ? 'Editar APU' : 'Crear APU'}</Offcanvas.Title>
-        </Offcanvas.Header>
-        <Offcanvas.Body>
-          {panelApu && (
-            <EditorApu
-              key={panelApu.modo === 'editar' ? panelApu.apuId : `nuevo-${panelApu.capitulo}`}
-              apuId={panelApu.modo === 'editar' ? panelApu.apuId : null}
-              unidadInicial={panelApu.modo === 'crear' ? panelApu.unidad : undefined}
-              embebido
-              alCancelar={() => setPanelApu(null)}
-              alGuardar={(apu) => {
-                const panel = panelApu
-                setPanelApu(null)
-                if (panel.modo === 'crear' && apu.costoTotal > 0) {
-                  const capitulo = borrador.capitulos[panel.capitulo]
-                  void postAccion(`capitulos/${capitulo.id}/items/desde-apu`, { apuIds: [apu.id], rowVersion: borrador.rowVersion })
-                }
-                if (panel.modo === 'editar' && borrador.estado === 'Borrador' && administrador) {
-                  void aplicarRecalculo()
-                }
-              }}
-            />
-          )}
-        </Offcanvas.Body>
-      </Offcanvas>
-      <ModalMover
-        abierto={mover !== null}
-        capitulos={borrador.capitulos}
-        capituloId={mover?.capituloId}
-        destino={destinoCapitulo}
-        alDestino={setDestinoCapitulo}
-        alConfirmar={() => void confirmarMovimiento()}
-        alCerrar={() => setMover(null)}
+      <ModalesEditor
+        borrador={borrador}
+        editable={editable}
+        administrador={administrador}
+        medicionItem={medicionItem}
+        setMedicionItem={setMedicionItem}
+        cambiar={cambiar}
+        buscarApu={buscarApu}
+        setBuscarApu={setBuscarApu}
+        textoApu={textoApu}
+        setTextoApu={setTextoApu}
+        apus={apus}
+        elegidos={elegidos}
+        setElegidos={setElegidos}
+        postAccion={postAccion}
+        panelApu={panelApu}
+        setPanelApu={setPanelApu}
+        aplicarRecalculo={aplicarRecalculo}
+        mover={mover}
+        setMover={setMover}
+        destinoCapitulo={destinoCapitulo}
+        setDestinoCapitulo={setDestinoCapitulo}
+        confirmarMovimiento={confirmarMovimiento}
+        conceptoItem={conceptoItem}
+        setConceptoItem={setConceptoItem}
+        textoConcepto={textoConcepto}
+        setTextoConcepto={setTextoConcepto}
+        recalculo={recalculo}
+        setRecalculo={setRecalculo}
       />
-      <Modal show={conceptoItem !== null} onHide={() => setConceptoItem(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Concepto</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <SelectorConcepto
-            texto={textoConcepto}
-            alBuscar={setTextoConcepto}
-            alElegir={(conceptoId) => {
-              if (conceptoItem) {
-                cambiar(conceptoItem.capitulo, conceptoItem.item, { conceptoId })
-              }
-              setConceptoItem(null)
-            }}
-          />
-        </Modal.Body>
-      </Modal>
-      <Modal show={recalculo !== null} onHide={() => setRecalculo(null)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{borrador.estado === 'Borrador' ? 'Recalcular' : '¿Cuánto costaría hoy?'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {recalculo && (
-            <>
-              {borrador.estado !== 'Borrador' && <p>El presupuesto aprobado no cambia.</p>}
-              <p>Total actual {dinero(recalculo.actual.total, 2)} · nuevo {dinero(recalculo.propuesto.total, 2)}</p>
-              <Table size="sm">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Descripción</th>
-                    <th className="text-end">Actual</th>
-                    <th className="text-end">Nuevo</th>
-                    <th className="text-end">Diferencia</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...recalculo.diferencias].sort((a, b) => Math.abs(b.diferencia) - Math.abs(a.diferencia)).map((fila) => {
-                    const actual = fila.materialActual + fila.manoObraActual
-                    const nuevo = fila.materialNuevo + fila.manoObraNueva
-                    const porcentaje = actual === 0 ? '' : `${((nuevo - actual) / actual * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })} %`
-                    return (
-                      <tr key={fila.codigo + fila.descripcion}>
-                        <td>{fila.codigo}</td>
-                        <td>{fila.descripcion}</td>
-                        <td className="text-end">{dinero(actual, 2)}</td>
-                        <td className="text-end">{dinero(nuevo, 2)}</td>
-                        <td className="text-end">{dinero(fila.diferencia, 2)} {porcentaje}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </Table>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button type="button" variant="outline-secondary" onClick={() => setRecalculo(null)}>Cancelar</Button>
-          {borrador.estado === 'Borrador' && administrador && (
-            <Button type="button" onClick={() => void aplicarRecalculo()}>Aplicar</Button>
-          )}
-        </Modal.Footer>
-      </Modal>
       </>
       )}
     </section>
@@ -513,98 +346,4 @@ export function EditorPresupuesto() {
       return copia
     })
   }
-}
-
-function SelectorConcepto({
-  texto,
-  alBuscar,
-  alElegir,
-}: {
-  texto: string
-  alBuscar: (texto: string) => void
-  alElegir: (conceptoId: number) => void
-}) {
-  const conceptos = useQuery({
-    queryKey: ['conceptos'],
-    queryFn: async () => (await cliente.get<Array<{ id: number; descripcion: string }>>('/api/conceptos')).data,
-  })
-  const filtro = texto.trim().toLowerCase()
-  return (
-    <>
-      <Form.Control className="mb-2" placeholder="Buscar concepto" value={texto} onChange={(evento) => alBuscar(evento.target.value)} />
-      {(conceptos.data ?? []).filter((concepto) => concepto.descripcion.toLowerCase().includes(filtro)).slice(0, 20).map((concepto) => (
-        <Button key={concepto.id} type="button" variant="link" className="d-block text-start" onClick={() => alElegir(concepto.id)}>
-          {concepto.descripcion}
-        </Button>
-      ))}
-    </>
-  )
-}
-
-function Mediciones({
-  item,
-  editable,
-  alCambiar,
-}: {
-  item: ItemPresupuesto
-  editable: boolean
-  alCambiar: (mediciones: ItemPresupuesto['mediciones']) => void
-}) {
-  return (
-    <>
-      <Table size="sm">
-        <thead>
-          <tr>
-            <th>Ubicación</th>
-            <th>Veces</th>
-            <th>Largo</th>
-            <th>Ancho</th>
-            <th>Alto</th>
-            <th>Parcial</th>
-          </tr>
-        </thead>
-        <tbody>
-          {item.mediciones.map((medicion, indice) => (
-            <tr key={indice}>
-              <td>
-                <Form.Control size="sm" value={medicion.ubicacion} disabled={!editable} onChange={(evento) => editar(indice, { ubicacion: evento.target.value })} />
-              </td>
-              {(['veces', 'largo', 'ancho', 'alto'] as const).map((campo) => (
-                <td key={campo}>
-                  <Form.Control
-                    size="sm"
-                    value={medicion[campo] ?? ''}
-                    disabled={!editable}
-                    onChange={(evento) => {
-                      const texto = evento.target.value
-                      const numero = Number(texto)
-                      if (campo === 'veces') {
-                        editar(indice, { veces: texto === '' || !Number.isFinite(numero) ? 1 : numero })
-                        return
-                      }
-                      editar(indice, { [campo]: texto === '' ? null : numero })
-                    }}
-                  />
-                </td>
-              ))}
-              <td>{parcial(medicion.veces, medicion.largo, medicion.ancho, medicion.alto).toLocaleString('es-CO')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-      {editable && (
-        <Button type="button" variant="link" onClick={() => alCambiar([...item.mediciones, { id: 0, ubicacion: '', veces: 1, largo: null, ancho: null, alto: null, parcial: 1 }])}>
-          Agregar medida
-        </Button>
-      )}
-    </>
-  )
-
-  function editar(indice: number, cambios: Partial<ItemPresupuesto['mediciones'][number]>) {
-    alCambiar(item.mediciones.map((medicion, posicion) => (posicion === indice ? { ...medicion, ...cambios } : medicion)))
-  }
-}
-
-function parcial(veces: number, largo: number | null, ancho: number | null, alto: number | null) {
-  return (veces || 1) * (largo ?? 1) * (ancho ?? 1) * (alto ?? 1)
 }

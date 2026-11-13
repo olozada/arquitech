@@ -13,7 +13,15 @@ jobs:
         run: |
           dotnet tool install --global dotnet-ef --version 10.0.15
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.dotnet\tools"
-      - run: dotnet test backend --configuration Release
+      # Coverlet alarga la prueba de volumen y el tope de 1,5 s deja de medir el código.
+      - name: Prueba de volumen
+        run: dotnet test backend --configuration Release --filter FullyQualifiedName~VolumenAlertasTests
+      - name: Pruebas con cobertura
+        run: dotnet test backend --configuration Release --settings backend/cobertura.runsettings --collect:"XPlat Code Coverage" --results-directory backend/cobertura --filter FullyQualifiedName!~VolumenAlertasTests
+      - name: Umbral de cobertura
+        shell: pwsh
+        working-directory: backend
+        run: ./scripts/resumen-cobertura.ps1
       - run: dotnet-ef migrations has-pending-model-changes -p backend/src/Arquitectos.Infrastructure -s backend/src/Arquitectos.Api --configuration Release
       - run: dotnet list backend package --vulnerable --include-transitive
   frontend:
@@ -29,7 +37,19 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+      - name: Restaurar herramientas de .NET
+        working-directory: backend
+        run: dotnet tool restore
+      - name: Regenerar tipos de OpenAPI
+        run: npm run api:tipos
+      - name: Los tipos generados coinciden con el repositorio
+        run: git diff --exit-code -- src/api/esquema.ts
       - run: npm run lint
       - run: npm run build
-      - run: npm test --if-present
+      - run: npm test -- --coverage
+      - name: Publicar cobertura del frontend
+        run: node scripts/resumen-cobertura.mjs
       - run: npm audit --audit-level=high

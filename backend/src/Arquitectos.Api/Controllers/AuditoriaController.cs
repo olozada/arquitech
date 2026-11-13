@@ -1,12 +1,13 @@
 using Arquitectos.Application;
 using Arquitectos.Application.Auditoria;
+using Arquitectos.Application.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Arquitectos.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/auditoria")]
 public sealed class AuditoriaController : ControllerBase
 {

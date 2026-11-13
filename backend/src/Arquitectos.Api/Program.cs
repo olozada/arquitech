@@ -160,6 +160,7 @@ try
         opciones.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build();
+        Politicas.Registrar(opciones);
     });
 
     builder.Services.AddRateLimiter(opciones =>
@@ -219,6 +220,8 @@ try
             Title = "Arquitectos API",
             Version = "v1"
         });
+        opciones.SupportNonNullableReferenceTypes();
+        opciones.SchemaFilter<PropiedadesPresentes>();
 
         opciones.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
@@ -352,7 +355,11 @@ try
     app.Use(async (contexto, siguiente) =>
     {
         var metodo = contexto.Request.Method;
-        if ((HttpMethods.IsPost(metodo) || HttpMethods.IsPut(metodo) || HttpMethods.IsDelete(metodo)) &&
+        var lectura = HttpMethods.IsGet(metodo)
+            || HttpMethods.IsHead(metodo)
+            || HttpMethods.IsOptions(metodo)
+            || HttpMethods.IsTrace(metodo);
+        if (!lectura &&
             !string.Equals(contexto.Request.Headers[CookiesSesion.Encabezado], CookiesSesion.ValorEncabezado, StringComparison.Ordinal))
         {
             contexto.Response.StatusCode = StatusCodes.Status400BadRequest;

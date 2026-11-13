@@ -18,12 +18,15 @@ datos_demo/recrear_pruebas.sql
 **/bin/
 **/obj/
 **/dist/
+frontend/swagger/
 **/.vs/
 *.user
 *.suo
 *.log
 *.rar
 TestResults/
+backend/cobertura/
+frontend/coverage/
 
 # Datos legacy y con credenciales
 datos_demo/*.mdb

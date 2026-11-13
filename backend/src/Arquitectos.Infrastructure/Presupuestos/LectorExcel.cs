@@ -9,27 +9,46 @@ public static class LectorExcel
     public static ModeloImportado Leer(string ruta)
     {
         using var libro = new XLWorkbook(ruta);
-        return Leer(libro);
+        return Leer(libro, CancellationToken.None, 20_000, ValidadorLibroExcel.HojasMaximas);
     }
 
-    public static ModeloImportado Leer(Stream archivo)
+    public static ModeloImportado Leer(Stream archivo, CancellationToken cancellationToken = default, int filasMaximas = 20_000, int hojasMaximas = ValidadorLibroExcel.HojasMaximas)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using var libro = new XLWorkbook(archivo);
-        return Leer(libro);
+        return Leer(libro, cancellationToken, filasMaximas, hojasMaximas);
     }
 
-    private static ModeloImportado Leer(XLWorkbook libro)
+    private static ModeloImportado Leer(XLWorkbook libro, CancellationToken cancellationToken, int filasMaximas, int hojasMaximas)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var filas = filasMaximas > 0 ? filasMaximas : 20_000;
+        var hojas = hojasMaximas > 0 ? hojasMaximas : ValidadorLibroExcel.HojasMaximas;
+        if (libro.Worksheets.Count > hojas)
+        {
+            throw new InvalidOperationException($"El libro supera las {hojas} hojas.");
+        }
+
+        foreach (var hojaUsada in libro.Worksheets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var ultima = hojaUsada.LastRowUsed()?.RowNumber() ?? 0;
+            if (ultima > filas)
+            {
+                throw new InvalidOperationException($"La hoja {hojaUsada.Name} supera las {filas} filas.");
+            }
+        }
+
         var presupuesto = Hoja(libro, "Presupuesto");
         var modelo = new ModeloImportado
         {
             Proyecto = Texto(presupuesto.Cell("B1")),
             MesesProyecto = (int)(Numero(presupuesto.Cell("K4")) ?? 0)
         };
-        modelo.Insumos.AddRange(Insumos(libro));
-        modelo.ManoObra = ManoObra(Hoja(libro, "P.M.O."));
-        modelo.Apus.AddRange(Apus(Hoja(libro, "A.P.U.")));
-        modelo.Presupuesto = Presupuesto(presupuesto);
+        modelo.Insumos.AddRange(Insumos(libro, cancellationToken));
+        modelo.ManoObra = ManoObra(Hoja(libro, "P.M.O."), cancellationToken);
+        modelo.Apus.AddRange(Apus(Hoja(libro, "A.P.U."), cancellationToken));
+        modelo.Presupuesto = Presupuesto(presupuesto, cancellationToken);
         var apuPorFila = modelo.Apus
             .Where(apu => apu.FilaPresupuesto is > 0)
             .GroupBy(apu => apu.FilaPresupuesto!.Value)
@@ -45,16 +64,17 @@ public static class LectorExcel
         return modelo;
     }
 
-    private static List<InsumoImportado> Insumos(XLWorkbook libro)
+    private static List<InsumoImportado> Insumos(XLWorkbook libro, CancellationToken cancellationToken)
     {
         var insumos = new List<InsumoImportado>();
-        HojaPrecios(insumos, Hoja(libro, "PRECIOS MATERIALES"), "Material", 5, 0.19m);
-        HojaPrecios(insumos, Hoja(libro, "PRECIO HERRAMIENTA"), "Herramienta", 5, 0.16m);
-        HojaPrecios(insumos, Hoja(libro, "ALQULER EQUIPO"), "Equipo", 5, 0.19m);
-        HojaPrecios(insumos, Hoja(libro, "LABORATORIO"), "Laboratorio", 4, 0.16m);
+        HojaPrecios(insumos, Hoja(libro, "PRECIOS MATERIALES"), "Material", 5, 0.19m, cancellationToken);
+        HojaPrecios(insumos, Hoja(libro, "PRECIO HERRAMIENTA"), "Herramienta", 5, 0.16m, cancellationToken);
+        HojaPrecios(insumos, Hoja(libro, "ALQULER EQUIPO"), "Equipo", 5, 0.19m, cancellationToken);
+        HojaPrecios(insumos, Hoja(libro, "LABORATORIO"), "Laboratorio", 4, 0.16m, cancellationToken);
         var manoObra = Hoja(libro, "PRECIOS M.O.");
         for (var fila = 5; fila <= Ultima(manoObra); fila++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var descripcion = Texto(manoObra.Cell(fila, 2));
             var unidad = Texto(manoObra.Cell(fila, 3));
             var valor = Numero(manoObra.Cell(fila, 4));
@@ -79,10 +99,11 @@ public static class LectorExcel
         return insumos;
     }
 
-    private static void HojaPrecios(List<InsumoImportado> insumos, IXLWorksheet hoja, string tipo, int filaEncabezado, decimal ivaPorDefecto)
+    private static void HojaPrecios(List<InsumoImportado> insumos, IXLWorksheet hoja, string tipo, int filaEncabezado, decimal ivaPorDefecto, CancellationToken cancellationToken)
     {
         for (var fila = filaEncabezado + 1; fila <= Ultima(hoja); fila++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var descripcion = Texto(hoja.Cell(fila, 3));
             var precio = Numero(hoja.Cell(fila, 5));
             if (descripcion.Length == 0 || precio is null)
@@ -119,8 +140,9 @@ public static class LectorExcel
         }
     }
 
-    private static ManoObraImportada ManoObra(IXLWorksheet hoja)
+    private static ManoObraImportada ManoObra(IXLWorksheet hoja, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var mano = new ManoObraImportada();
         for (var fila = 18; fila <= 31; fila++)
         {
@@ -161,12 +183,13 @@ public static class LectorExcel
         return mano;
     }
 
-    private static List<ApuImportado> Apus(IXLWorksheet hoja)
+    private static List<ApuImportado> Apus(IXLWorksheet hoja, CancellationToken cancellationToken)
     {
         var ultima = Ultima(hoja);
         var titulos = new List<int>();
         for (var fila = 1; fila < ultima; fila++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Texto(hoja.Cell(fila, 3)).Length > 0 &&
                 Texto(hoja.Cell(fila + 2, 3)).Equals("DESCRIPCION", StringComparison.OrdinalIgnoreCase))
             {
@@ -197,6 +220,7 @@ public static class LectorExcel
             GrupoImportado? grupo = null;
             for (var fila = inicio + 3; fila < fin; fila++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var descripcion = Texto(hoja.Cell(fila, 3));
                 if (descripcion.Length == 0)
                 {
@@ -290,8 +314,9 @@ public static class LectorExcel
         return apus;
     }
 
-    private static PresupuestoImportado Presupuesto(IXLWorksheet hoja)
+    private static PresupuestoImportado Presupuesto(IXLWorksheet hoja, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var presupuesto = new PresupuestoImportado
         {
             PorcentajeImprevistos = Numero(hoja.Cell("D191")) ?? 0.05m,

@@ -80,7 +80,7 @@ npm run build
 npm run lint
 ```
 
-`npm run test:e2e` es Playwright y no forma parte de la verificación de cada cambio. Necesita `E2E_CLAVE` y una base de prueba creada con `--reset --confirmar --seed-demo` y `--seed-plantilla`. No lo ejecutes contra la base del sitio.
+`npm run test:e2e` es el recorrido completo de Playwright y corre de noche. Necesita `E2E_CLAVE` y una base de prueba creada con `--reset --confirmar --seed-demo` y `--seed-plantilla`. `npm run test:e2e:humo` (entrar, listado de actas y tablero) corre en cada pull request, con la misma clave y `--seed-demo`. No los ejecutes contra la base del sitio.
 
 ## Secretos en el servidor
 

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Arquitectos.Application;
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Usuarios;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Arquitectos.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Administrador")]
+[Authorize(Policy = Politicas.SoloAdministrador)]
 [Route("api/usuarios")]
 public sealed class UsuariosController : ControllerBase
 {

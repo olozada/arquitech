@@ -1,3 +1,4 @@
+using Arquitectos.Application.Auth;
 using Arquitectos.Application.Catalogos;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -37,7 +38,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return item is null ? NoEncontrado() : Ok(item);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost]
     public async Task<IActionResult> Crear(TSolicitud solicitud, CancellationToken cancellationToken)
     {
@@ -57,7 +58,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return Created($"{Request.Path}/{resultado.Valor!.Id}", resultado.Valor);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, TSolicitud solicitud, CancellationToken cancellationToken)
     {
@@ -72,7 +73,7 @@ public abstract class CatalogoController<TEntidad, TDto, TSolicitud> : Controlle
         return error ?? Ok(resultado.Valor);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Eliminar(int id, CancellationToken cancellationToken)
     {

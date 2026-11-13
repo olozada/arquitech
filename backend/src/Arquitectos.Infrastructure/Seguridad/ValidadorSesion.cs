@@ -36,19 +36,28 @@ public sealed class ValidadorSesion
                       sesion.RevocadoEn == null &&
                       sesion.Expira > ahora,
             cancellationToken);
-        _cache.Set(clave, sesionOk, TimeSpan.FromSeconds(60));
+        _cache.Set(clave, sesionOk, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60),
+            Size = 1
+        });
         return sesionOk;
     }
 
     public void Invalidar(int usuarioId)
     {
-        _cache.Set(ClaveGeneracion(usuarioId), Generacion(usuarioId) + 1);
+        _cache.Set(ClaveGeneracion(usuarioId), Generacion(usuarioId) + 1, new MemoryCacheEntryOptions
+        {
+            Priority = CacheItemPriority.NeverRemove,
+            Size = 1
+        });
     }
 
     private int Generacion(int usuarioId) =>
         _cache.GetOrCreate(ClaveGeneracion(usuarioId), entrada =>
         {
             entrada.Priority = CacheItemPriority.NeverRemove;
+            entrada.Size = 1;
             return 0;
         });
 

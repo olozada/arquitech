@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Arquitectos.Application;
 using Arquitectos.Application.Actas;
+using Arquitectos.Application.Auth;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -68,7 +69,7 @@ public sealed class ActasController : ControllerBase
         return Traducir(resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpGet("export")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Exportar(
@@ -191,7 +192,7 @@ public sealed class ActasController : ControllerBase
         return Traducir(resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpGet("materiales/excel")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> MaterialesExcel(
@@ -372,7 +373,7 @@ public sealed class ActasController : ControllerBase
         return File(resultado.Valor!, "application/pdf");
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPost]
     [ProducesResponseType(typeof(ActaCreadaDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -425,7 +426,7 @@ public sealed class ActasController : ControllerBase
         return Traducir(resultado);
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPut("{numero:int}/cierre")]
     [ProducesResponseType(typeof(ActaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

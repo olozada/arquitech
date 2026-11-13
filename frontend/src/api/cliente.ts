@@ -11,9 +11,11 @@ export const cliente = axios.create({
 
 let renovacion: Promise<void> | null = null
 
+const metodosLectura = new Set(['get', 'head', 'options', 'trace'])
+
 cliente.interceptors.request.use((config) => {
   const metodo = (config.method ?? 'get').toLowerCase()
-  if (metodo === 'post' || metodo === 'put' || metodo === 'delete') {
+  if (!metodosLectura.has(metodo)) {
     config.headers['X-Requested-With'] = 'arquitectos'
   }
 

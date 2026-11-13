@@ -28,6 +28,14 @@
     <ProjectReference Include="..\Arquitectos.Infrastructure\Arquitectos.Infrastructure.csproj" />
   </ItemGroup>
 
+  <Target Name="GenerarOpenApi" AfterTargets="Build" Condition="'$(GenerateOpenApi)' == 'true'">
+    <PropertyGroup>
+      <OpenApiSalida>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\frontend\swagger\v1\swagger.json'))</OpenApiSalida>
+    </PropertyGroup>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(OpenApiSalida)'))" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="dotnet tool run swagger -- tofile --output &quot;$(OpenApiSalida)&quot; &quot;$(TargetPath)&quot; v1" />
+  </Target>
+
   <ItemGroup>
     <Content Update="appsettings.Production.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" Condition="Exists('appsettings.Production.json')" />
     <Content Update="appsettings.Production.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />

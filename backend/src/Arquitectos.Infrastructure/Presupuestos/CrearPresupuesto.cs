@@ -65,17 +65,30 @@ public sealed partial class PresupuestoServicio
             return ResultadoOperacion<InformeImportacionDto>.Prohibido("Solo el administrador puede importar.");
         }
 
+        var invalido = ValidadorLibroExcel.RevisarContenido(archivo);
+        if (invalido is not null)
+        {
+            return ResultadoOperacion<InformeImportacionDto>.Validacion(invalido);
+        }
+
         if (!await _context.Construcciones.AnyAsync(obra => obra.Id == construccionId && obra.Activo, cancellationToken))
         {
             return ResultadoOperacion<InformeImportacionDto>.Validacion("La construcción no existe.");
         }
 
         ModeloImportado modelo;
+        using var tiempo = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        tiempo.CancelAfter(ValidadorLibroExcel.TiempoMaximo);
         try
         {
-            modelo = LectorExcel.Leer(archivo);
+            var filas = _opciones.FilasMaximas > 0 ? _opciones.FilasMaximas : 20_000;
+            modelo = LectorExcel.Leer(archivo, tiempo.Token, filas, ValidadorLibroExcel.HojasMaximas);
         }
-        catch (Exception excepcion) when (excepcion is InvalidOperationException or IOException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return ResultadoOperacion<InformeImportacionDto>.Validacion("La importación superó el tiempo permitido.");
+        }
+        catch (Exception excepcion) when (excepcion is InvalidOperationException or IOException or InvalidDataException)
         {
             return ResultadoOperacion<InformeImportacionDto>.Validacion(excepcion.Message);
         }

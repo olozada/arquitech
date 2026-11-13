@@ -88,6 +88,20 @@ public sealed class CabecerasSeguridadTests : IDisposable
         Assert.False(respuesta.Headers.Contains("Access-Control-Allow-Origin"));
     }
 
+    [Fact]
+    public async Task Patch_sin_encabezado_responde_400()
+    {
+        var sinEncabezado = await _cliente.SendAsync(new HttpRequestMessage(HttpMethod.Patch, "/api/health"));
+        var conEncabezado = new HttpRequestMessage(HttpMethod.Patch, "/api/health");
+        conEncabezado.Headers.TryAddWithoutValidation("X-Requested-With", "arquitectos");
+        var conEncabezadoRespuesta = await _cliente.SendAsync(conEncabezado);
+        var cuerpo = await sinEncabezado.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, sinEncabezado.StatusCode);
+        Assert.Contains("Solicitud rechazada", cuerpo, StringComparison.Ordinal);
+        Assert.NotEqual(HttpStatusCode.BadRequest, conEncabezadoRespuesta.StatusCode);
+    }
+
     public void Dispose()
     {
         _cliente.Dispose();
