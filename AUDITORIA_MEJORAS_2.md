@@ -51,12 +51,12 @@
   - En `Production`, sin variable y con `.env`, la API **no arranca** (mensaje claro), no usa el `.env`.
   - En `Development`, sin variable, usa el `.env`; con variable, gana la variable.
 
-### C2. Credenciales compartidas con INTEGRACION_VENTAS y comandos destructivos sin guarda
+### C2. Credenciales compartidas y comandos destructivos sin guarda
 
-**Hoy:** `ArchivoEnv` arma la cadena de Arquitectos con `INTEGRACION_VENTAS_HOST/DATABASE/USER/PASSWORD`. `--reset`, `--seed-demo` y `dotnet-ef database update` pueden terminar apuntando a ese servidor.
+**Hoy:** `ArchivoEnv` armaba la cadena de la base `ARQUITECTOS` con variables de otro sistema. `--reset`, `--seed-demo` y `dotnet-ef database update` podían terminar apuntando a ese servidor.
 
 **Hacer:**
-1. Renombrar las variables a `ARQUITECTOS_DB_HOST`, `ARQUITECTOS_DB_NAME`, `ARQUITECTOS_DB_USER`, `ARQUITECTOS_DB_PASSWORD`. Mantener lectura de las viejas **solo** con un warning en log durante una versión, luego quitarla.
+1. Usar solo `ARQUITECTOS_DB_HOST`, `ARQUITECTOS_DB_NAME`, `ARQUITECTOS_DB_USER` y `ARQUITECTOS_DB_PASSWORD`. No leer variables de otro sistema.
 2. Agregar `.env.example` (sin valores) en la raíz con las variables nuevas. Verificar que `.gitignore` ignora `.env` pero **no** `.env.example` (agregar `!.env.example`).
 3. Guarda para comandos destructivos (`--reset`, `--seed-demo`, `--seed-plantilla`) en `Program.cs`:
    - Rechazar si `!IsDevelopment()` (ya debería; verificar).
@@ -69,7 +69,7 @@
 - Tests: `--reset` contra una cadena con `Database=ARQUITECTOS` termina con código ≠ 0 y no toca datos; con `ARQUITECTOS_DEV` procede.
 - README sección "Base de datos local" documenta las variables nuevas y el login SQL dedicado.
 
-> **Acción humana (no Cursor):** crear un login SQL exclusivo `arquitectos_app` con permisos solo sobre la base `ARQUITECTOS` (db_datareader, db_datawriter, EXECUTE; **sin db_owner**) y otro `arquitectos_migraciones` con db_ddladmin para aplicar scripts. Rotar la clave del usuario de INTEGRACION_VENTAS.
+> **Acción humana (no Cursor):** crear un login SQL exclusivo `arquitectos_app` con permisos solo sobre la base `ARQUITECTOS` (db_datareader, db_datawriter, EXECUTE; **sin db_owner**) y otro `arquitectos_migraciones` con db_ddladmin para aplicar scripts. Rotar la clave del login que no es exclusivo de esta base.
 
 ---
 

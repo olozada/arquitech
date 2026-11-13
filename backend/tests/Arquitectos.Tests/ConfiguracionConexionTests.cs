@@ -126,56 +126,14 @@ public sealed class ConfiguracionConexionTests : IDisposable
     }
 
     [Fact]
-    public void Las_variables_nuevas_no_avisan_y_la_confianza_del_certificado_es_configurable()
+    public void La_confianza_del_certificado_es_configurable()
     {
-        var avisos = new List<string>();
-        var conConfianza = ArchivoEnv.CrearValores(_api, confiarCertificado: true, avisos.Add);
-        Assert.Empty(avisos);
+        var conConfianza = ArchivoEnv.CrearValores(_api, confiarCertificado: true);
         Assert.True(new SqlConnectionStringBuilder(conConfianza[ArchivoEnv.ClaveConexion]!).TrustServerCertificate);
         Assert.Equal("DESDE_ARCHIVO", Catalogo(conConfianza[ArchivoEnv.ClaveConexion]));
 
-        var sinConfianza = ArchivoEnv.CrearValores(_api, confiarCertificado: false, avisos.Add);
+        var sinConfianza = ArchivoEnv.CrearValores(_api, confiarCertificado: false);
         Assert.False(new SqlConnectionStringBuilder(sinConfianza[ArchivoEnv.ClaveConexion]!).TrustServerCertificate);
-        Assert.Empty(avisos);
-    }
-
-    [Fact]
-    public void Las_variables_antiguas_arman_la_cadena_y_avisan_sin_mostrar_la_clave()
-    {
-        File.WriteAllText(Path.Combine(_raiz, ".env"), """
-            INTEGRACION_VENTAS_HOST=archivo.local
-            INTEGRACION_VENTAS_DATABASE=DESDE_ARCHIVO
-            INTEGRACION_VENTAS_USER=archivo
-            INTEGRACION_VENTAS_PASSWORD=archivo-secreto
-            """);
-        var avisos = new List<string>();
-        var valores = ArchivoEnv.CrearValores(_api, confiarCertificado: false, avisos.Add);
-
-        Assert.Equal("DESDE_ARCHIVO", Catalogo(valores[ArchivoEnv.ClaveConexion]));
-        Assert.False(new SqlConnectionStringBuilder(valores[ArchivoEnv.ClaveConexion]!).TrustServerCertificate);
-        var aviso = Assert.Single(avisos);
-        Assert.Contains("ARQUITECTOS_DB_HOST", aviso, StringComparison.Ordinal);
-        Assert.DoesNotContain("archivo-secreto", aviso, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Si_hay_variables_nuevas_no_se_leen_las_antiguas()
-    {
-        File.WriteAllText(Path.Combine(_raiz, ".env"), """
-            ARQUITECTOS_DB_HOST=archivo.local
-            ARQUITECTOS_DB_NAME=DESDE_ARCHIVO
-            ARQUITECTOS_DB_USER=archivo
-            ARQUITECTOS_DB_PASSWORD=archivo-secreto
-            INTEGRACION_VENTAS_HOST=viejo.local
-            INTEGRACION_VENTAS_DATABASE=DESDE_VIEJO
-            INTEGRACION_VENTAS_USER=viejo
-            INTEGRACION_VENTAS_PASSWORD=viejo-secreto
-            """);
-        var avisos = new List<string>();
-        var valores = ArchivoEnv.CrearValores(_api, advertir: avisos.Add);
-
-        Assert.Equal("DESDE_ARCHIVO", Catalogo(valores[ArchivoEnv.ClaveConexion]));
-        Assert.Empty(avisos);
     }
 
     [Fact]

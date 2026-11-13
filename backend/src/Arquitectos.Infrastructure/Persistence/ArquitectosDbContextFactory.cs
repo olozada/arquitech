@@ -24,7 +24,7 @@ public sealed class ArquitectosDbContextFactory : IDesignTimeDbContextFactory<Ar
             .AddJsonFile("appsettings.json", optional: false);
         AgregarJsonDeEntorno(configuration, entorno, esDesarrollo);
         configuration
-            .AddInMemoryCollection(ArchivoEnv.CrearValores(directorioApi, confiar, Console.Error.WriteLine))
+            .AddInMemoryCollection(ArchivoEnv.CrearValores(directorioApi, confiar))
             .AddUserSecrets("8f4c2a91-6d3e-4b70-9c15-a1e7d4b82f06")
             .AddEnvironmentVariables();
         var construida = configuration.Build();

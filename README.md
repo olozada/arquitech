@@ -18,11 +18,11 @@ Copia `.env.example` a `.env` en la raíz del repositorio. Git ignora `.env` y s
 | Variable | Uso |
 | --- | --- |
 | `ARQUITECTOS_DB_HOST` | Servidor SQL |
-| `ARQUITECTOS_DB_NAME` | Base. Para los comandos de demostración debe terminar en `_DEV`, `_E2E`, `_TEST` o `_QA` |
+| `ARQUITECTOS_DB_NAME` | Base del proyecto: `ARQUITECTOS`. Los comandos de demostración exigen un nombre que termine en `_DEV`, `_E2E`, `_TEST` o `_QA` |
 | `ARQUITECTOS_DB_USER` | Login de la aplicación |
 | `ARQUITECTOS_DB_PASSWORD` | Clave de ese login |
 
-Esas variables solo se leen en Development. Si también hay user-secrets o la variable `ConnectionStrings__Arquitectos`, esas ganan. Las variables antiguas `INTEGRACION_VENTAS_*` se siguen leyendo una versión y dejan un aviso en el log; hay que dejar de usarlas y rotar esa clave.
+Esas variables solo se leen en Development. Si también hay user-secrets o la variable `ConnectionStrings__Arquitectos`, esas ganan.
 
 El login de la aplicación es `arquitectos_app`, con `db_datareader`, `db_datawriter` y `EXECUTE` sobre su base, sin `db_owner`. Las migraciones usan otro login, `arquitectos_migraciones`, con `db_ddladmin`. Esos logins se crean en SQL Server; no están en el repositorio.
 

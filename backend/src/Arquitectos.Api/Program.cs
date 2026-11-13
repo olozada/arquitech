@@ -29,11 +29,7 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    ArchivoEnv.AgregarDesarrollo(
-        builder.Configuration,
-        builder.Environment,
-        builder.Environment.ContentRootPath,
-        mensaje => Log.Warning("{Aviso}", mensaje));
+    ArchivoEnv.AgregarDesarrollo(builder.Configuration, builder.Environment, builder.Environment.ContentRootPath);
     ArchivoEnv.FijarConfianza(builder.Configuration);
 
     builder.Host.UseSerilog((context, configuration) =>
