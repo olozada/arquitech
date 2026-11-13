@@ -61,6 +61,7 @@ public sealed class SesionHost : IDisposable
     }
 }
 
+[Collection("AnfitrionApi")]
 public sealed class SesionSeguraTests : IClassFixture<SesionHost>
 {
     private const string Clave = "Clave12345";

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Arquitectos.Tests;
 
+[Collection("AnfitrionApi")]
 public sealed class CabecerasSeguridadTests : IDisposable
 {
     private const string Politica =

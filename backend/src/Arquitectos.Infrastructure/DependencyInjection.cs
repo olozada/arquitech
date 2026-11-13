@@ -36,7 +36,7 @@ public static class DependencyInjection
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException(
-                "ConnectionStrings:Arquitectos no está configurada. Defínela en el archivo .env o con dotnet user-secrets.");
+                "ConnectionStrings:Arquitectos no está configurada. En Development puede definirse con user-secrets o con el archivo .env. En producción, con la variable de entorno ConnectionStrings__Arquitectos.");
         }
 
         services.AddHttpContextAccessor();

@@ -1,5 +1,9 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.Hosting;
 
 namespace Arquitectos.Infrastructure.Configuration;
 
@@ -7,18 +11,20 @@ public static class ArchivoEnv
 {
     public const string ClaveConexion = "ConnectionStrings:Arquitectos";
 
-    public static void AplicarConexion(IConfiguration configuration, string directorioInicial)
+    public static void AgregarDesarrollo(ConfigurationManager configuration, IHostEnvironment environment, string directorioInicial)
     {
+        if (!environment.IsDevelopment())
+        {
+            return;
+        }
+
         var valores = CrearValores(directorioInicial);
         if (valores.Count == 0)
         {
             return;
         }
 
-        foreach (var valor in valores)
-        {
-            configuration[valor.Key] = valor.Value;
-        }
+        configuration.Sources.Insert(IndiceInsercion(configuration.Sources), new MemoryConfigurationSource { InitialData = valores });
     }
 
     public static Dictionary<string, string?> CrearValores(string directorioInicial)
@@ -69,10 +75,46 @@ public static class ArchivoEnv
                 return candidato;
             }
 
+            if (EsRaizRepositorio(directorio))
+            {
+                return null;
+            }
+
             directorio = directorio.Parent;
         }
 
         return null;
+    }
+
+    private static bool EsRaizRepositorio(DirectoryInfo directorio)
+    {
+        var ruta = directorio.FullName;
+        return File.Exists(Path.Combine(ruta, ".git"))
+            || Directory.Exists(Path.Combine(ruta, ".git"))
+            || (Directory.Exists(Path.Combine(ruta, "backend"))
+                && File.Exists(Path.Combine(ruta, "backend", "Arquitectos.sln")));
+    }
+
+    private static int IndiceInsercion(IList<IConfigurationSource> fuentes)
+    {
+        for (var i = 0; i < fuentes.Count; i++)
+        {
+            if (fuentes[i] is JsonConfigurationSource json
+                && json.Path?.EndsWith("secrets.json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return i;
+            }
+        }
+
+        for (var i = fuentes.Count - 1; i >= 0; i--)
+        {
+            if (fuentes[i] is EnvironmentVariablesConfigurationSource)
+            {
+                return i;
+            }
+        }
+
+        return fuentes.Count;
     }
 
     private static Dictionary<string, string> Leer(string ruta)

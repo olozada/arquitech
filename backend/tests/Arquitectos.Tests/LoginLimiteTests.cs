@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Arquitectos.Tests;
 
+[Collection("AnfitrionApi")]
 public sealed class LoginLimiteTests : IAsyncLifetime
 {
     private readonly SqliteConnection _conexion = new("Data Source=login-limite;Mode=Memory;Cache=Shared");

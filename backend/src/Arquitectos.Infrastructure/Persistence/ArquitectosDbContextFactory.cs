@@ -14,8 +14,8 @@ public sealed class ArquitectosDbContextFactory : IDesignTimeDbContextFactory<Ar
             .SetBasePath(directorioApi)
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddUserSecrets("8f4c2a91-6d3e-4b70-9c15-a1e7d4b82f06")
             .AddInMemoryCollection(ArchivoEnv.CrearValores(directorioApi))
+            .AddUserSecrets("8f4c2a91-6d3e-4b70-9c15-a1e7d4b82f06")
             .AddEnvironmentVariables()
             .Build();
 

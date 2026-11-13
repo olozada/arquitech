@@ -29,7 +29,7 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    ArchivoEnv.AplicarConexion(builder.Configuration, builder.Environment.ContentRootPath);
+    ArchivoEnv.AgregarDesarrollo(builder.Configuration, builder.Environment, builder.Environment.ContentRootPath);
 
     builder.Host.UseSerilog((context, configuration) =>
     {
