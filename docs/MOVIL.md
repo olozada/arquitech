@@ -79,7 +79,7 @@ Escenario de aceptación **6** del módulo móvil.
 
 ## Publicación (resumen)
 
-- **CI:** workflow `.github/workflows/movil.yml` — `format`, `analyze`, `test --coverage`, `apk --debug`.
+- **CI:** workflow `.github/workflows/movil.yml` — `format`, `analyze`, `test --coverage`, `apk --debug`; versión de Flutter en `movil/.flutter-version` (misma que desarrollo, leída por ambos jobs vía `flutter-version-file`).
 - **Android release:** crear `movil/android/key.properties` (no versionado) con:
   - `storeFile` — ruta al `.jks` o `.keystore`
   - `storePassword`, `keyAlias`, `keyPassword`
