@@ -22,7 +22,7 @@ mixin ControladorSesion on ControladorBase {
       notifyListeners();
       return;
     }
-    if (!urlApiPermitidaEnRelease(dependencias.configuracion.urlApi)) {
+    if (!urlApiPermitidaEnRelease(dependencias.configuracion)) {
       aviso = Mensajes.faltaServidor;
       notifyListeners();
       return;

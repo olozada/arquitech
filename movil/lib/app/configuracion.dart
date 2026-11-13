@@ -2,15 +2,11 @@ import 'package:flutter/foundation.dart';
 
 /// La URL llega solo con `--dart-define=API_URL=...`.
 /// dev, qa y prod se distinguen por ese valor al compilar. No hay URL en el código.
-@visibleForTesting
-var simularReleaseEnPruebas = false;
-
-bool urlApiPermitidaEnRelease(String urlApi, {bool? release}) {
-  final enRelease = release ?? simularReleaseEnPruebas || kReleaseMode;
-  if (!enRelease || urlApi.isEmpty) {
+bool urlApiPermitidaEnRelease(ConfiguracionApp configuracion) {
+  if (!configuracion.esRelease || configuracion.urlApi.isEmpty) {
     return true;
   }
-  return urlApi.toLowerCase().startsWith('https://');
+  return configuracion.urlApi.toLowerCase().startsWith('https://');
 }
 
 class ConfiguracionApp {
@@ -20,6 +16,7 @@ class ConfiguracionApp {
     this.buildApp = '',
     this.versionEsquema = 1,
     this.maxOperacionesLote = 500,
+    this.esRelease = false,
   });
 
   String get versionAppRegistro =>
@@ -41,6 +38,7 @@ class ConfiguracionApp {
         'MAX_OPS_LOTE',
         defaultValue: 500,
       ),
+      esRelease: kReleaseMode,
     );
   }
 
@@ -49,4 +47,5 @@ class ConfiguracionApp {
   final String buildApp;
   final int versionEsquema;
   final int maxOperacionesLote;
+  final bool esRelease;
 }

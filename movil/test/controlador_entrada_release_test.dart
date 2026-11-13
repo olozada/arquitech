@@ -16,8 +16,6 @@ void main() {
   });
 
   test('entrar con API http se rechaza en release simulado', () async {
-    simularReleaseEnPruebas = true;
-    addTearDown(() => simularReleaseEnPruebas = false);
     final carpeta = await carpetaPrueba('login-http');
     addTearDown(() => borrarCarpeta(carpeta));
     final origen = await Directory(
@@ -30,6 +28,7 @@ void main() {
         urlApi: 'http://api.insegura',
         versionApp: '1.0.0',
         buildApp: '1',
+        esRelease: true,
       ),
     );
     final controlador = ControladorAplicacion(dependencias);

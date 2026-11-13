@@ -2,6 +2,7 @@ using Arquitectos.Application.Movil;
 
 namespace Arquitectos.Tests;
 
+// Casos espejo de movil/test/version_app_movil_test.dart.
 public sealed class VersionAppTests
 {
     [Theory]
