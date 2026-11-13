@@ -18,12 +18,12 @@ export type PropsEditorApu = {
 export function useEditorApu({ apuId, unidadInicial, embebido, alGuardar, alCancelar }: PropsEditorApu) {
   const consulta = useQuery({
     queryKey: ['apu', apuId],
-    enabled: apuId != null && apuId > 0,
+    enabled: apuId != null && apuId >= 0,
     queryFn: async () => (await cliente.get<ApuServidor>(`/api/apu/${apuId}`)).data,
   })
   const usos = useQuery({
     queryKey: ['apu-usos', apuId],
-    enabled: apuId != null && apuId > 0 && !embebido,
+    enabled: apuId != null && apuId >= 0 && !embebido,
     queryFn: async () => (await cliente.get<Uso[]>(`/api/apu/${apuId}/usos`)).data,
   })
   const unidades = useQuery({

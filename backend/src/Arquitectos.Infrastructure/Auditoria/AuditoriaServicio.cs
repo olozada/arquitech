@@ -36,7 +36,8 @@ public sealed class AuditoriaServicio : IAuditoria, IConsultaAuditoria
             EntidadId = entidadId,
             Accion = accion,
             CambiosJson = cambiosJson,
-            Ip = _acceso.HttpContext?.Connection.RemoteIpAddress?.ToString()
+            Ip = _acceso.HttpContext?.Connection.RemoteIpAddress?.ToString(),
+            Origen = OrigenAuditoria.De(_acceso.HttpContext)
         });
         return Task.CompletedTask;
     }

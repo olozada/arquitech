@@ -25,7 +25,7 @@ public sealed partial class PresupuestoServicio
             return ResultadoOperacion<PresupuestoDetalleDto>.NoEncontrado("No se encontró el capítulo.");
         }
 
-        var ids = solicitud.ApuIds.Where(item => item > 0).Distinct().ToList();
+        var ids = solicitud.ApuIds.Where(item => item >= 0).Distinct().ToList();
         var apus = await _context.Apus.AsNoTracking().Where(apu => ids.Contains(apu.Id) && apu.Activo).ToListAsync(cancellationToken);
         if (apus.Count != ids.Count)
         {

@@ -186,7 +186,7 @@ public sealed partial class PresupuestoServicio
                     apu,
                     unidadApu,
                     item.FactorConversionApu,
-                    item.ApuId is > 0 && item.FactorConversionApu == 1 && !TextoPresupuesto.MismaUnidad(item.Unidad, unidadApu),
+                    item.ApuId is not null && item.FactorConversionApu == 1 && !TextoPresupuesto.MismaUnidad(item.Unidad, unidadApu),
                     item.ConceptoId,
                     item.Cantidad,
                     item.CantidadOrigenItemId,
@@ -195,7 +195,7 @@ public sealed partial class PresupuestoServicio
                     item.ValorManoObraUnitario,
                     unitario,
                     item.Cantidad * unitario,
-                    item.ApuId is > 0,
+                    item.ApuId is not null,
                     item.Mediciones.Select(medicion => new MedicionDto(medicion.Id, medicion.Ubicacion, medicion.Veces, medicion.Largo, medicion.Ancho, medicion.Alto, medicion.Parcial)).ToList());
             }).ToList();
             var total = items.Sum(item => item.Total);

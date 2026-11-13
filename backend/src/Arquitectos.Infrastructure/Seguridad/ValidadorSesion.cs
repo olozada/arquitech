@@ -34,7 +34,10 @@ public sealed class ValidadorSesion
             sesion => sesion.Id == sesionId &&
                       sesion.UsuarioId == usuarioId &&
                       sesion.RevocadoEn == null &&
-                      sesion.Expira > ahora,
+                      sesion.Expira > ahora &&
+                      (sesion.DispositivoId == null ||
+                       _context.Dispositivos.Any(dispositivo =>
+                           dispositivo.Id == sesion.DispositivoId && dispositivo.RevocadoEn == null)),
             cancellationToken);
         _cache.Set(clave, sesionOk, new MemoryCacheEntryOptions
         {

@@ -14,6 +14,8 @@ public static class Politicas
 
     public const string Tablero = "Tablero";
 
+    public const string PerfilOperativo = "PerfilOperativo";
+
     public static void Registrar(AuthorizationOptions opciones)
     {
         opciones.AddPolicy(SoloAdministrador, politica => politica.RequireRole(Perfiles.Administrador));
@@ -21,5 +23,6 @@ public static class Politicas
         opciones.AddPolicy(TomaActas, politica => politica.RequireRole(Perfiles.Administrador, Perfiles.Arquitecto, Perfiles.Contratista));
         opciones.AddPolicy(RevisionActas, politica => politica.RequireRole(Perfiles.Administrador, Perfiles.Revisor));
         opciones.AddPolicy(Tablero, politica => politica.RequireRole(Perfiles.Administrador));
+        opciones.AddPolicy(PerfilOperativo, politica => politica.RequireRole(Perfiles.Arquitecto, Perfiles.Contratista, Perfiles.Revisor));
     }
 }

@@ -19,6 +19,7 @@ public sealed class ActaConfiguracion : IEntityTypeConfiguration<Acta>
         builder.Property(a => a.Observacion).HasMaxLength(1000);
         builder.Property(a => a.Cerrada).HasDefaultValue(false);
         builder.Property(a => a.RowVersion).IsRowVersion();
+        builder.Property(a => a.ModificadaEn).HasColumnType("datetime2");
         builder.Property(a => a.FechaRegistro)
             .HasColumnType("datetime2")
             .HasDefaultValueSql("SYSUTCDATETIME()");
@@ -59,6 +60,10 @@ public sealed class ActaDetalleConfiguracion : IEntityTypeConfiguration<ActaDeta
         builder.Property(d => d.Precio).HasPrecision(18, 2);
         builder.Property(d => d.Descripcion).HasMaxLength(500).IsRequired();
         builder.Property(d => d.Aprobado).HasDefaultValue(true);
+        builder.Property(d => d.RowVersion).IsRowVersion();
+        builder.HasIndex(d => d.IdCliente)
+            .IsUnique()
+            .HasFilter("[IdCliente] IS NOT NULL");
         builder.Property(d => d.Subtotal)
             .HasPrecision(37, 6)
             .HasComputedColumnSql("[Cantidad] * [Precio]", stored: true);

@@ -46,8 +46,8 @@ export function CapituloPresupuesto({
   alEditarApu: (apuId: number) => void
 }) {
   const capitulo = borrador.capitulos[indiceCapitulo]
-  const candidatos = borrador.capitulos.flatMap((grupo) => grupo.items).filter((candidato) => candidato.id > 0)
-  const destinoInicial = borrador.capitulos.find((candidato) => candidato.id !== capitulo.id && candidato.id > 0)?.id ?? 0
+  const candidatos = borrador.capitulos.flatMap((grupo) => grupo.items).filter((candidato) => candidato.id >= 0)
+  const destinoInicial = borrador.capitulos.find((candidato) => candidato.id !== capitulo.id && candidato.id >= 0)?.id ?? 0
 
   return (
     <details className="catalogo-panel mb-3" open>
@@ -66,7 +66,7 @@ export function CapituloPresupuesto({
           capitulos.splice(indiceCapitulo, 0, movido)
           void cliente.put<PresupuestoDetalle>(`/api/presupuestos/${borrador.id}/orden`, {
             rowVersion: borrador.rowVersion,
-            capitulos: capitulos.filter((capituloOrden) => capituloOrden.id > 0).map((capituloOrden, indice) => ({
+            capitulos: capitulos.filter((capituloOrden) => capituloOrden.id >= 0).map((capituloOrden, indice) => ({
               id: capituloOrden.id,
               orden: indice + 1,
               items: capituloOrden.items.map((fila) => fila.id).filter((itemId) => itemId > 0),

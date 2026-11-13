@@ -1,0 +1,27 @@
+name: movil
+on:
+  push:
+    paths:
+      - 'movil/**'
+      - '.github/workflows/movil.yml'
+  pull_request:
+    paths:
+      - 'movil/**'
+      - '.github/workflows/movil.yml'
+jobs:
+  movil:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test --coverage --concurrency=1
+      - run: flutter build apk --debug

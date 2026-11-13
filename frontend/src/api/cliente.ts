@@ -2,11 +2,15 @@ import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { borrarSesion } from './sesion'
 
-type Peticion = InternalAxiosRequestConfig & { _reintento?: boolean }
+export type Peticion = InternalAxiosRequestConfig & {
+  _reintento?: boolean
+  _sinRenovacion?: boolean
+}
 
 export const cliente = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '',
   withCredentials: true,
+  timeout: 20_000,
 })
 
 let renovacion: Promise<void> | null = null
@@ -29,7 +33,13 @@ cliente.interceptors.response.use(
     const url = config?.url ?? ''
     const esLogin = url.includes('/api/auth/login')
     const esRenovar = url.includes('/api/auth/renovar')
-    if (error.response?.status !== 401 || !config || esLogin || config._reintento) {
+    if (
+      error.response?.status !== 401 ||
+      !config ||
+      esLogin ||
+      config._reintento ||
+      config._sinRenovacion
+    ) {
       if (error.response?.status === 401 && esRenovar) {
         borrarSesion()
         irALogin()

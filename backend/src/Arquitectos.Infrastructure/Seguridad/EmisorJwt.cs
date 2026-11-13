@@ -16,6 +16,8 @@ public sealed class EmisorJwt
         _opciones = opciones.Value;
     }
 
+    public int Minutos => _opciones.ExpirationMinutes > 0 ? _opciones.ExpirationMinutes : 20;
+
     public string Emitir(int usuarioId, string nombreUsuario, string nombre, int tipoUsuarioId, string tipoUsuario, long sesionId)
     {
         if (string.IsNullOrWhiteSpace(_opciones.Key))

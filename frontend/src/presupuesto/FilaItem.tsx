@@ -41,7 +41,7 @@ export function FilaItem({
 }) {
   return (
     <tr
-      id={item.id > 0 ? `item-${item.id}` : undefined}
+      id={item.id >= 0 ? `item-${item.id}` : undefined}
       className={resaltado ? 'table-warning' : undefined}
       hidden={oculto}
     >
@@ -106,7 +106,7 @@ export function FilaItem({
       </td>
       <td className="text-end">{dinero(item.cantidad * (item.valorMaterialUnitario + item.valorManoObraUnitario), 2)}</td>
       <td>
-        {editable && item.id > 0 && (
+        {editable && item.id >= 0 && (
           <>
             <Button type="button" size="sm" variant="link" onClick={alDuplicar}>
               Duplicar
@@ -117,7 +117,7 @@ export function FilaItem({
             <Button type="button" size="sm" variant="link" onClick={alConcepto}>
               Concepto
             </Button>
-            {item.apuId != null && item.apuId > 0 && (
+            {item.apuId != null && item.apuId >= 0 && (
               <Button type="button" size="sm" variant="link" onClick={alEditarApu}>
                 Editar APU
               </Button>

@@ -79,57 +79,13 @@ public sealed partial class ActaServicio : IActaServicio
             return CrearActaValidador.MensajeContratista;
         }
 
-        if (!await TodosActivos(_context.Construcciones, solicitud.Detalles.Select(linea => linea.ConstruccionId), cancellationToken))
+        foreach (var linea in solicitud.Detalles)
         {
-            return CrearActaValidador.MensajeConstruccion;
-        }
-
-        if (!await TodosActivos(_context.Conceptos, solicitud.Detalles.Select(linea => linea.ConceptoId), cancellationToken))
-        {
-            return CrearActaValidador.MensajeConcepto;
-        }
-
-        var unidades = solicitud.Detalles
-            .Where(linea => linea.UnidadMedidaId is > 0)
-            .Select(linea => linea.UnidadMedidaId!.Value)
-            .ToList();
-        if (unidades.Count > 0 &&
-            !await TodosActivos(_context.UnidadesMedida, unidades, cancellationToken))
-        {
-            return CrearActaValidador.MensajeUnidad;
-        }
-
-        var insumos = solicitud.Detalles
-            .Where(linea => linea.InsumoId is > 0)
-            .Select(linea => linea.InsumoId!.Value)
-            .ToList();
-        if (insumos.Count > 0 &&
-            !await TodosActivos(_context.Insumos, insumos, cancellationToken))
-        {
-            return "Debe seleccionar un insumo válido.";
-        }
-
-        var presupuestoIds = solicitud.Detalles.Where(linea => linea.PresupuestoItemId is > 0).Select(linea => linea.PresupuestoItemId!.Value).Distinct().ToList();
-        if (presupuestoIds.Count > 0)
-        {
-            var validos = await _context.Set<PresupuestoItem>()
-                .Where(item => presupuestoIds.Contains(item.Id) && item.Capitulo.Presupuesto.Estado == EstadoPresupuesto.Aprobado)
-                .Select(item => new { item.Id, item.Capitulo.Presupuesto.ConstruccionId })
-                .ToListAsync(cancellationToken);
-            if (solicitud.Detalles.Any(linea => linea.PresupuestoItemId is > 0 && !validos.Any(item => item.Id == linea.PresupuestoItemId && item.ConstruccionId == linea.ConstruccionId)))
+            var errorLinea = await ValidadorLineaActa.ValidarAsync(_context, linea, cancellationToken);
+            if (errorLinea is not null)
             {
-                return "El ítem de presupuesto no pertenece a la construcción o el presupuesto no está aprobado.";
+                return errorLinea;
             }
-        }
-
-        if (solicitud.Detalles.Any(linea => decimal.Round(linea.Cantidad, 4, MidpointRounding.AwayFromZero) <= 0))
-        {
-            return CrearActaValidador.MensajeCantidad;
-        }
-
-        if (solicitud.Detalles.Any(linea => decimal.Round(linea.Precio, 2, MidpointRounding.AwayFromZero) < 0))
-        {
-            return CrearActaValidador.MensajePrecio;
         }
 
         return null;

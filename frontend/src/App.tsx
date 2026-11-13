@@ -5,8 +5,9 @@ import { RutaPrivada } from './auth/RutaPrivada'
 import { useSesion } from './auth/contextoSesion'
 import { catalogos } from './catalogos/definiciones'
 import { Layout } from './componentes/Layout'
+import { lazyConReintento } from './lazyConReintento'
 
-const Login = lazy(() => import('./paginas/Login').then((modulo) => ({ default: modulo.Login })))
+const Login = lazyConReintento(() => import('./paginas/Login').then((modulo) => ({ default: modulo.Login })))
 const Dashboard = lazy(() => import('./paginas/Dashboard').then((modulo) => ({ default: modulo.Dashboard })))
 const CatalogoCrud = lazy(() =>
   import('./componentes/CatalogoCrud').then((modulo) => ({ default: modulo.CatalogoCrud })),

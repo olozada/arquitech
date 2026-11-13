@@ -29,4 +29,6 @@ public class Auditoria
     public string? CambiosJson { get; set; }
 
     public string? Ip { get; set; }
+
+    public string Origen { get; set; } = "web";
 }

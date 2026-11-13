@@ -20,6 +20,8 @@ public class Acta
 
     public byte[] RowVersion { get; set; } = [];
 
+    public DateTime? ModificadaEn { get; set; }
+
     public DateTime FechaRegistro { get; set; }
 
     public int? UsuarioRegistroId { get; set; }
@@ -62,6 +64,10 @@ public class ActaDetalle
     public bool Aprobado { get; set; } = true;
 
     public int? PresupuestoItemId { get; set; }
+
+    public Guid? IdCliente { get; set; }
+
+    public byte[] RowVersion { get; set; } = [];
 
     public Acta Acta { get; set; } = null!;
 

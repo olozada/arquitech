@@ -15,7 +15,7 @@ public sealed partial class ActaServicio : IActaServicio
     private async Task<ResultadoActa<ActaDto>> RevisarAsync(
         Acta acta,
         CrearActaSolicitud solicitud,
-        int usuarioId,
+        ActorActa actor,
         CancellationToken cancellationToken)
     {
         if (solicitud.Detalles.Any(linea => linea.Id is not > 0))
@@ -35,30 +35,34 @@ public sealed partial class ActaServicio : IActaServicio
             return ResultadoActa<ActaDto>.Invalido("Hay un ítem que no pertenece al acta.");
         }
 
-        foreach (var linea in solicitud.Detalles)
+        var cambios = solicitud.Detalles
+            .Where(linea => actuales[linea.Id!.Value].Aprobado != linea.Aprobado)
+            .ToList();
+        if (cambios.Count == 0)
+        {
+            return ResultadoActa<ActaDto>.Ok((await CargarAsync(acta.NumeroActa, cancellationToken))!);
+        }
+
+        await using var transaccion = await _context.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var linea in cambios)
         {
             var detalle = actuales[linea.Id!.Value];
-            if (detalle.Aprobado == linea.Aprobado)
-            {
-                continue;
-            }
-
-            await _auditoria.RegistrarAsync(
-                "ActaDetalle",
-                detalle.Id.ToString(),
-                linea.Aprobado ? AccionAuditoria.Aprobar : AccionAuditoria.Rechazar,
-                usuarioId,
-                CambiosAuditoria.Json("Aprobado", detalle.Aprobado, linea.Aprobado),
+            var resultado = await _operaciones.RevisarAsync(
+                acta.NumeroActa,
+                detalle.Id,
+                Convert.ToBase64String(detalle.RowVersion),
+                linea.Aprobado,
+                actor,
                 cancellationToken);
-            detalle.Aprobado = linea.Aprobado;
+            if (resultado.Estado != EstadoActa.Ok)
+            {
+                await transaccion.RollbackAsync(cancellationToken);
+                _context.ChangeTracker.Clear();
+                return Traducir(resultado);
+            }
         }
 
-        var conflictoRevision = await GuardarAsync(cancellationToken);
-        if (conflictoRevision is not null)
-        {
-            return ResultadoActa<ActaDto>.Conflicto(conflictoRevision);
-        }
-
+        await transaccion.CommitAsync(cancellationToken);
         return ResultadoActa<ActaDto>.Ok((await CargarAsync(acta.NumeroActa, cancellationToken))!);
     }
 

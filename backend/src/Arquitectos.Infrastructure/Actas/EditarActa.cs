@@ -50,7 +50,7 @@ public sealed partial class ActaServicio : IActaServicio
 
         if (actor.TipoUsuarioId == PerfilesUsuario.Revisor)
         {
-            return await RevisarAsync(acta, solicitud, usuarioId, cancellationToken);
+            return await RevisarAsync(acta, solicitud, actor, cancellationToken);
         }
 
         if (actor.TipoUsuarioId != PerfilesUsuario.Administrador)
@@ -78,22 +78,35 @@ public sealed partial class ActaServicio : IActaServicio
         acta.Observacion = Texto(solicitud.Observacion);
 
         var conservar = ids.ToHashSet();
+        var cambioLineas = false;
         foreach (var detalle in acta.Detalles.Where(detalle => !conservar.Contains(detalle.Id)).ToList())
         {
             acta.Detalles.Remove(detalle);
             _context.ActaDetalles.Remove(detalle);
+            cambioLineas = true;
         }
 
         foreach (var linea in solicitud.Detalles)
         {
             if (linea.Id is > 0)
             {
-                CopiarDetalle(actuales[linea.Id.Value], linea);
+                var detalle = actuales[linea.Id.Value];
+                CopiarDetalle(detalle, linea);
+                if (_context.Entry(detalle).State == EntityState.Modified)
+                {
+                    cambioLineas = true;
+                }
             }
             else
             {
                 acta.Detalles.Add(CrearDetalle(linea, PerfilesUsuario.Arquitecto));
+                cambioLineas = true;
             }
+        }
+
+        if (cambioLineas)
+        {
+            acta.ModificadaEn = DateTime.UtcNow;
         }
 
         var conflicto = await GuardarAsync(cancellationToken);
@@ -129,37 +142,82 @@ public sealed partial class ActaServicio : IActaServicio
             .Where(detalle => detalle.TipoUsuarioId == actor.TipoUsuarioId)
             .Select(detalle => detalle.Id)
             .ToHashSet();
-        var conservadas = ids.Where(propias.Contains).ToHashSet();
-        foreach (var detalle in acta.Detalles.Where(detalle => propias.Contains(detalle.Id) && !conservadas.Contains(detalle.Id)).ToList())
+        var eliminar = acta.Detalles
+            .Where(detalle => propias.Contains(detalle.Id) && !ids.Where(propias.Contains).Contains(detalle.Id))
+            .Select(detalle => detalle.Id)
+            .ToList();
+        var editar = solicitud.Detalles
+            .Where(linea => linea.Id is > 0 && propias.Contains(linea.Id.Value) && !LineaActaMapeo.Igual(actuales[linea.Id.Value], linea))
+            .ToList();
+        var agregar = solicitud.Detalles.Where(linea => linea.Id is not > 0).ToList();
+        if (eliminar.Count == 0 && editar.Count == 0 && agregar.Count == 0)
         {
-            acta.Detalles.Remove(detalle);
-            _context.ActaDetalles.Remove(detalle);
+            return ResultadoActa<ActaDto>.Ok((await CargarAsync(acta.NumeroActa, cancellationToken))!);
         }
 
-        foreach (var linea in solicitud.Detalles)
+        await using var transaccion = await _context.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var lineaId in eliminar)
         {
-            if (linea.Id is > 0)
+            var detalle = actuales[lineaId];
+            var resultado = await _operaciones.EliminarAsync(
+                acta.NumeroActa,
+                lineaId,
+                Convert.ToBase64String(detalle.RowVersion),
+                actor,
+                cancellationToken);
+            if (resultado.Estado != EstadoActa.Ok)
             {
-                var detalle = actuales[linea.Id.Value];
-                if (detalle.TipoUsuarioId == actor.TipoUsuarioId)
-                {
-                    CopiarDetalle(detalle, linea);
-                }
-            }
-            else
-            {
-                acta.Detalles.Add(CrearDetalle(linea, actor.TipoUsuarioId));
+                await transaccion.RollbackAsync(cancellationToken);
+                _context.ChangeTracker.Clear();
+                return Traducir(resultado);
             }
         }
 
-        var conflictoPerfil = await GuardarAsync(cancellationToken);
-        if (conflictoPerfil is not null)
+        foreach (var linea in editar)
         {
-            return ResultadoActa<ActaDto>.Conflicto(conflictoPerfil);
+            var detalle = actuales[linea.Id!.Value];
+            var resultado = await _operaciones.EditarAsync(
+                acta.NumeroActa,
+                detalle.Id,
+                Convert.ToBase64String(detalle.RowVersion),
+                linea,
+                actor,
+                cancellationToken);
+            if (resultado.Estado != EstadoActa.Ok)
+            {
+                await transaccion.RollbackAsync(cancellationToken);
+                _context.ChangeTracker.Clear();
+                return Traducir(resultado);
+            }
         }
 
+        foreach (var linea in agregar)
+        {
+            var resultado = await _operaciones.AgregarAsync(
+                acta.NumeroActa,
+                Guid.NewGuid(),
+                linea,
+                actor,
+                cancellationToken);
+            if (resultado.Estado != EstadoActa.Ok)
+            {
+                await transaccion.RollbackAsync(cancellationToken);
+                _context.ChangeTracker.Clear();
+                return Traducir(resultado);
+            }
+        }
+
+        await transaccion.CommitAsync(cancellationToken);
         return ResultadoActa<ActaDto>.Ok((await CargarAsync(acta.NumeroActa, cancellationToken))!);
     }
+
+    private static ResultadoActa<ActaDto> Traducir(ResultadoActa<LineaAplicadaDto> resultado) =>
+        resultado.Estado switch
+        {
+            EstadoActa.NoEncontrado => ResultadoActa<ActaDto>.NoEncontrado(resultado.Mensaje ?? "No se encontró el acta."),
+            EstadoActa.Conflicto => ResultadoActa<ActaDto>.Conflicto(resultado.Mensaje ?? CrearActaValidador.MensajeConflictoLinea),
+            _ => ResultadoActa<ActaDto>.Invalido(resultado.Mensaje ?? "No se pudo guardar la línea.")
+        };
 
     private async Task<string?> GuardarAsync(CancellationToken cancellationToken)
     {
@@ -178,29 +236,11 @@ public sealed partial class ActaServicio : IActaServicio
         ReglasPresupuesto.VersionDistinta(actual, token);
 
 
-    private static ActaDetalle CrearDetalle(LineaActaSolicitud linea, int tipoUsuarioId)
-    {
-        var detalle = new ActaDetalle
-        {
-            Descripcion = (linea.Descripcion ?? "").Trim(),
-            TipoUsuarioId = tipoUsuarioId,
-            Aprobado = true
-        };
-        CopiarDetalle(detalle, linea);
-        return detalle;
-    }
+    private static ActaDetalle CrearDetalle(LineaActaSolicitud linea, int tipoUsuarioId) =>
+        LineaActaMapeo.Crear(linea, tipoUsuarioId, null);
 
-    private static void CopiarDetalle(ActaDetalle detalle, LineaActaSolicitud linea)
-    {
-        detalle.ConstruccionId = linea.ConstruccionId;
-        detalle.ConceptoId = linea.ConceptoId;
-        detalle.UnidadMedidaId = linea.UnidadMedidaId is > 0 ? linea.UnidadMedidaId : null;
-        detalle.InsumoId = linea.InsumoId is > 0 ? linea.InsumoId : null;
-        detalle.Cantidad = decimal.Round(linea.Cantidad, 4, MidpointRounding.AwayFromZero);
-        detalle.Precio = decimal.Round(linea.Precio, 2, MidpointRounding.AwayFromZero);
-        detalle.Descripcion = (linea.Descripcion ?? "").Trim();
-        detalle.PresupuestoItemId = linea.PresupuestoItemId is > 0 ? linea.PresupuestoItemId : null;
-    }
+    private static void CopiarDetalle(ActaDetalle detalle, LineaActaSolicitud linea) =>
+        LineaActaMapeo.Copiar(detalle, linea);
 
 
 }

@@ -31,11 +31,11 @@ export function cuerpo(presupuesto: PresupuestoDetalle) {
     pctUtilidad: presupuesto.pctUtilidad,
     pctIvaUtilidad: presupuesto.pctIvaUtilidad,
     capitulos: presupuesto.capitulos.map((capitulo) => ({
-      id: capitulo.id > 0 ? capitulo.id : null,
+      id: capitulo.id >= 0 ? capitulo.id : null,
       numero: capitulo.numero,
       nombre: capitulo.nombre,
       items: capitulo.items.map((item) => ({
-        id: item.id > 0 ? item.id : null,
+        id: item.id >= 0 ? item.id : null,
         codigo: item.codigo,
         descripcion: item.descripcion,
         unidad: item.unidad,

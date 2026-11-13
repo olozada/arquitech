@@ -52,6 +52,9 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
 
+                    b.Property<DateTime?>("ModificadaEn")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Observacion")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -117,6 +120,9 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<Guid?>("IdCliente")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int?>("InsumoId")
                         .HasColumnType("int");
 
@@ -129,6 +135,12 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("PresupuestoItemId")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<decimal>("Subtotal")
                         .ValueGeneratedOnAddOrUpdate()
@@ -143,6 +155,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IdCliente")
+                        .IsUnique()
+                        .HasFilter("[IdCliente] IS NOT NULL");
 
                     b.HasIndex("InsumoId");
 
@@ -371,6 +387,13 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("web");
+
                     b.Property<int?>("UsuarioId")
                         .HasColumnType("int");
 
@@ -555,6 +578,45 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.HasIndex("CargoId");
 
                     b.ToTable("CuadrillaCargos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Dispositivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Plataforma")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("RegistradoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RevocadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UltimaSincronizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VersionApp")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Dispositivos", (string)null);
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>
@@ -1047,6 +1109,48 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.OperacionMovil", b =>
+                {
+                    b.Property<Guid>("IdOperacion")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreadaEnDispositivo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DispositivoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("NumeroActa")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RecibidaEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResultadoJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdOperacion");
+
+                    b.HasIndex("DispositivoId");
+
+                    b.HasIndex("UsuarioId", "RecibidaEn");
+
+                    b.ToTable("OperacionesMovil", (string)null);
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.ParametrosManoObra", b =>
                 {
                     b.Property<int>("Id")
@@ -1438,6 +1542,9 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreadoEn")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("DispositivoId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("Expira")
                         .HasColumnType("datetime2");
 
@@ -1461,6 +1568,8 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DispositivoId");
 
                     b.HasIndex("HashToken")
                         .IsUnique();
@@ -1795,6 +1904,17 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("Cuadrilla");
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Dispositivo", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.InsumoPrecioHistorial", b =>
                 {
                     b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
@@ -1833,6 +1953,25 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("MenuOpcion");
 
                     b.Navigation("TipoUsuario");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.OperacionMovil", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Dispositivo", "Dispositivo")
+                        .WithMany()
+                        .HasForeignKey("DispositivoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Dispositivo");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Presupuesto", b =>
@@ -1925,11 +2064,18 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.SesionUsuario", b =>
                 {
+                    b.HasOne("Arquitectos.Domain.Entidades.Dispositivo", "Dispositivo")
+                        .WithMany("Sesiones")
+                        .HasForeignKey("DispositivoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Arquitectos.Domain.Entidades.Usuario", "Usuario")
                         .WithMany("Sesiones")
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Dispositivo");
 
                     b.Navigation("Usuario");
                 });
@@ -1989,6 +2135,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Cuadrilla", b =>
                 {
                     b.Navigation("Integrantes");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Dispositivo", b =>
+                {
+                    b.Navigation("Sesiones");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>

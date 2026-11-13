@@ -176,6 +176,7 @@ public sealed partial class ActaServicio : IActaServicio
             .AsNoTracking()
             .Where(usuario => usuario.Id == usuarioId && usuario.Activo)
             .Select(usuario => new ActorActa(
+                usuario.Id,
                 usuario.TipoUsuarioId,
                 usuario.ArquitectoId,
                 usuario.ContratistaId,
@@ -313,9 +314,6 @@ public sealed partial class ActaServicio : IActaServicio
             acta.Cerrada,
             Convert.ToBase64String(acta.RowVersion ?? []));
     }
-
-
-    private sealed record ActorActa(int TipoUsuarioId, int? ArquitectoId, int? ContratistaId, int? RevisorId);
 
 
     private const string Colacion = "Latin1_General_CI_AI";
@@ -465,18 +463,5 @@ public sealed partial class ActaServicio : IActaServicio
         CancellationToken cancellationToken)
         where TEntidad : class, ICatalogo =>
         await consulta.AnyAsync(entidad => entidad.Id == id && entidad.Activo, cancellationToken);
-
-    private static async Task<bool> TodosActivos<TEntidad>(
-        IQueryable<TEntidad> consulta,
-        IEnumerable<int> ids,
-        CancellationToken cancellationToken)
-        where TEntidad : class, ICatalogo
-    {
-        var distintos = ids.Distinct().ToList();
-        var encontrados = await consulta.CountAsync(
-            entidad => distintos.Contains(entidad.Id) && entidad.Activo,
-            cancellationToken);
-        return encontrados == distintos.Count;
-    }
 
 }

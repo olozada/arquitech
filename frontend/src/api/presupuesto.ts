@@ -28,7 +28,7 @@ export function usePresupuestos(construccionId: number) {
 export function usePresupuesto(id: number) {
   return useQuery({
     queryKey: ['presupuesto', id],
-    enabled: id > 0,
+    enabled: Number.isInteger(id) && id >= 0,
     queryFn: async () => (await cliente.get<PresupuestoDetalle>(`/api/presupuestos/${id}`)).data,
   })
 }

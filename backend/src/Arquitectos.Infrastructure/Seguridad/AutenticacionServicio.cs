@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Arquitectos.Application.Auth;
+using Arquitectos.Application.Movil;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arquitectos.Infrastructure.Seguridad;
 
-public sealed class AutenticacionServicio : IAutenticacionServicio, IRevocacionSesiones
+public sealed partial class AutenticacionServicio : IAutenticacionServicio, IRevocacionSesiones, IAutenticacionMovil
 {
     private const int FallosParaBloquear = 5;
 
@@ -40,49 +41,8 @@ public sealed class AutenticacionServicio : IAutenticacionServicio, IRevocacionS
         string? agente,
         CancellationToken cancellationToken)
     {
-        var nombreUsuario = solicitud.Usuario.Trim();
-        if (nombreUsuario.Length == 0 || string.IsNullOrEmpty(solicitud.Password))
-        {
-            return null;
-        }
-
-        var usuario = await _context.Usuarios
-            .Include(u => u.TipoUsuario)
-            .SingleOrDefaultAsync(u => u.NombreUsuario == nombreUsuario, cancellationToken);
-
-        if (usuario is null || !usuario.Activo)
-        {
-            return null;
-        }
-
-        var ahora = _reloj.GetUtcNow().UtcDateTime;
-        if (usuario.BloqueadoHasta is DateTime hasta && hasta > ahora)
-        {
-            return null;
-        }
-
-        if (usuario.BloqueadoHasta is not null)
-        {
-            usuario.IntentosFallidos = 0;
-            usuario.BloqueadoHasta = null;
-        }
-
-        var verificacion = _hasher.VerifyHashedPassword(usuario.NombreUsuario, usuario.PasswordHash, solicitud.Password);
-        if (verificacion == PasswordVerificationResult.Failed)
-        {
-            usuario.IntentosFallidos++;
-            if (usuario.IntentosFallidos >= FallosParaBloquear)
-            {
-                usuario.BloqueadoHasta = ahora.Add(DuracionBloqueo);
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
-            return null;
-        }
-
-        usuario.IntentosFallidos = 0;
-        usuario.BloqueadoHasta = null;
-        return await AbrirAsync(usuario, ip, agente, cancellationToken);
+        var usuario = await ComprobarAsync(solicitud.Usuario, solicitud.Password, cancellationToken);
+        return usuario is null ? null : await AbrirAsync(usuario, ip, agente, cancellationToken);
     }
 
     public async Task<CredencialesSesion?> RenovarAsync(
@@ -96,26 +56,7 @@ public sealed class AutenticacionServicio : IAutenticacionServicio, IRevocacionS
             .Include(item => item.Usuario)
             .ThenInclude(usuario => usuario.TipoUsuario)
             .SingleOrDefaultAsync(item => item.HashToken == hash, cancellationToken);
-        if (sesion is null)
-        {
-            return null;
-        }
-
-        if (sesion.RevocadoEn is not null)
-        {
-            await RevocarUsuarioAsync(sesion.UsuarioId, cancellationToken);
-            return null;
-        }
-
-        var ahora = _reloj.GetUtcNow().UtcDateTime;
-        if (sesion.Expira <= ahora || !sesion.Usuario.Activo ||
-            (sesion.Usuario.BloqueadoHasta is DateTime hasta && hasta > ahora))
-        {
-            return null;
-        }
-
-        sesion.RevocadoEn = ahora;
-        return await AbrirAsync(sesion.Usuario, ip, agente, cancellationToken);
+        return sesion is null ? null : await RotarAsync(sesion, ip, agente, cancellationToken);
     }
 
     public async Task SalirAsync(long sesionId, CancellationToken cancellationToken)
@@ -141,11 +82,81 @@ public sealed class AutenticacionServicio : IAutenticacionServicio, IRevocacionS
         _validador.Invalidar(usuarioId);
     }
 
+    private async Task<Usuario?> ComprobarAsync(string usuarioNombre, string? password, CancellationToken cancellationToken)
+    {
+        var nombreUsuario = usuarioNombre.Trim();
+        if (nombreUsuario.Length == 0 || string.IsNullOrEmpty(password))
+        {
+            return null;
+        }
+
+        var usuario = await _context.Usuarios
+            .Include(item => item.TipoUsuario)
+            .SingleOrDefaultAsync(item => item.NombreUsuario == nombreUsuario, cancellationToken);
+        if (usuario is null || !usuario.Activo)
+        {
+            return null;
+        }
+
+        var ahora = _reloj.GetUtcNow().UtcDateTime;
+        if (usuario.BloqueadoHasta is DateTime hasta && hasta > ahora)
+        {
+            return null;
+        }
+
+        if (usuario.BloqueadoHasta is not null)
+        {
+            usuario.IntentosFallidos = 0;
+            usuario.BloqueadoHasta = null;
+        }
+
+        var verificacion = _hasher.VerifyHashedPassword(usuario.NombreUsuario, usuario.PasswordHash, password);
+        if (verificacion == PasswordVerificationResult.Failed)
+        {
+            usuario.IntentosFallidos++;
+            if (usuario.IntentosFallidos >= FallosParaBloquear)
+            {
+                usuario.BloqueadoHasta = ahora.Add(DuracionBloqueo);
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        usuario.IntentosFallidos = 0;
+        usuario.BloqueadoHasta = null;
+        return usuario;
+    }
+
+    private async Task<CredencialesSesion?> RotarAsync(
+        SesionUsuario sesion,
+        string? ip,
+        string? agente,
+        CancellationToken cancellationToken)
+    {
+        if (sesion.RevocadoEn is not null)
+        {
+            await RevocarUsuarioAsync(sesion.UsuarioId, cancellationToken);
+            return null;
+        }
+
+        var ahora = _reloj.GetUtcNow().UtcDateTime;
+        if (sesion.Expira <= ahora || !sesion.Usuario.Activo ||
+            (sesion.Usuario.BloqueadoHasta is DateTime hasta && hasta > ahora))
+        {
+            return null;
+        }
+
+        sesion.RevocadoEn = ahora;
+        return await AbrirAsync(sesion.Usuario, ip, agente, cancellationToken, sesion.DispositivoId);
+    }
+
     private async Task<CredencialesSesion> AbrirAsync(
         Usuario usuario,
         string? ip,
         string? agente,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? dispositivoId = null)
     {
         var ahora = _reloj.GetUtcNow().UtcDateTime;
         var tokenRenovacion = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
@@ -159,7 +170,8 @@ public sealed class AutenticacionServicio : IAutenticacionServicio, IRevocacionS
             Expira = ahora.Add(DuracionRenovacion),
             CreadoEn = ahora,
             Ip = Recortar(ip, 64),
-            UserAgent = Recortar(agente, 256)
+            UserAgent = Recortar(agente, 256),
+            DispositivoId = dispositivoId
         };
         _context.SesionesUsuario.Add(sesion);
         await _context.SaveChangesAsync(cancellationToken);

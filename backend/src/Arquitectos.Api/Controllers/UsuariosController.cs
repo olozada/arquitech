@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Arquitectos.Application;
 using Arquitectos.Application.Auth;
+using Arquitectos.Application.Movil;
 using Arquitectos.Application.Usuarios;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -15,15 +16,18 @@ namespace Arquitectos.Api.Controllers;
 public sealed class UsuariosController : ControllerBase
 {
     private readonly IUsuarioServicio _servicio;
+    private readonly IDispositivosMovil _dispositivos;
     private readonly IValidator<CrearUsuarioSolicitud> _validadorCrear;
     private readonly IValidator<ActualizarUsuarioSolicitud> _validadorActualizar;
 
     public UsuariosController(
         IUsuarioServicio servicio,
+        IDispositivosMovil dispositivos,
         IValidator<CrearUsuarioSolicitud> validadorCrear,
         IValidator<ActualizarUsuarioSolicitud> validadorActualizar)
     {
         _servicio = servicio;
+        _dispositivos = dispositivos;
         _validadorCrear = validadorCrear;
         _validadorActualizar = validadorActualizar;
     }
@@ -88,6 +92,30 @@ public sealed class UsuariosController : ControllerBase
         var resultado = await _servicio.ActualizarAsync(id, solicitud, usuarioId.Value, cancellationToken);
         var error = Traducir(resultado);
         return error ?? Ok(resultado.Valor);
+    }
+
+    [HttpGet("{id:int}/dispositivos")]
+    public async Task<IActionResult> Dispositivos(int id, CancellationToken cancellationToken)
+    {
+        var usuario = await _servicio.ObtenerAsync(id, cancellationToken);
+        return usuario is null
+            ? Problema(EstadoUsuario.NoEncontrado, MensajesUsuario.NoEncontrado)
+            : Ok(await _dispositivos.ListarAsync(id, cancellationToken));
+    }
+
+    [HttpPost("{id:int}/dispositivos/{dispositivoId:guid}/revocar")]
+    public async Task<IActionResult> RevocarDispositivo(int id, Guid dispositivoId, CancellationToken cancellationToken)
+    {
+        var administradorId = UsuarioActualId();
+        if (administradorId is null)
+        {
+            return Unauthorized();
+        }
+
+        var revocado = await _dispositivos.RevocarAsync(id, dispositivoId, administradorId.Value, cancellationToken);
+        return revocado
+            ? NoContent()
+            : Problema(EstadoUsuario.NoEncontrado, "No se encontró el dispositivo.");
     }
 
     [HttpDelete("{id:int}")]

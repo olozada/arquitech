@@ -14,29 +14,29 @@ public static class CookiesSesion
 
     public static void Escribir(HttpContext contexto, CredencialesSesion credenciales)
     {
-        contexto.Response.Cookies.Append(Acceso, credenciales.TokenAcceso, OpcionesAcceso());
-        contexto.Response.Cookies.Append(Renovacion, credenciales.TokenRenovacion, OpcionesRenovacion());
+        contexto.Response.Cookies.Append(Acceso, credenciales.TokenAcceso, OpcionesAcceso(contexto));
+        contexto.Response.Cookies.Append(Renovacion, credenciales.TokenRenovacion, OpcionesRenovacion(contexto));
     }
 
     public static void Borrar(HttpContext contexto)
     {
-        contexto.Response.Cookies.Delete(Acceso, OpcionesAcceso());
-        contexto.Response.Cookies.Delete(Renovacion, OpcionesRenovacion());
+        contexto.Response.Cookies.Delete(Acceso, OpcionesAcceso(contexto));
+        contexto.Response.Cookies.Delete(Renovacion, OpcionesRenovacion(contexto));
     }
 
-    private static CookieOptions OpcionesAcceso() => new()
+    private static CookieOptions OpcionesAcceso(HttpContext contexto) => new()
     {
         HttpOnly = true,
-        Secure = true,
+        Secure = contexto.Request.IsHttps,
         SameSite = SameSiteMode.Strict,
         Path = "/api",
         MaxAge = TimeSpan.FromMinutes(20)
     };
 
-    private static CookieOptions OpcionesRenovacion() => new()
+    private static CookieOptions OpcionesRenovacion(HttpContext contexto) => new()
     {
         HttpOnly = true,
-        Secure = true,
+        Secure = contexto.Request.IsHttps,
         SameSite = SameSiteMode.Strict,
         Path = "/api/auth/renovar",
         MaxAge = TimeSpan.FromDays(7)

@@ -60,12 +60,24 @@ public class ArquitectosDbContext : DbContext
             }
         }
 
+        var sqlite = Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
         var actas = new HashSet<Acta>();
         foreach (var entrada in ChangeTracker.Entries<Acta>())
         {
             if (entrada.State is EntityState.Added or EntityState.Modified)
             {
                 actas.Add(entrada.Entity);
+            }
+        }
+
+        if (sqlite)
+        {
+            foreach (var detalle in ChangeTracker.Entries<ActaDetalle>())
+            {
+                if (detalle.State is EntityState.Added or EntityState.Modified)
+                {
+                    detalle.Entity.RowVersion = Guid.NewGuid().ToByteArray();
+                }
             }
         }
 
@@ -85,7 +97,6 @@ public class ArquitectosDbContext : DbContext
             }
         }
 
-        var sqlite = Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
         foreach (var acta in actas)
         {
             var entrada = Entry(acta);
@@ -154,6 +165,10 @@ public class ArquitectosDbContext : DbContext
     public DbSet<Acta> Actas => Set<Acta>();
 
     public DbSet<ActaDetalle> ActaDetalles => Set<ActaDetalle>();
+
+    public DbSet<Dispositivo> Dispositivos => Set<Dispositivo>();
+
+    public DbSet<OperacionMovil> OperacionesMovil => Set<OperacionMovil>();
 
     public DbSet<Insumo> Insumos => Set<Insumo>();
 

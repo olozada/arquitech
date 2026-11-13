@@ -276,3 +276,144 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [SesionesUsuario] ADD [DispositivoId] uniqueidentifier NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [Auditoria] ADD [Origen] nvarchar(20) NOT NULL DEFAULT N'web';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [Actas] ADD [ModificadaEn] datetime2 NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [ActaDetalles] ADD [IdCliente] uniqueidentifier NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [ActaDetalles] ADD [RowVersion] rowversion NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE TABLE [Dispositivos] (
+        [Id] uniqueidentifier NOT NULL,
+        [UsuarioId] int NOT NULL,
+        [Nombre] nvarchar(100) NOT NULL,
+        [Plataforma] nvarchar(20) NOT NULL,
+        [VersionApp] nvarchar(20) NOT NULL,
+        [RegistradoEn] datetime2 NOT NULL,
+        [UltimaSincronizacion] datetime2 NULL,
+        [RevocadoEn] datetime2 NULL,
+        CONSTRAINT [PK_Dispositivos] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Dispositivos_Usuarios_UsuarioId] FOREIGN KEY ([UsuarioId]) REFERENCES [Usuarios] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE TABLE [OperacionesMovil] (
+        [IdOperacion] uniqueidentifier NOT NULL,
+        [DispositivoId] uniqueidentifier NOT NULL,
+        [UsuarioId] int NOT NULL,
+        [Tipo] nvarchar(30) NOT NULL,
+        [NumeroActa] int NOT NULL,
+        [Estado] nvarchar(20) NOT NULL,
+        [ResultadoJson] nvarchar(max) NULL,
+        [RecibidaEn] datetime2 NOT NULL,
+        [CreadaEnDispositivo] datetime2 NOT NULL,
+        CONSTRAINT [PK_OperacionesMovil] PRIMARY KEY ([IdOperacion]),
+        CONSTRAINT [FK_OperacionesMovil_Dispositivos_DispositivoId] FOREIGN KEY ([DispositivoId]) REFERENCES [Dispositivos] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_OperacionesMovil_Usuarios_UsuarioId] FOREIGN KEY ([UsuarioId]) REFERENCES [Usuarios] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE INDEX [IX_SesionesUsuario_DispositivoId] ON [SesionesUsuario] ([DispositivoId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_ActaDetalles_IdCliente] ON [ActaDetalles] ([IdCliente]) WHERE [IdCliente] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE INDEX [IX_Dispositivos_UsuarioId] ON [Dispositivos] ([UsuarioId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE INDEX [IX_OperacionesMovil_DispositivoId] ON [OperacionesMovil] ([DispositivoId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    CREATE INDEX [IX_OperacionesMovil_UsuarioId_RecibidaEn] ON [OperacionesMovil] ([UsuarioId], [RecibidaEn]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    ALTER TABLE [SesionesUsuario] ADD CONSTRAINT [FK_SesionesUsuario_Dispositivos_DispositivoId] FOREIGN KEY ([DispositivoId]) REFERENCES [Dispositivos] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261113103515_MovilSincronizacion'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261113103515_MovilSincronizacion', N'10.0.15');
+END;
+
+COMMIT;
+GO
+

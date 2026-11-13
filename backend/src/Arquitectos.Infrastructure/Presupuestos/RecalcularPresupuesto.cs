@@ -99,7 +99,7 @@ public sealed partial class PresupuestoServicio
         }
 
         var contexto = await _motor.CargarAsync(cancellationToken);
-        foreach (var item in items.Where(fila => fila.ApuId is > 0))
+        foreach (var item in items.Where(fila => fila.ApuId is not null))
         {
             if (MotorCostos.Calcular(item.ApuId!.Value, contexto) is not ResultadoApu resultado)
             {

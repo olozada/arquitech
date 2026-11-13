@@ -24,7 +24,7 @@ export function ModalMover({
       </Modal.Header>
       <Modal.Body>
         <Form.Select value={destino} onChange={(evento) => alDestino(Number(evento.target.value))}>
-          {capitulos.filter((capitulo) => capitulo.id !== capituloId && capitulo.id > 0).map((capitulo) => (
+          {capitulos.filter((capitulo) => capitulo.id !== capituloId && capitulo.id >= 0).map((capitulo) => (
             <option key={capitulo.id} value={capitulo.id}>{capitulo.numero}. {capitulo.nombre}</option>
           ))}
         </Form.Select>

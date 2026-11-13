@@ -66,6 +66,58 @@ public class SesionUsuario
 
     public string? UserAgent { get; set; }
 
+    public Guid? DispositivoId { get; set; }
+
+    public Usuario Usuario { get; set; } = null!;
+
+    public Dispositivo? Dispositivo { get; set; }
+}
+
+public class Dispositivo
+{
+    public Guid Id { get; set; }
+
+    public int UsuarioId { get; set; }
+
+    public required string Nombre { get; set; }
+
+    public required string Plataforma { get; set; }
+
+    public required string VersionApp { get; set; }
+
+    public DateTime RegistradoEn { get; set; }
+
+    public DateTime? UltimaSincronizacion { get; set; }
+
+    public DateTime? RevocadoEn { get; set; }
+
+    public Usuario Usuario { get; set; } = null!;
+
+    public ICollection<SesionUsuario> Sesiones { get; set; } = new List<SesionUsuario>();
+}
+
+public class OperacionMovil
+{
+    public Guid IdOperacion { get; set; }
+
+    public Guid DispositivoId { get; set; }
+
+    public int UsuarioId { get; set; }
+
+    public required string Tipo { get; set; }
+
+    public int NumeroActa { get; set; }
+
+    public required string Estado { get; set; }
+
+    public string? ResultadoJson { get; set; }
+
+    public DateTime RecibidaEn { get; set; }
+
+    public DateTime CreadaEnDispositivo { get; set; }
+
+    public Dispositivo Dispositivo { get; set; } = null!;
+
     public Usuario Usuario { get; set; } = null!;
 }
 

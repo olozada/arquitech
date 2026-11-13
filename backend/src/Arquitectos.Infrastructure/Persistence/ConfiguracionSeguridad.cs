@@ -59,6 +59,10 @@ public sealed class SesionUsuarioConfiguracion : IEntityTypeConfiguration<Sesion
         builder.Property(s => s.UserAgent).HasMaxLength(256);
         builder.HasIndex(s => s.HashToken).IsUnique();
         builder.HasIndex(s => s.UsuarioId);
+        builder.HasOne(s => s.Dispositivo)
+            .WithMany(d => d.Sesiones)
+            .HasForeignKey(s => s.DispositivoId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(s => s.Usuario)
             .WithMany(u => u.Sesiones)
             .HasForeignKey(s => s.UsuarioId)

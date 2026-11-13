@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Form, Table } from 'react-bootstrap'
+import { Button, Form, Nav, Table } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
 import Swal from 'sweetalert2'
 import { z } from 'zod'
@@ -45,6 +45,16 @@ type TipoUsuario = {
   nombre: string
 }
 
+type Dispositivo = {
+  id: string
+  nombre: string
+  plataforma: string
+  versionApp: string
+  registradoEn: string
+  ultimaSincronizacion: string | null
+  revocadoEn: string | null
+}
+
 const vacios: Valores = { usuario: '', nombre: '', password: '', tipoUsuarioId: '', perfilId: '' }
 
 const recursosPerfil: Record<string, string> = {
@@ -57,6 +67,7 @@ export function Usuarios() {
   const { sesion } = useSesion()
   const consultas = useQueryClient()
   const [seleccionId, setSeleccionId] = useState<number | null>(null)
+  const [pestana, setPestana] = useState<'usuarios' | 'dispositivos'>('usuarios')
   const {
     register,
     handleSubmit,
@@ -141,6 +152,25 @@ export function Usuarios() {
     },
   })
 
+  const dispositivos = useQuery({
+    queryKey: ['dispositivos', seleccionId],
+    enabled: pestana === 'dispositivos' && seleccionId != null && sesion?.tipoUsuario === 'Administrador',
+    queryFn: async () => (await cliente.get<Dispositivo[]>(`/api/usuarios/${seleccionId}/dispositivos`)).data,
+  })
+
+  const revocar = useMutation({
+    mutationFn: async (dispositivoId: string) => {
+      await cliente.post(`/api/usuarios/${seleccionId}/dispositivos/${dispositivoId}/revocar`)
+    },
+    onSuccess: async () => {
+      await consultas.invalidateQueries({ queryKey: ['dispositivos', seleccionId] })
+      await Swal.fire({ icon: 'success', title: 'Dispositivo revocado', confirmButtonColor: '#1abb9c' })
+    },
+    onError: async (error) => {
+      await Swal.fire({ icon: 'error', title: '¡Error!', text: mensajeError(error), confirmButtonColor: '#1abb9c' })
+    },
+  })
+
   const tipoSeleccionado = watch('tipoUsuarioId')
   const recursoPerfil = recursosPerfil[tipoSeleccionado]
   const personas = useQuery({
@@ -221,9 +251,76 @@ export function Usuarios() {
     quitar.mutate(seleccionId)
   }
 
+  async function revocarDispositivo(dispositivo: Dispositivo) {
+    const confirmacion = await Swal.fire({
+      icon: 'warning',
+      title: `¿Revocar ${dispositivo.nombre}?`,
+      text: 'El teléfono tendrá que volver a iniciar sesión y perderá los datos locales.',
+      showCancelButton: true,
+      confirmButtonText: 'Revocar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d9534f',
+      cancelButtonColor: '#6c757d',
+    })
+    if (confirmacion.isConfirmed) {
+      revocar.mutate(dispositivo.id)
+    }
+  }
+
   return (
     <section className="catalogo">
       <h1>Usuarios</h1>
+      <Nav variant="tabs" activeKey={pestana} onSelect={(clave) => setPestana(clave === 'dispositivos' ? 'dispositivos' : 'usuarios')} className="mb-3">
+        <Nav.Item>
+          <Nav.Link eventKey="usuarios">Usuarios</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="dispositivos">Dispositivos</Nav.Link>
+        </Nav.Item>
+      </Nav>
+      {pestana === 'dispositivos' ? (
+        <div className="catalogo-panel">
+          {seleccionId == null && <p>Seleccione un usuario en la pestaña Usuarios.</p>}
+          {seleccionId != null && dispositivos.isPending && <p>Cargando…</p>}
+          {seleccionId != null && dispositivos.isError && <p>No se pudieron cargar los dispositivos.</p>}
+          {seleccionId != null && dispositivos.isSuccess && dispositivos.data.length === 0 && <p>Este usuario no tiene dispositivos.</p>}
+          {seleccionId != null && dispositivos.isSuccess && dispositivos.data.length > 0 && (
+            <div className="table-responsive">
+              <Table hover className="catalogo-tabla mb-0">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Plataforma</th>
+                    <th>Versión</th>
+                    <th>Última sincronización</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {dispositivos.data.map((dispositivo) => (
+                    <tr key={dispositivo.id}>
+                      <td>{dispositivo.nombre}</td>
+                      <td>{dispositivo.plataforma}</td>
+                      <td>{dispositivo.versionApp}</td>
+                      <td>{dispositivo.ultimaSincronizacion ? new Date(dispositivo.ultimaSincronizacion).toLocaleString('es-CO') : 'Sin sincronizar'}</td>
+                      <td className="text-end">
+                        {dispositivo.revocadoEn ? (
+                          'Revocado'
+                        ) : (
+                          <Button type="button" size="sm" variant="danger" disabled={revocar.isPending} onClick={() => void revocarDispositivo(dispositivo)}>
+                            Revocar
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
       <Form className="catalogo-panel" onSubmit={handleSubmit(enviar)} noValidate>
         <Form.Group className="mb-3" controlId="usuario-login">
           <Form.Label>Usuario *</Form.Label>
@@ -336,6 +433,8 @@ export function Usuarios() {
           </div>
         )}
       </div>
+      </>
+      )}
     </section>
   )
 }

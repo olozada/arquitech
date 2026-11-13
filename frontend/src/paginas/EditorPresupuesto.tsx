@@ -15,6 +15,13 @@ import { CapituloPresupuesto } from '../presupuesto/CapituloPresupuesto'
 import { ModalesEditor } from '../presupuesto/ModalesEditor'
 import { ResumenCostos } from '../presupuesto/ResumenCostos'
 
+let idTemporal = 0
+
+function nuevoId() {
+  idTemporal -= 1
+  return idTemporal
+}
+
 export function EditorPresupuesto() {
   const { id } = useParams()
   const presupuestoId = Number(id)
@@ -65,7 +72,7 @@ export function EditorPresupuesto() {
   const editable = administrador && borrador?.estado === 'Borrador'
   const validacion = useQuery({
     queryKey: ['presupuesto-validacion', presupuestoId, borrador?.rowVersion],
-    enabled: presupuestoId > 0 && !sucio,
+    enabled: Number.isInteger(presupuestoId) && presupuestoId >= 0 && !sucio,
     queryFn: async () => (await cliente.get<Array<{ itemId: number | null; codigo: string; tipo: string; mensaje: string }>>(`/api/presupuestos/${presupuestoId}/validacion`)).data,
   })
 
@@ -222,7 +229,7 @@ export function EditorPresupuesto() {
           onClick={() =>
             setBorrador({
               ...borrador,
-              capitulos: [...borrador.capitulos, { id: 0, numero: borrador.capitulos.length + 1, nombre: 'Nuevo capítulo', total: 0, incidencia: 0, items: [] }],
+              capitulos: [...borrador.capitulos, { id: nuevoId(), numero: borrador.capitulos.length + 1, nombre: 'Nuevo capítulo', total: 0, incidencia: 0, items: [] }],
             })
           }
         >
@@ -322,7 +329,7 @@ export function EditorPresupuesto() {
       }
       const copia = structuredClone(actual)
       copia.capitulos[capitulo].items.push({
-        id: 0,
+        id: nuevoId(),
         codigo: '',
         descripcion: '',
         unidad: '',

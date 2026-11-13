@@ -109,7 +109,7 @@ public sealed partial class PresupuestoServicio
             return error;
         }
 
-        var idsConservados = solicitud.Capitulos.SelectMany(capitulo => capitulo.Items).Where(item => item.Id is > 0).Select(item => item.Id!.Value).ToHashSet();
+        var idsConservados = solicitud.Capitulos.SelectMany(capitulo => capitulo.Items).Where(item => item.Id is not null).Select(item => item.Id!.Value).ToHashSet();
         var actuales = presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items).ToList();
         var eliminados = actuales.Where(item => !idsConservados.Contains(item.Id)).Select(item => item.Id).ToList();
         if (eliminados.Count > 0 && await _context.ActaDetalles.AnyAsync(detalle => detalle.PresupuestoItemId != null && eliminados.Contains(detalle.PresupuestoItemId.Value), cancellationToken))
@@ -127,8 +127,8 @@ public sealed partial class PresupuestoServicio
         var ordenCapitulo = 1;
         foreach (var capitulo in solicitud.Capitulos)
         {
-            var entidad = capitulo.Id is > 0
-                ? presupuesto.Capitulos.FirstOrDefault(item => item.Id == capitulo.Id)
+            var entidad = capitulo.Id is int idCapitulo
+                ? presupuesto.Capitulos.FirstOrDefault(item => item.Id == idCapitulo)
                 : null;
             if (entidad is null)
             {
@@ -142,7 +142,7 @@ public sealed partial class PresupuestoServicio
             var orden = 1;
             foreach (var item in capitulo.Items)
             {
-                var fila = item.Id is > 0 ? actuales.FirstOrDefault(actual => actual.Id == item.Id) : null;
+                var fila = item.Id is int idItem ? actuales.FirstOrDefault(actual => actual.Id == idItem) : null;
                 if (fila is null)
                 {
                     fila = CrearItem(item, orden++);
@@ -167,11 +167,11 @@ public sealed partial class PresupuestoServicio
             }
         }
 
-        var idsCapitulos = solicitud.Capitulos.Where(capitulo => capitulo.Id is > 0).Select(capitulo => capitulo.Id!.Value).ToHashSet();
+        var idsCapitulos = solicitud.Capitulos.Where(capitulo => capitulo.Id is not null).Select(capitulo => capitulo.Id!.Value).ToHashSet();
         foreach (var capitulo in presupuesto.Capitulos.ToList())
         {
             var tieneVivos = capitulo.Items.Any(item => _context.Entry(item).State != EntityState.Deleted);
-            if (capitulo.Id > 0 && !idsCapitulos.Contains(capitulo.Id) && !tieneVivos)
+            if (_context.Entry(capitulo).State != EntityState.Added && !idsCapitulos.Contains(capitulo.Id) && !tieneVivos)
             {
                 _context.Set<PresupuestoCapitulo>().Remove(capitulo);
                 presupuesto.Capitulos.Remove(capitulo);
@@ -200,7 +200,7 @@ public sealed partial class PresupuestoServicio
         item.Descripcion = TextoPresupuesto.Recortar(solicitud.Descripcion, 500);
         item.Unidad = TextoPresupuesto.Recortar(solicitud.Unidad, 20);
         item.UnidadMedidaId = solicitud.UnidadMedidaId is > 0 ? solicitud.UnidadMedidaId : null;
-        item.ApuId = solicitud.ApuId is > 0 ? solicitud.ApuId : null;
+        item.ApuId = solicitud.ApuId is >= 0 ? solicitud.ApuId : null;
         item.FactorConversionApu = solicitud.FactorConversionApu == 0 ? 1 : solicitud.FactorConversionApu;
         item.ConceptoId = solicitud.ConceptoId is > 0 ? solicitud.ConceptoId : null;
         item.Cantidad = solicitud.Cantidad;

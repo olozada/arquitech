@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Arquitectos.Api.Configuracion;
 using Arquitectos.Infrastructure.Seguridad;
@@ -177,11 +178,19 @@ try
                 },
                 cancellationToken);
         };
+        var limiteLogin = builder.Configuration.GetValue("Login:Limite", 5);
         opciones.AddPolicy("login", contexto => RateLimitPartition.GetFixedWindowLimiter(
             contexto.Connection.RemoteIpAddress?.ToString() ?? "anon",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = limiteLogin > 0 ? limiteLogin : 5,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+        opciones.AddPolicy("paquete", contexto => RateLimitPartition.GetFixedWindowLimiter(
+            ClaveLimitePaquete(contexto),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
                 Window = TimeSpan.FromMinutes(1)
             }));
     });
@@ -389,6 +398,36 @@ try
     app.MapControllers();
 
     app.Run();
+
+    static string ClaveLimitePaquete(HttpContext contexto)
+    {
+        var encabezado = contexto.Request.Headers.Authorization.ToString();
+        const string prefijo = "Bearer ";
+        if (encabezado.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase))
+        {
+            var partes = encabezado[prefijo.Length..].Trim().Split('.');
+            if (partes.Length >= 2)
+            {
+                try
+                {
+                    using var documento = JsonDocument.Parse(Base64UrlEncoder.Decode(partes[1]));
+                    if (documento.RootElement.TryGetProperty("sub", out var sub) && sub.ValueKind == JsonValueKind.String)
+                    {
+                        var valor = sub.GetString();
+                        if (!string.IsNullOrEmpty(valor))
+                        {
+                            return "usuario:" + valor;
+                        }
+                    }
+                }
+                catch (Exception excepcion) when (excepcion is JsonException or FormatException or ArgumentException)
+                {
+                }
+            }
+        }
+
+        return "ip:" + (contexto.Connection.RemoteIpAddress?.ToString() ?? "anon");
+    }
 }
 catch (Exception excepcion)
 {

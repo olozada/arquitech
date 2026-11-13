@@ -11,6 +11,7 @@ Aplicación de actas de obra, presupuestos y tablero. El estado de los documento
 | `Arquitectos.Infrastructure` | EF Core, SQL Server, servicios, semilla y reglas del tablero. |
 | `Arquitectos.Api` | Controladores, autenticación, cabeceras y salud. |
 | `frontend` | React, Vite y React Query. En desarrollo llama a `http://localhost:5190` por el proxy. En el sitio publicado la base es `/Web/` y la API es `/api`. |
+| `movil` | Flutter offline-first para arquitecto, contratista y revisor. Ver `docs/MOVIL.md`. |
 
 ## Módulos
 

@@ -1,4 +1,5 @@
 using Arquitectos.Application.Actas;
+using Arquitectos.Application.Movil;
 using Arquitectos.Application.Auditoria;
 using Arquitectos.Application.Auth;
 using Arquitectos.Application.Catalogos;
@@ -9,6 +10,7 @@ using Arquitectos.Application.ProveedorMateriales;
 using Arquitectos.Application.Usuarios;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Actas;
+using Arquitectos.Infrastructure.Movil;
 using Arquitectos.Infrastructure.Auditoria;
 using Arquitectos.Infrastructure.Catalogos;
 using Arquitectos.Infrastructure.Dashboard;
@@ -54,7 +56,13 @@ public static class DependencyInjection
         services.AddScoped<ValidadorSesion>();
         services.AddScoped<AutenticacionServicio>();
         services.AddScoped<IAutenticacionServicio>(proveedor => proveedor.GetRequiredService<AutenticacionServicio>());
+        services.AddScoped<IAutenticacionMovil>(proveedor => proveedor.GetRequiredService<AutenticacionServicio>());
         services.AddScoped<IRevocacionSesiones>(proveedor => proveedor.GetRequiredService<AutenticacionServicio>());
+        services.AddScoped<IDispositivosMovil, DispositivosMovil>();
+        services.AddSingleton<CupoGeneracionMovil>();
+        services.AddScoped<IGeneradorPaqueteMovil, GeneradorPaqueteMovil>();
+        services.AddScoped<ISincronizadorMovil, SincronizadorMovil>();
+        services.AddHostedService<LimpiezaPaquetesMovil>();
         services.AddScoped<IUsuarioServicio, UsuarioServicio>();
         services.AddScoped<IMenuServicio, MenuServicio>();
 
@@ -70,6 +78,7 @@ public static class DependencyInjection
             sp => new DescripcionUnidadServicio<Concepto>(sp.GetRequiredService<ArquitectosDbContext>(), "un concepto"));
         services.AddScoped<ICatalogoServicio<UnidadMedida, UnidadMedidaDto, UnidadMedidaSolicitud>, UnidadMedidaServicio>();
         services.AddScoped<IProveedorMaterialServicio, ProveedorMaterialServicio>();
+        services.AddScoped<IOperacionesLineaActa, OperacionesLineaActa>();
         services.AddScoped<IActaServicio, ActaServicio>();
         services.AddScoped<MotorCostos>();
         services.AddScoped<IInsumoServicio, InsumoServicio>();
@@ -79,6 +88,10 @@ public static class DependencyInjection
         services.AddMemoryCache(opciones => opciones.SizeLimit = 200);
         services.AddOptions<OpcionesPresupuesto>()
             .Bind(configuration.GetSection(OpcionesPresupuesto.Seccion))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddOptions<OpcionesMovil>()
+            .Bind(configuration.GetSection(OpcionesMovil.Seccion))
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddOptions<OpcionesDashboard>()

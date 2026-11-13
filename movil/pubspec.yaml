@@ -1,0 +1,44 @@
+name: arquitectos_movil
+description: Aplicación móvil offline de Arquitectos.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  connectivity_plus: ^7.0.0
+  crypto: ^3.0.6
+  decimal: ^3.2.1
+  dio: ^5.9.0
+  flutter_riverpod: ^2.6.1
+  flutter_secure_storage: ^9.2.4
+  go_router: ^16.2.0
+  intl: ^0.20.2
+  local_auth: ^2.3.0
+  logger: ^2.6.1
+  material_ui: ^1.11.0
+  open_filex: ^4.7.0
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  sqflite_sqlcipher: ^3.1.0+1
+  uuid: ^4.5.1
+  workmanager: ^0.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
+  sqflite_common_ffi: ^2.3.6
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/esquema_movil_v1.sql
+    - assets/esquema_pendientes_v1.sql
+    - assets/contrasenas-comunes.txt

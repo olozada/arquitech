@@ -1,0 +1,111 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:arquitectos_movil/sincronizacion/modelos.dart';
+
+import 'simulador_api_movil.dart';
+
+/// Servidor HTTP opcional (E2E con dispositivo y `HttpOverrides`).
+class ServidorMovilPrueba {
+  final SimuladorApiMovil _simulador = SimuladorApiMovil();
+  HttpServer? _servidor;
+
+  String get url => 'http://127.0.0.1:${_servidor!.port}';
+
+  Future<void> iniciar() async {
+    await _simulador.iniciar();
+    _servidor = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _servidor!.listen(_atender);
+  }
+
+  Future<void> cerrar() async {
+    await _servidor?.close(force: true);
+    _servidor = null;
+  }
+
+  Future<void> _atender(HttpRequest peticion) async {
+    final metodo = peticion.method;
+    final ruta = peticion.uri.path;
+    if (metodo == 'POST' && ruta == '/api/movil/v1/auth/login') {
+      final cred = _simulador.login();
+      await _json(peticion, 200, {
+        'accessToken': cred.accessToken,
+        'expiraEn': cred.expiraEn.toUtc().toIso8601String(),
+        'refreshToken': cred.refreshToken,
+        'debeCambiarContrasena': cred.debeCambiarContrasena,
+        'usuario': {
+          'id': cred.usuario.id,
+          'nombre': cred.usuario.nombre,
+          'tipoUsuarioId': cred.usuario.tipoUsuarioId,
+          'contratistaId': cred.usuario.contratistaId,
+        },
+      });
+      return;
+    }
+    if (metodo == 'GET' && ruta == '/api/movil/v1/paquete') {
+      final paq = _simulador.paquete();
+      peticion.response.statusCode = HttpStatus.ok;
+      peticion.response.headers
+        ..set('content-type', 'application/gzip')
+        ..set('x-paquete-sha256', paq.sha256)
+        ..set('x-paquete-esquema', '${paq.esquema}')
+        ..set('x-paquete-generado', paq.generadoEn);
+      peticion.response.add(paq.gzip);
+      await peticion.response.close();
+      return;
+    }
+    if (metodo == 'POST' && ruta == '/api/movil/v1/sincronizar') {
+      final cuerpo = await utf8.decoder.bind(peticion).join();
+      final mapa = jsonDecode(cuerpo) as Map<String, Object?>;
+      final ops = _leerOperaciones(mapa['operaciones']);
+      final resp = await _simulador.sincronizar(ops);
+      await _json(peticion, 200, {
+        'resultados': resp.resultados
+            .map(
+              (r) => {
+                'idOperacion': r.idOperacion,
+                'estado': r.estado,
+                if (r.lineaId != null) 'lineaId': r.lineaId,
+                if (r.idCliente != null) 'idCliente': r.idCliente,
+                if (r.rowVersion != null) 'rowVersion': r.rowVersion,
+                if (r.mensaje != null) 'mensaje': r.mensaje,
+              },
+            )
+            .toList(),
+        'requiereNuevoPaquete': resp.requiereNuevoPaquete,
+      });
+      return;
+    }
+    peticion.response.statusCode = HttpStatus.notFound;
+    await peticion.response.close();
+  }
+
+  List<OperacionSalida> _leerOperaciones(Object? lista) {
+    if (lista is! List) {
+      return const [];
+    }
+    return lista.map((e) {
+      final mapa = Map<String, Object?>.from(e! as Map);
+      return OperacionSalida(
+        idOperacion: mapa['idOperacion']?.toString() ?? '',
+        secuencia: (mapa['secuencia'] as num).toInt(),
+        tipo: mapa['tipo']?.toString() ?? '',
+        numeroActa: (mapa['numeroActa'] as num).toInt(),
+        creadaEn: mapa['creadaEn']?.toString() ?? '',
+        idCliente: mapa['idCliente']?.toString(),
+        linea: mapa['linea'] is Map
+            ? LineaSincronizacion.desdeJson(
+                Map<String, Object?>.from(mapa['linea']! as Map),
+              )
+            : null,
+      );
+    }).toList();
+  }
+
+  Future<void> _json(HttpRequest peticion, int estado, Object cuerpo) async {
+    peticion.response.statusCode = estado;
+    peticion.response.headers.contentType = ContentType.json;
+    peticion.response.write(jsonEncode(cuerpo));
+    await peticion.response.close();
+  }
+}

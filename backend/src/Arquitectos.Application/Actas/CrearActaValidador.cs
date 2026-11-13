@@ -22,6 +22,22 @@ public sealed class CrearActaValidador : AbstractValidator<CrearActaSolicitud>
 
     public const string MensajeDescripcion = "Debe indicar la descripción del ítem.";
 
+    public const string MensajeDescripcionLarga = "La descripción no puede superar 500 caracteres.";
+
+    public const string MensajeInsumo = "Debe seleccionar un insumo válido.";
+
+    public const string MensajePresupuesto = "El ítem de presupuesto no pertenece a la construcción o el presupuesto no está aprobado.";
+
+    public const string MensajeLineaAjena = "No puede modificar un ítem de otro perfil.";
+
+    public const string MensajeSoloRevisor = "Solo el revisor puede aprobar o rechazar ítems.";
+
+    public const string MensajeRevisorNoEdita = "El revisor no puede modificar ni eliminar ítems.";
+
+    public const string MensajeConflictoLinea = "Otra persona modificó esta línea.";
+
+    public const string MensajeItemAjeno = "Hay un ítem que no pertenece al acta.";
+
     public const string MensajeFechas = "La fecha final debe ser mayor o igual que la fecha inicial.";
 
     public const string MensajeRevisorAgrega = "El revisor no puede agregar ítems.";
@@ -51,12 +67,12 @@ public sealed class CrearActaValidador : AbstractValidator<CrearActaSolicitud>
                 .WithMessage(MensajeUnidad);
             linea.RuleFor(item => item.InsumoId)
                 .Must(id => id is null or > 0)
-                .WithMessage("Debe seleccionar un insumo válido.");
+                .WithMessage(MensajeInsumo);
             linea.RuleFor(item => item.Cantidad).GreaterThan(0).WithMessage(MensajeCantidad);
             linea.RuleFor(item => item.Precio).GreaterThanOrEqualTo(0).WithMessage(MensajePrecio);
             linea.RuleFor(item => item.Descripcion)
                 .MaximumLength(500)
-                .WithMessage("La descripción no puede superar 500 caracteres.");
+                .WithMessage(MensajeDescripcionLarga);
         });
     }
 }

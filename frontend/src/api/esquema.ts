@@ -1222,6 +1222,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/movil/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LoginMovilSolicitud"];
+                    "text/json": components["schemas"]["LoginMovilSolicitud"];
+                    "application/*+json": components["schemas"]["LoginMovilSolicitud"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/movil/v1/auth/renovar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RenovarMovilSolicitud"];
+                    "text/json": components["schemas"]["RenovarMovilSolicitud"];
+                    "application/*+json": components["schemas"]["RenovarMovilSolicitud"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/movil/v1/auth/salir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cargos": {
         parameters: {
             query?: never;
@@ -2620,6 +2731,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/movil/v1/paquete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/presupuestos": {
         parameters: {
             query?: never;
@@ -3930,6 +4074,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/movil/v1/sincronizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SincronizacionMovilSolicitud"];
+                    "text/json": components["schemas"]["SincronizacionMovilSolicitud"];
+                    "application/*+json": components["schemas"]["SincronizacionMovilSolicitud"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/unidades-medida": {
         parameters: {
             query?: never;
@@ -4251,6 +4434,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/{id}/dispositivos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/{id}/dispositivos/{dispositivoId}/revocar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    dispositivoId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4559,6 +4813,13 @@ export interface components {
             /** Format: double */
             diferencia: number;
         };
+        DispositivoMovilSolicitud: {
+            /** Format: uuid */
+            id: string;
+            nombre: string;
+            plataforma: string;
+            versionApp: string;
+        };
         FiltroDashboard: {
             /** Format: date */
             desde: string;
@@ -4859,6 +5120,28 @@ export interface components {
             /** Format: double */
             factor: number;
         };
+        LineaMovilSolicitud: {
+            /** Format: int32 */
+            construccionId: number;
+            /** Format: int32 */
+            conceptoId: number;
+            /** Format: int32 */
+            unidadMedidaId?: number | null;
+            /** Format: int32 */
+            insumoId?: number | null;
+            /** Format: int32 */
+            presupuestoItemId?: number | null;
+            /** Format: double */
+            cantidad: number;
+            /** Format: double */
+            precio: number;
+            descripcion: string;
+        };
+        LoginMovilSolicitud: {
+            usuario: string;
+            contrasena: string;
+            dispositivo: components["schemas"]["DispositivoMovilSolicitud"];
+        };
         LoginRespuesta: {
             nombre: string;
             tipoUsuario: string;
@@ -4943,6 +5226,24 @@ export interface components {
             tamanoMaximoImportacion: number;
             /** Format: int32 */
             filasMaximas: number;
+        };
+        OperacionMovilSolicitud: {
+            /** Format: uuid */
+            idOperacion: string;
+            /** Format: int32 */
+            secuencia: number;
+            tipo: string;
+            /** Format: int32 */
+            numeroActa: number;
+            /** Format: uuid */
+            idCliente?: string | null;
+            /** Format: int32 */
+            lineaId?: number | null;
+            rowVersionLinea?: string | null;
+            aprobado?: boolean | null;
+            linea: components["schemas"]["LineaMovilSolicitud"];
+            /** Format: date-time */
+            creadaEn: string;
         };
         OrdenItemSolicitud: {
             /** Format: int32 */
@@ -5152,6 +5453,11 @@ export interface components {
             diferencias: components["schemas"]["DiferenciaItemDto"][];
             aplicado: boolean;
         };
+        RenovarMovilSolicitud: {
+            refreshToken: string;
+            /** Format: uuid */
+            dispositivoId: string;
+        };
         SeguimientoDto: {
             /** Format: int32 */
             presupuestoId: number;
@@ -5197,6 +5503,13 @@ export interface components {
             precioActas: number;
             /** Format: double */
             proyeccionCierre: number;
+        };
+        SincronizacionMovilSolicitud: {
+            /** Format: uuid */
+            dispositivoId: string;
+            /** Format: int32 */
+            versionEsquema: number;
+            operaciones: components["schemas"]["OperacionMovilSolicitud"][];
         };
         TipoUsuarioDto: {
             /** Format: int32 */

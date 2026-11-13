@@ -83,6 +83,7 @@ public sealed class AuditoriaInterceptor : SaveChangesInterceptor
 
         var usuarioId = UsuarioActual();
         var ip = _acceso.HttpContext?.Connection.RemoteIpAddress?.ToString();
+        var origen = OrigenAuditoria.De(_acceso.HttpContext);
         var ahora = DateTime.UtcNow;
         foreach (var entrada in contexto.ChangeTracker.Entries().Where(Auditable).ToList())
         {
@@ -111,7 +112,8 @@ public sealed class AuditoriaInterceptor : SaveChangesInterceptor
                     _ => AccionAuditoria.Modificar
                 },
                 CambiosJson = cambios.Count == 0 ? null : JsonSerializer.Serialize(cambios),
-                Ip = ip
+                Ip = ip,
+                Origen = origen
             });
         }
     }
@@ -164,6 +166,7 @@ public sealed class AuditoriaInterceptor : SaveChangesInterceptor
     {
         var usuarioId = UsuarioActual();
         var ip = _acceso.HttpContext?.Connection.RemoteIpAddress?.ToString();
+        var origen = OrigenAuditoria.De(_acceso.HttpContext);
         var ahora = DateTime.UtcNow;
         foreach (var (entrada, cambios) in creaciones)
         {
@@ -180,7 +183,8 @@ public sealed class AuditoriaInterceptor : SaveChangesInterceptor
                 EntidadId = Identificador(entrada),
                 Accion = AccionAuditoria.Crear,
                 CambiosJson = cambios.Count == 0 ? null : JsonSerializer.Serialize(cambios),
-                Ip = ip
+                Ip = ip,
+                Origen = origen
             });
         }
     }
