@@ -29,7 +29,12 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    ArchivoEnv.AgregarDesarrollo(builder.Configuration, builder.Environment, builder.Environment.ContentRootPath);
+    ArchivoEnv.AgregarDesarrollo(
+        builder.Configuration,
+        builder.Environment,
+        builder.Environment.ContentRootPath,
+        mensaje => Log.Warning("{Aviso}", mensaje));
+    ArchivoEnv.FijarConfianza(builder.Configuration);
 
     builder.Host.UseSerilog((context, configuration) =>
     {
@@ -253,13 +258,26 @@ try
     });
     app.UseRouting();
 
-    if (args.Contains("--reset") || args.Contains("--seed-demo"))
+    if (args.Contains("--reset") || args.Contains("--seed-demo") || args.Contains("--seed-plantilla"))
     {
-        if (!app.Environment.IsDevelopment())
+        var resultado = GuardaDatosDemo.Evaluar(
+            app.Environment.IsDevelopment(),
+            app.Configuration.GetConnectionString("Arquitectos"),
+            app.Configuration.GetSection("Demo:SufijosPermitidos").Get<string[]>(),
+            args.Contains("--reset"),
+            args.Contains("--confirmar"));
+        if (resultado.CodigoSalida != 0)
         {
-            throw new InvalidOperationException("El reinicio y la semilla de demostración solo están disponibles en Development.");
+            Log.Error("{Mensaje}", resultado.Mensaje);
+            Environment.ExitCode = resultado.CodigoSalida;
+            return;
         }
 
+        Log.Information("{Mensaje}", resultado.Mensaje);
+    }
+
+    if (args.Contains("--reset") || args.Contains("--seed-demo"))
+    {
         await using var alcance = app.Services.CreateAsyncScope();
         var contexto = alcance.ServiceProvider.GetRequiredService<ArquitectosDbContext>();
         if (args.Contains("--reset"))
@@ -275,11 +293,6 @@ try
 
     if (args.Contains("--seed-plantilla"))
     {
-        if (!app.Environment.IsDevelopment())
-        {
-            throw new InvalidOperationException("La plantilla de vivienda solo se siembra en Development.");
-        }
-
         await using var alcancePlantilla = app.Services.CreateAsyncScope();
         var contextoPlantilla = alcancePlantilla.ServiceProvider.GetRequiredService<ArquitectosDbContext>();
         Log.Information(await SemillaPlantilla.AplicarAsync(contextoPlantilla));

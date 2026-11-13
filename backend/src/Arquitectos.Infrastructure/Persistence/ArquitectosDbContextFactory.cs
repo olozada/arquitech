@@ -10,21 +10,35 @@ public sealed class ArquitectosDbContextFactory : IDesignTimeDbContextFactory<Ar
     public ArquitectosDbContext CreateDbContext(string[] args)
     {
         var directorioApi = BuscarDirectorioApi();
+        var entorno = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var esDesarrollo = ArchivoEnv.EsDesarrollo(entorno);
+        var previa = new ConfigurationBuilder()
+            .SetBasePath(directorioApi)
+            .AddJsonFile("appsettings.json", optional: false);
+        AgregarJsonDeEntorno(previa, entorno, esDesarrollo);
+        previa.AddEnvironmentVariables();
+        var confiar = ArchivoEnv.ResolverConfianza(previa.Build(), esDesarrollo);
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(directorioApi)
-            .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddInMemoryCollection(ArchivoEnv.CrearValores(directorioApi))
+            .AddJsonFile("appsettings.json", optional: false);
+        AgregarJsonDeEntorno(configuration, entorno, esDesarrollo);
+        configuration
+            .AddInMemoryCollection(ArchivoEnv.CrearValores(directorioApi, confiar, Console.Error.WriteLine))
             .AddUserSecrets("8f4c2a91-6d3e-4b70-9c15-a1e7d4b82f06")
-            .AddEnvironmentVariables()
-            .Build();
+            .AddEnvironmentVariables();
+        var construida = configuration.Build();
 
-        var connectionString = configuration.GetConnectionString("Arquitectos");
+        var connectionString = construida.GetConnectionString("Arquitectos");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             // La comparación del modelo no abre la conexión. En CI no hay secretos.
             connectionString =
                 "Server=127.0.0.1,9;Database=Arquitectos;User ID=ci;Password=ci;TrustServerCertificate=True;Connect Timeout=1";
+        }
+        else if (bool.TryParse(construida[ArchivoEnv.ClaveConfianza], out var confiarExplicita))
+        {
+            connectionString = ArchivoEnv.CadenaConConfianza(connectionString, confiarExplicita);
         }
 
         var options = new DbContextOptionsBuilder<ArquitectosDbContext>()
@@ -32,6 +46,20 @@ public sealed class ArquitectosDbContextFactory : IDesignTimeDbContextFactory<Ar
             .Options;
 
         return new ArquitectosDbContext(options);
+    }
+
+    private static void AgregarJsonDeEntorno(IConfigurationBuilder configuration, string? entorno, bool esDesarrollo)
+    {
+        if (esDesarrollo)
+        {
+            configuration.AddJsonFile("appsettings.Development.json", optional: true);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(entorno))
+        {
+            configuration.AddJsonFile($"appsettings.{entorno}.json", optional: true);
+        }
     }
 
     private static string BuscarDirectorioApi()

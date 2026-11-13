@@ -9,7 +9,24 @@ Actas de obra, presupuestos y tablero. Backend en .NET 10 (`backend/global.json`
 - SQL Server, para ejecutar la API contra una base real. Las pruebas de backend usan SQLite en memoria y no necesitan el servidor.
 - Herramienta global, para migraciones: `dotnet tool install --global dotnet-ef --version 10.0.15`.
 
-La cadena de conexión y la clave JWT no van en el repositorio. En Development se leen de user-secrets o de variables de entorno.
+La cadena de conexión y la clave JWT no van en el repositorio. En Development se leen de user-secrets, del archivo `.env` o de variables de entorno. En producción, de variables de entorno de IIS.
+
+## Base de datos local
+
+Copia `.env.example` a `.env` en la raíz del repositorio. Git ignora `.env` y sigue versionando el ejemplo.
+
+| Variable | Uso |
+| --- | --- |
+| `ARQUITECTOS_DB_HOST` | Servidor SQL |
+| `ARQUITECTOS_DB_NAME` | Base. Para los comandos de demostración debe terminar en `_DEV`, `_E2E`, `_TEST` o `_QA` |
+| `ARQUITECTOS_DB_USER` | Login de la aplicación |
+| `ARQUITECTOS_DB_PASSWORD` | Clave de ese login |
+
+Esas variables solo se leen en Development. Si también hay user-secrets o la variable `ConnectionStrings__Arquitectos`, esas ganan. Las variables antiguas `INTEGRACION_VENTAS_*` se siguen leyendo una versión y dejan un aviso en el log; hay que dejar de usarlas y rotar esa clave.
+
+El login de la aplicación es `arquitectos_app`, con `db_datareader`, `db_datawriter` y `EXECUTE` sobre su base, sin `db_owner`. Las migraciones usan otro login, `arquitectos_migraciones`, con `db_ddladmin`. Esos logins se crean en SQL Server; no están en el repositorio.
+
+`Sql:ConfiarCertificado` controla `TrustServerCertificate`. En Development, `appsettings.Development.json` lo deja en `true`. Fuera de Development, si la clave no está definida, el valor por defecto es `false`, salvo que la propia cadena ya lo indique.
 
 ## Ejecutar
 
@@ -51,7 +68,7 @@ Solo en Development, y solo contra una base de prueba:
 dotnet run --project backend/src/Arquitectos.Api --launch-profile http -- --seed-demo
 ```
 
-Si ya hay actas, no inserta nada. `--reset --seed-demo` vacía las tablas de negocio, restaura el usuario admin y el menú, y carga la demostración. `--seed-plantilla` carga la plantilla «Vivienda unifamiliar». `datos_demo/datos_demo.sql` está obsoleto; el motivo está en `datos_demo/README.md`.
+Si ya hay actas, no inserta nada. `--reset --confirmar --seed-demo` vacía las tablas de negocio, restaura el usuario admin y el menú, y carga la demostración. Sin `--confirmar`, `--reset` termina con error y no toca la base. `--seed-plantilla` carga la plantilla «Vivienda unifamiliar». Los tres comandos solo corren en Development y solo si el nombre de la base termina en `_DEV`, `_E2E`, `_TEST` o `_QA` (`Demo:SufijosPermitidos`). Antes de escribir, imprimen el servidor y la base, sin usuario ni clave. `datos_demo/datos_demo.sql` está obsoleto; el motivo está en `datos_demo/README.md`.
 
 ## Pruebas
 
@@ -63,7 +80,7 @@ npm run build
 npm run lint
 ```
 
-`npm run test:e2e` es Playwright y no forma parte de la verificación de cada cambio. Necesita `E2E_CLAVE` y una base de prueba creada con `--reset --seed-demo` y `--seed-plantilla`. No lo ejecutes contra la base del sitio.
+`npm run test:e2e` es Playwright y no forma parte de la verificación de cada cambio. Necesita `E2E_CLAVE` y una base de prueba creada con `--reset --confirmar --seed-demo` y `--seed-plantilla`. No lo ejecutes contra la base del sitio.
 
 ## Secretos en el servidor
 

@@ -39,7 +39,7 @@ jobs:
         run: dotnet-ef database update -p backend/src/Arquitectos.Infrastructure -s backend/src/Arquitectos.Api --configuration Release
       - name: Sembrar datos de demostración
         run: |
-          dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile -- --reset --seed-demo
+          dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile -- --reset --confirmar --seed-demo
           dotnet run --project backend/src/Arquitectos.Api --configuration Release --no-launch-profile -- --seed-plantilla
       - name: Arrancar la API
         run: |

@@ -1,6 +1,7 @@
 # Secretos locales
 .env
 .env.*
+!.env.example
 **/appsettings.Production.json
 Codigo_anterior/web.config
 Codigo_anterior/**/web.config
