@@ -16,11 +16,15 @@ jobs:
         working-directory: movil
     steps:
       - uses: actions/checkout@v4
+      - name: Leer versión de Flutter
+        shell: bash
+        run: echo "FLUTTER_VERSION=$(tr -d '\r\n' < movil/.flutter-version)" >> "$GITHUB_ENV"
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version-file: movil/.flutter-version
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - run: flutter --version
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
@@ -41,10 +45,14 @@ jobs:
         working-directory: movil
     steps:
       - uses: actions/checkout@v4
+      - name: Leer versión de Flutter
+        shell: bash
+        run: echo "FLUTTER_VERSION=$(tr -d '\r\n' < movil/.flutter-version)" >> "$GITHUB_ENV"
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version-file: movil/.flutter-version
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter build ios --no-codesign
