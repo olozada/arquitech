@@ -1,5 +1,18 @@
+import 'package:flutter/foundation.dart';
+
 /// La URL llega solo con `--dart-define=API_URL=...`.
 /// dev, qa y prod se distinguen por ese valor al compilar. No hay URL en el código.
+@visibleForTesting
+var simularReleaseEnPruebas = false;
+
+bool urlApiPermitidaEnRelease(String urlApi, {bool? release}) {
+  final enRelease = release ?? simularReleaseEnPruebas || kReleaseMode;
+  if (!enRelease || urlApi.isEmpty) {
+    return true;
+  }
+  return urlApi.toLowerCase().startsWith('https://');
+}
+
 class ConfiguracionApp {
   const ConfiguracionApp({
     required this.urlApi,

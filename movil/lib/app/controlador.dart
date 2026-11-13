@@ -17,6 +17,7 @@ import '../core/seguridad/claves.dart';
 import '../funciones/actas/detalle_acta_acciones.dart';
 import '../sincronizacion/modelos.dart';
 import '../sincronizacion/tarea_fondo.dart';
+import 'configuracion.dart';
 import 'dependencias.dart';
 import 'limpieza_local.dart';
 import 'repositorio_archivos_movil.dart';

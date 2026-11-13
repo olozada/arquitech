@@ -2,72 +2,80 @@ part of 'controlador.dart';
 
 mixin ControladorSincronizacion on ControladorBase {
   Future<void> sincronizar() async {
-    enLinea = await dependencias.red.hayConexion();
-    if (!enLinea) {
-      aviso = Mensajes.sinConexion;
-      notifyListeners();
+    if (sincronizando || ocupado) {
       return;
     }
-    await _ocupar(() async {
-      sincronizando = true;
-      notifyListeners();
-      try {
-        final base = await _base();
-        if (base == null) {
-          await _traerPaquete();
-          aviso = Mensajes.datosActualizados;
-          return;
-        }
-        final clave = await _claveSql();
-        await dependencias.pendientes.abrirDb(clave);
-        await dependencias.cola.recuperarEnviando(base);
-        const maxVueltas = 10;
-        var vueltas = 0;
-        var sincronizacionIncompleta = false;
-        var requierePaquete = false;
-        var antes = await dependencias.cola.pendientes(base);
-        while (antes > 0 && vueltas < maxVueltas) {
-          vueltas++;
-          requierePaquete =
-              await dependencias.sincronizador.subirLote(
-                base: base,
-                token: await _tokenVigente(),
-                dispositivoId: dispositivoId!,
-              ) ||
-              requierePaquete;
-          final despues = await dependencias.cola.pendientes(base);
-          if (despues >= antes) {
-            _registro.w('La sincronización no avanzó: $despues pendientes');
+    sincronizando = true;
+    notifyListeners();
+    try {
+      enLinea = await dependencias.red.hayConexion();
+      if (!enLinea) {
+        aviso = Mensajes.sinConexion;
+        notifyListeners();
+        return;
+      }
+      await _ocupar(() async {
+        try {
+          final base = await _base();
+          if (base == null) {
+            await _traerPaquete();
+            aviso = Mensajes.datosActualizados;
+            return;
+          }
+          final clave = await _claveSql();
+          await dependencias.pendientes.abrirDb(clave);
+          await dependencias.cola.recuperarEnviando(base);
+          const maxVueltas = 10;
+          var vueltas = 0;
+          var sincronizacionIncompleta = false;
+          var requierePaquete = false;
+          var antes = await dependencias.cola.pendientes(base);
+          while (antes > 0 && vueltas < maxVueltas) {
+            vueltas++;
+            requierePaquete =
+                await dependencias.sincronizador.subirLote(
+                  base: base,
+                  token: await _tokenVigente(),
+                  dispositivoId: dispositivoId!,
+                ) ||
+                requierePaquete;
+            final despues = await dependencias.cola.pendientes(base);
+            if (despues >= antes) {
+              _registro.w('La sincronización no avanzó: $despues pendientes');
+              aviso = Mensajes.sincronizacionIncompleta;
+              sincronizacionIncompleta = true;
+              break;
+            }
+            antes = despues;
+          }
+          if (antes > 0 && vueltas >= maxVueltas && !sincronizacionIncompleta) {
             aviso = Mensajes.sincronizacionIncompleta;
             sincronizacionIncompleta = true;
-            break;
           }
-          antes = despues;
-        }
-        if (antes > 0 && vueltas >= maxVueltas && !sincronizacionIncompleta) {
-          aviso = Mensajes.sincronizacionIncompleta;
-          sincronizacionIncompleta = true;
-        }
-        pendientes = await dependencias.cola.pendientes(base);
-        fallidas = await dependencias.pendientes.contar();
-        if (pendientes == 0) {
-          await _traerPaquete();
-          if (!sincronizacionIncompleta) {
-            aviso = Mensajes.datosActualizados;
+          pendientes = await dependencias.cola.pendientes(base);
+          fallidas = await dependencias.pendientes.contar();
+          if (pendientes == 0) {
+            await _traerPaquete();
+            if (!sincronizacionIncompleta) {
+              aviso = Mensajes.datosActualizados;
+            }
+          } else if (!sincronizacionIncompleta) {
+            aviso = Mensajes.reemplazoBloqueado;
           }
-        } else if (!sincronizacionIncompleta) {
-          aviso = Mensajes.reemplazoBloqueado;
+          if (requierePaquete) {
+            _registro.d(
+              'Servidor indicó paquete nuevo (descarga según cola vacía).',
+            );
+          }
+        } finally {
+          // sincronizando se limpia fuera de _ocupar
         }
-        if (requierePaquete) {
-          _registro.d(
-            'Servidor indicó paquete nuevo (descarga según cola vacía).',
-          );
-        }
-      } finally {
-        sincronizando = false;
-      }
-    });
-    await refrescarConteos();
+      });
+      await refrescarConteos();
+    } finally {
+      sincronizando = false;
+      notifyListeners();
+    }
   }
 
   Future<void> _sincronizarSiConviene() async {

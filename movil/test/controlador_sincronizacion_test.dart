@@ -65,7 +65,10 @@ void main() {
     final almacen = AlmacenMemoria();
     await almacen.guardar(Claves.refresh, 'refresh-valido');
     await almacen.guardar(Claves.sql, 'a' * 64);
-    await almacen.guardar(Claves.dispositivo, '00000000-0000-4000-8000-000000000001');
+    await almacen.guardar(
+      Claves.dispositivo,
+      '00000000-0000-4000-8000-000000000001',
+    );
     final dependencias = dependenciasPrueba(
       carpeta: carpeta,
       cliente: cliente,
@@ -84,6 +87,28 @@ void main() {
     expect(cliente.descargas, 1);
     expect(controlador.tieneBase, isTrue);
     expect(controlador.aviso, Mensajes.datosActualizados);
+  });
+
+  test('dos sincronizar paralelos descargan el paquete una sola vez', () async {
+    final carpeta = await carpetaPrueba('sync-paralelo');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final origen = await Directory(
+      '${carpeta.path}${Platform.pathSeparator}origen',
+    ).create();
+    final paquete = await paqueteDePrueba(origen);
+    final cliente = ClienteFalso(paquete);
+    final dependencias = dependenciasPrueba(carpeta: carpeta, cliente: cliente);
+    final controlador = ControladorAplicacion(dependencias);
+    addTearDown(controlador.dispose);
+
+    await controlador.iniciar();
+    await controlador.entrar('ana', 'Clave12345');
+    final descargasTrasLogin = cliente.descargas;
+    expect(descargasTrasLogin, 1);
+
+    await Future.wait([controlador.sincronizar(), controlador.sincronizar()]);
+
+    expect(cliente.descargas, descargasTrasLogin + 1);
   });
 
   test('con outbox vacía, sincronizar descarga el paquete', () async {

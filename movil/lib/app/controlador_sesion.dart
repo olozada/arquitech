@@ -22,6 +22,11 @@ mixin ControladorSesion on ControladorBase {
       notifyListeners();
       return;
     }
+    if (!urlApiPermitidaEnRelease(dependencias.configuracion.urlApi)) {
+      aviso = Mensajes.faltaServidor;
+      notifyListeners();
+      return;
+    }
 
     if (!await dependencias.desbloqueador.dispositivoSoportaBloqueo()) {
       aviso = Mensajes.requiereBloqueo;

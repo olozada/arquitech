@@ -17,7 +17,7 @@ assets/
 
 - **Paquete:** `GET /api/movil/v1/paquete` → gzip + SHA-256 → SQLite cifrado en el dispositivo.
 - **Cola:** comandos de negocio (`AgregarLinea`, `EditarLinea`, …) en `outbox`, con compactación local.
-- **Sync:** `POST /api/movil/v1/sincronizar` por lotes. El campo `requiereNuevoPaquete` es informativo; el cliente **siempre** descarga un paquete nuevo al terminar si la outbox y los envíos quedaron en cero (aunque el servidor no haya aplicado cambios locales o todas las operaciones salgan rechazadas). Si aún hay operaciones en cola, no reemplaza la base y muestra el aviso correspondiente.
+- **Sync:** `POST /api/movil/v1/sincronizar` por lotes. El campo `requiereNuevoPaquete` es informativo; el cliente **siempre** descarga un paquete nuevo al terminar si la outbox y los envíos quedaron en cero (aunque el servidor no haya aplicado cambios locales o todas las operaciones salgan rechazadas). Si aún hay operaciones en cola, no reemplaza la base y muestra el aviso correspondiente. `sincronizar()` ignora llamadas concurrentes (`sincronizando`/`ocupado`) y marca `sincronizando` antes del primer `await`.
 
 Detalle de reglas y API: `MODULO_MOVIL_FLUTTER.md` en la raíz del repo (no versionado si así lo indica el equipo).
 
@@ -34,6 +34,9 @@ Versión `user_version = 1`. Tablas principales: `actas`, `acta_detalles`, `outb
 | Android | `android:allowBackup="false"` y exclusiones en `res/xml/`. |
 | iOS | `NSURLIsExcludedFromBackupKey` en Application Support al arranque y tras importar paquete (`MethodChannel` `com.celuweb.arquitectos/respaldo`). |
 | Bloqueo | Biometría o PIN (`local_auth`) al abrir; tras **5 minutos** en segundo plano vuelve la pantalla de desbloqueo. |
+| Privacidad visual | Android release: `FLAG_SECURE` en `MainActivity` (no capturas ni recientes). iOS/Android: velo `VeloPrivacidad` en `inactive`/`paused`. |
+| API en release | Login rechaza `API_URL` sin `https://` (mismo aviso que URL vacía). |
+| UI Material | Dependencia `material_ui` en pub.dev: paquete oficial del equipo Flutter (`flutter/packages`, descripción “official Flutter Material UI Library”); se mantiene en lugar de `package:flutter/material.dart`. |
 | Revocación | Respuesta `dispositivo_revocado` → borrado de bases, outbox, pendientes y claves; pantalla de login. |
 | Cierre de sesión | Opcional en servidor; siempre borra datos locales (con aviso si hay cola pendiente). |
 

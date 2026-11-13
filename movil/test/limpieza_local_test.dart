@@ -51,8 +51,8 @@ void main() {
     expect(await activa.readAsString(), 'activa');
     expect(
       await File(
-            '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
-          ).exists(),
+        '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
+      ).exists(),
       isFalse,
     );
   });

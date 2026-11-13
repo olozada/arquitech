@@ -8,6 +8,7 @@ import 'controlador.dart';
 import 'dependencias.dart';
 import 'enrutador.dart';
 import 'tema.dart';
+import 'velo_privacidad.dart';
 
 final controladorProvider = ChangeNotifierProvider<ControladorAplicacion>(
   (ref) => throw StateError('El controlador se crea con la aplicación.'),
@@ -26,6 +27,7 @@ class Aplicacion extends StatefulWidget {
 class _EstadoAplicacion extends State<Aplicacion> with WidgetsBindingObserver {
   late final ControladorAplicacion controlador;
   late final GoRouter enrutador;
+  var _veloPrivacidad = false;
 
   @override
   void initState() {
@@ -48,11 +50,18 @@ class _EstadoAplicacion extends State<Aplicacion> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState estado) {
-    if (estado == AppLifecycleState.paused ||
+    if (estado == AppLifecycleState.inactive ||
+        estado == AppLifecycleState.paused ||
         estado == AppLifecycleState.hidden) {
+      if (!_veloPrivacidad) {
+        setState(() => _veloPrivacidad = true);
+      }
       controlador.alFondo();
     }
     if (estado == AppLifecycleState.resumed) {
+      if (_veloPrivacidad) {
+        setState(() => _veloPrivacidad = false);
+      }
       controlador.alFrente();
     }
   }
@@ -61,11 +70,22 @@ class _EstadoAplicacion extends State<Aplicacion> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: [controladorProvider.overrideWith((ref) => controlador)],
-      child: MaterialApp.router(
-        title: 'Arquitectos',
-        debugShowCheckedModeBanner: false,
-        theme: temaArquitectos(),
-        routerConfig: enrutador,
+      child: Stack(
+        children: [
+          MaterialApp.router(
+            title: 'Arquitectos',
+            debugShowCheckedModeBanner: false,
+            theme: temaArquitectos(),
+            routerConfig: enrutador,
+          ),
+          if (_veloPrivacidad)
+            Positioned.fill(
+              child: Theme(
+                data: temaArquitectos(),
+                child: const VeloPrivacidad(),
+              ),
+            ),
+        ],
       ),
     );
   }
