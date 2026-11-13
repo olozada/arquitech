@@ -72,7 +72,20 @@ flutter test test/flujo_integracion_sync_test.dart
 
 En dispositivo (carpeta `integration_test/`) hace falta plataforma desktop o symlinks en Windows.
 
-**Bloqueo del sistema (manual):** en Android con lector de huella pero **sin** PIN/patrón/huella configurados, el login debe mostrar `Mensajes.requiereBloqueo` y no avanzar. Tras configurar bloqueo en Ajustes, el login debe continuar. Registrar fecha y modelo en la tabla de aceptación del equipo si difiere del comportamiento esperado.
+## Pruebas en dispositivo
+
+Completar en campo (fecha, modelo, SO, build). Marcar OK / fallo / N/A.
+
+| # | Escenario | Esperado | Resultado | Notas |
+| --- | --- | --- | --- | --- |
+| 1 | Android, AAB **release** firmado (`bundletool install-apks`), con PIN | Login → paquete → acta → línea → sync → cerrar/reabrir → desbloquear. Sin cierres. | | |
+| 2 | Android **sin** PIN/patrón/huella (con lector de huella) | Mensaje «Configure un PIN, patrón o huella…» | | |
+| 3 | Mismo equipo del #2 tras configurar PIN | Login funciona | | |
+| 4 | Android release | Recientes sin contenido; captura bloqueada | | |
+| 5 | iOS (TestFlight o desarrollo) | Flujo #1; velo al pasar a segundo plano | | |
+| 6 | Avión → 3 líneas → red → Sincronizar | 3 líneas en web; paquete renovado | | |
+| 7 | Admin cierra acta en web; móvil offline con cambios | Sync: pendientes rechazados; acta cerrada en móvil | | |
+| 8 | Revisor sin cambios pulsa Sincronizar | Ve líneas nuevas del contratista | | |
 
 ## Revocar un dispositivo
 
@@ -84,7 +97,7 @@ Escenario de aceptación **6** del módulo móvil.
 
 ## Publicación (resumen)
 
-- **CI:** workflow `.github/workflows/movil.yml` — `format`, `analyze`, `test --coverage`, `apk --debug`; versión de Flutter en `movil/.flutter-version` (misma que desarrollo, leída por ambos jobs vía `flutter-version-file`).
+- **CI:** workflow `.github/workflows/movil.yml` — lee `movil/.flutter-version` (LF) a `FLUTTER_VERSION`, `flutter --version` en log, luego `format`, `analyze`, `test --coverage`, `apk --debug`.
 - **Android release:** crear `movil/android/key.properties` (no versionado) con:
   - `storeFile` — ruta al `.jks` o `.keystore`
   - `storePassword`, `keyAlias`, `keyPassword`
@@ -92,7 +105,7 @@ Escenario de aceptación **6** del módulo móvil.
 - Sin `key.properties`, `flutter build appbundle --release` falla con mensaje explícito (no usa la firma debug).
 - Secretos de GitHub para CI release: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 - **Android:** AAB firmado con keystore en secretos de CI; `allowBackup` desactivado; release con `isMinifyEnabled` y reglas en `android/app/proguard-rules.pro` para `net.zetetic` (SQLCipher), `com.davidmartos96.sqflite_sqlcipher`, `com.tekartik.sqflite` y `flutter_secure_storage`.
-- **Aceptación release en dispositivo** (manual, tras `flutter build appbundle --release` + `bundletool install-apks` en teléfono físico): login → descarga de paquete → abrir acta → agregar línea → sincronizar → cerrar y reabrir → desbloquear, sin cierres inesperados. Registro: _pendiente de ejecución en equipo físico_ (última revisión de reglas ProGuard: 2026-11-13, paquetes alineados con `sqflite_sqlcipher` 3.4.x / `net.zetetic:sqlcipher-android`).
+- **Aceptación release en dispositivo:** tabla en [Pruebas en dispositivo](#pruebas-en-dispositivo). ProGuard: 2026-11-13 (`sqflite_sqlcipher` 3.4.x / `net.zetetic:sqlcipher-android`).
 - **iOS:** certificados y provisioning en secretos; distribución TestFlight o interna.
 - No commitear keystores, `.env` ni URLs de producción.
 
