@@ -25,7 +25,9 @@ public sealed partial class ActaServicio : IActaServicio
         string? orden,
         bool descendente,
         bool romperPorActa,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int pagina = 0,
+        int tamano = 0)
     {
         var fechas = ValidarRango(desde, hasta);
         if (fechas is not null)
@@ -139,6 +141,14 @@ public sealed partial class ActaServicio : IActaServicio
         }
 
         items = romperPorActa ? OrdenarPorActa(items, orden, descendente) : Ordenar(items, orden, descendente);
+        if (romperPorActa)
+        {
+            items = MarcarTotalActa(items);
+        }
+
+        var cantidad = items.Count;
+        var total = items.Sum(item => item.Subtotal);
+        var (paginaOk, tamanoOk, paginaItems) = Paginar(items, pagina, tamano);
         var encabezado = await EncabezadoAsync(
             desde,
             hasta,
@@ -154,11 +164,14 @@ public sealed partial class ActaServicio : IActaServicio
                 agrupado,
                 desde,
                 hasta,
-                items,
-                items.Sum(item => item.Subtotal),
+                paginaItems,
+                total,
                 romperPorActa,
                 construccionId is > 0,
-                encabezado));
+                encabezado,
+                cantidad,
+                paginaOk,
+                tamanoOk));
     }
 
     public async Task<ResultadoActa<InformeMaterialesDto>> ConsultarMaterialesAsync(
@@ -174,7 +187,9 @@ public sealed partial class ActaServicio : IActaServicio
         CancellationToken cancellationToken,
         string? orden = null,
         bool descendente = false,
-        bool agrupado = true)
+        bool agrupado = true,
+        int pagina = 0,
+        int tamano = 0)
     {
         var fechas = ValidarRango(desde, hasta);
         if (fechas is not null)
@@ -263,6 +278,9 @@ public sealed partial class ActaServicio : IActaServicio
                 .ThenByDescending(item => item.Subtotal)
                 .ToList();
         items = OrdenarMateriales(items, orden, descendente);
+        var cantidadMateriales = items.Count;
+        var totalMateriales = items.Sum(item => item.Subtotal);
+        var (paginaMateriales, tamanoMateriales, paginaDeMateriales) = Paginar(items, pagina, tamano);
 
         var encabezado = await EncabezadoAsync(
             desde,
@@ -276,7 +294,16 @@ public sealed partial class ActaServicio : IActaServicio
             proveedorId);
 
         return ResultadoActa<InformeMaterialesDto>.Ok(
-            new InformeMaterialesDto(desde, hasta, items, items.Sum(item => item.Subtotal), encabezado, agrupado));
+            new InformeMaterialesDto(
+                desde,
+                hasta,
+                paginaDeMateriales,
+                totalMateriales,
+                encabezado,
+                agrupado,
+                cantidadMateriales,
+                paginaMateriales,
+                tamanoMateriales));
     }
 
     public async Task<ResultadoActa<byte[]>> ExportarMaterialesAsync(
@@ -375,6 +402,35 @@ public sealed partial class ActaServicio : IActaServicio
         return consulta.Estado == EstadoActa.Ok
             ? ResultadoActa<byte[]>.Ok(GeneradorPdfInformeItems.Generar(consulta.Valor!))
             : ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
+    }
+
+    private static List<ItemInformeDto> MarcarTotalActa(List<ItemInformeDto> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            var esUltima = i == items.Count - 1 || items[i + 1].NumeroActa != items[i].NumeroActa;
+            if (!esUltima)
+            {
+                continue;
+            }
+
+            var numero = items[i].NumeroActa;
+            var suma = items.Where(item => item.NumeroActa == numero).Sum(item => item.Subtotal);
+            items[i] = items[i] with { TotalActa = suma };
+        }
+
+        return items;
+    }
+
+    private static (int Pagina, int Tamano, List<T> Items) Paginar<T>(List<T> items, int pagina, int tamano)
+    {
+        if (tamano <= 0)
+        {
+            return (1, items.Count, items);
+        }
+
+        var (paginaOk, tamanoOk) = Paginacion.Normalizar(pagina, tamano);
+        return (paginaOk, tamanoOk, items.Skip((paginaOk - 1) * tamanoOk).Take(tamanoOk).ToList());
     }
 
     private static List<ItemMaterialInformeDto> OrdenarMateriales(List<ItemMaterialInformeDto> items, string? orden, bool descendente)

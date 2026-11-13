@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using Arquitectos.Application.Actas;
 using Arquitectos.Application.Auditoria;
@@ -55,7 +56,16 @@ public sealed partial class ActaServicio : IActaServicio
             construccionId,
             cerrada,
             actor);
+        consulta = FiltroNumero(consulta, numero);
+        consulta = FiltroNombre(consulta, acta => acta.Arquitecto.Nombre, nombreArquitecto);
+        consulta = FiltroNombre(consulta, acta => acta.Revisor.Nombre, nombreRevisor);
+        consulta = FiltroNombre(consulta, acta => acta.Contratista.Nombre, nombreContratista);
+        consulta = OrdenarConsulta(consulta, orden, descendente);
+
+        var total = await consulta.CountAsync(cancellationToken);
         var filas = await consulta
+            .Skip((paginaOk - 1) * tamanoOk)
+            .Take(tamanoOk)
             .Select(acta => new FilaActa(
                 acta.NumeroActa,
                 acta.FechaInicial,
@@ -67,18 +77,7 @@ public sealed partial class ActaServicio : IActaServicio
                 acta.Revisor.Nombre))
             .ToListAsync(cancellationToken);
 
-        var numeroTexto = Normalizar(numero);
-        var arquitectoTexto = Normalizar(nombreArquitecto);
-        var revisorTexto = Normalizar(nombreRevisor);
-        var contratistaTexto = Normalizar(nombreContratista);
-        var filtradas = filas.Where(fila =>
-            (numeroTexto.Length == 0 || fila.NumeroActa.ToString().Contains(numeroTexto, StringComparison.Ordinal))
-            && Contiene(fila.Arquitecto, arquitectoTexto)
-            && Contiene(fila.Revisor, revisorTexto)
-            && Contiene(fila.Contratista, contratistaTexto)).ToList();
-        filtradas = OrdenarActas(filtradas, orden, descendente);
-
-        var ids = filtradas.Select(fila => fila.NumeroActa).ToList();
+        var ids = filas.Select(fila => fila.NumeroActa).ToList();
         var totales = ids.Count == 0
             ? new Dictionary<int, decimal>()
             : await _context.ActaDetalles
@@ -88,8 +87,7 @@ public sealed partial class ActaServicio : IActaServicio
                 .Select(grupo => new { Numero = grupo.Key, Total = grupo.Sum(detalle => detalle.Subtotal) })
                 .ToDictionaryAsync(grupo => grupo.Numero, grupo => grupo.Total, cancellationToken);
 
-        var paginaFilas = filtradas.Skip((paginaOk - 1) * tamanoOk).Take(tamanoOk);
-        var actas = paginaFilas
+        var actas = filas
             .Select(fila => new ActaResumenDto(
                 fila.NumeroActa,
                 fila.FechaInicial,
@@ -103,7 +101,7 @@ public sealed partial class ActaServicio : IActaServicio
             .ToList();
 
         return ResultadoActa<ConsultaActasDto>.Ok(
-            new ConsultaActasDto(actas, filtradas.Count, paginaOk, tamanoOk, totales.Values.Sum()));
+            new ConsultaActasDto(actas, total, paginaOk, tamanoOk, totales.Values.Sum()));
     }
 
     public async Task<ResultadoActa<ActaDto>> ObtenerAsync(
@@ -167,7 +165,8 @@ public sealed partial class ActaServicio : IActaServicio
             }
         }
 
-        return ResultadoActa<byte[]>.Ok(GeneradorExcelActas.Generar(primera! with { Items = acumulado }));
+        return ResultadoActa<byte[]>.Ok(GeneradorExcelActas.Generar(
+            primera! with { Items = acumulado, TotalGeneral = acumulado.Sum(acta => acta.Total) }));
     }
 
 
@@ -319,34 +318,113 @@ public sealed partial class ActaServicio : IActaServicio
     private sealed record ActorActa(int TipoUsuarioId, int? ArquitectoId, int? ContratistaId, int? RevisorId);
 
 
-    private static List<FilaActa> OrdenarActas(List<FilaActa> filas, string? orden, bool descendente)
+    private const string Colacion = "Latin1_General_CI_AI";
+
+    private static readonly MethodInfo LikeMetodo = typeof(DbFunctionsExtensions).GetMethod(
+        nameof(DbFunctionsExtensions.Like),
+        [typeof(DbFunctions), typeof(string), typeof(string), typeof(string)])!;
+
+    private static readonly MethodInfo ColacionMetodo = typeof(RelationalDbFunctionsExtensions)
+        .GetMethods()
+        .Single(metodo => metodo.Name == nameof(RelationalDbFunctionsExtensions.Collate)
+            && metodo.IsGenericMethodDefinition
+            && metodo.GetParameters().Length == 3)
+        .MakeGenericMethod(typeof(string));
+
+    private static readonly MethodInfo ReemplazarMetodo = typeof(string).GetMethod(
+        nameof(string.Replace),
+        [typeof(string), typeof(string)])!;
+
+    private static readonly MethodInfo MinusculasMetodo = typeof(string).GetMethod(
+        nameof(string.ToLower),
+        Type.EmptyTypes)!;
+
+    private static readonly (string Origen, string Destino)[] Reemplazos =
+    [
+        ("á", "a"), ("Á", "a"), ("é", "e"), ("É", "e"), ("í", "i"), ("Í", "i"),
+        ("ó", "o"), ("Ó", "o"), ("ú", "u"), ("Ú", "u"), ("ü", "u"), ("Ü", "u"),
+        ("ñ", "n"), ("Ñ", "n")
+    ];
+
+    private IQueryable<Acta> FiltroNumero(IQueryable<Acta> consulta, string? texto)
     {
-        IEnumerable<FilaActa> ordenadas = orden switch
+        var limpio = Normalizar(texto);
+        if (limpio.Length == 0)
         {
-            "fechaInicial" => descendente
-                ? filas.OrderByDescending(fila => fila.FechaInicial).ThenByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => fila.FechaInicial).ThenBy(fila => fila.NumeroActa),
-            "fechaFinal" => descendente
-                ? filas.OrderByDescending(fila => fila.FechaFinal).ThenByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => fila.FechaFinal).ThenBy(fila => fila.NumeroActa),
-            "arquitecto" => descendente
-                ? filas.OrderByDescending(fila => Normalizar(fila.Arquitecto), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => Normalizar(fila.Arquitecto), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
-            "revisor" => descendente
-                ? filas.OrderByDescending(fila => Normalizar(fila.Revisor), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => Normalizar(fila.Revisor), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
-            "contratista" => descendente
-                ? filas.OrderByDescending(fila => Normalizar(fila.Contratista), StringComparer.Ordinal).ThenByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => Normalizar(fila.Contratista), StringComparer.Ordinal).ThenBy(fila => fila.NumeroActa),
-            _ => descendente
-                ? filas.OrderByDescending(fila => fila.NumeroActa)
-                : filas.OrderBy(fila => fila.NumeroActa),
-        };
-        return ordenadas.ToList();
+            return consulta;
+        }
+
+        var patron = "%" + Escapar(limpio) + "%";
+        return consulta.Where(acta => EF.Functions.Like(acta.NumeroActa.ToString(), patron, "\\"));
     }
 
-    private static bool Contiene(string? texto, string filtro) =>
-        filtro.Length == 0 || Normalizar(texto).Contains(filtro, StringComparison.Ordinal);
+    private IQueryable<Acta> FiltroNombre(IQueryable<Acta> consulta, Expression<Func<Acta, string>> selector, string? texto)
+    {
+        var limpio = Normalizar(texto);
+        if (limpio.Length == 0)
+        {
+            return consulta;
+        }
+
+        var patron = "%" + Escapar(limpio) + "%";
+        var predicado = _context.Database.IsSqlServer()
+            ? LikeColacion(selector, patron)
+            : LikePlegado(selector, patron);
+        return consulta.Where(predicado);
+    }
+
+    private static Expression<Func<Acta, bool>> LikeColacion(Expression<Func<Acta, string>> selector, string patron)
+    {
+        var valor = Expression.Call(ColacionMetodo, Funciones(), selector.Body, Expression.Constant(Colacion));
+        return Expression.Lambda<Func<Acta, bool>>(Like(valor, patron), selector.Parameters);
+    }
+
+    private static Expression<Func<Acta, bool>> LikePlegado(Expression<Func<Acta, string>> selector, string patron)
+    {
+        Expression valor = selector.Body;
+        foreach (var (origen, destino) in Reemplazos)
+        {
+            valor = Expression.Call(valor, ReemplazarMetodo, Expression.Constant(origen), Expression.Constant(destino));
+        }
+
+        valor = Expression.Call(valor, MinusculasMetodo);
+        return Expression.Lambda<Func<Acta, bool>>(Like(valor, patron), selector.Parameters);
+    }
+
+    private static Expression Like(Expression valor, string patron) =>
+        Expression.Call(LikeMetodo, Funciones(), valor, Expression.Constant(patron), Expression.Constant("\\"));
+
+    private static Expression Funciones() =>
+        Expression.Property(null, typeof(EF).GetProperty(nameof(EF.Functions))!);
+
+    private static IQueryable<Acta> OrdenarConsulta(IQueryable<Acta> consulta, string? orden, bool descendente) =>
+        orden switch
+        {
+            "fechaInicial" => descendente
+                ? consulta.OrderByDescending(acta => acta.FechaInicial).ThenByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.FechaInicial).ThenBy(acta => acta.NumeroActa),
+            "fechaFinal" => descendente
+                ? consulta.OrderByDescending(acta => acta.FechaFinal).ThenByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.FechaFinal).ThenBy(acta => acta.NumeroActa),
+            "arquitecto" => descendente
+                ? consulta.OrderByDescending(acta => acta.Arquitecto.Nombre).ThenByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.Arquitecto.Nombre).ThenBy(acta => acta.NumeroActa),
+            "revisor" => descendente
+                ? consulta.OrderByDescending(acta => acta.Revisor.Nombre).ThenByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.Revisor.Nombre).ThenBy(acta => acta.NumeroActa),
+            "contratista" => descendente
+                ? consulta.OrderByDescending(acta => acta.Contratista.Nombre).ThenByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.Contratista.Nombre).ThenBy(acta => acta.NumeroActa),
+            _ => descendente
+                ? consulta.OrderByDescending(acta => acta.NumeroActa)
+                : consulta.OrderBy(acta => acta.NumeroActa),
+        };
+
+    private static string Escapar(string texto) =>
+        texto.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal)
+            .Replace("[", "\\[", StringComparison.Ordinal);
 
     private static string Normalizar(string? valor)
     {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -26,6 +26,9 @@ type InformeMateriales = {
   agrupado: boolean
   items: ItemMaterial[]
   total: number
+  cantidad: number
+  pagina: number
+  tamano: number
 }
 
 type Filtro = {
@@ -71,10 +74,12 @@ export function ReporteMateriales() {
   const revisores = useCatalogo('revisores')
   const proveedores = useCatalogo('proveedores')
   const reporte = useQuery({
-    queryKey: ['reporte-materiales', filtro],
+    queryKey: ['reporte-materiales', filtro, pagina, campo, direccion],
     enabled: filtro != null,
     queryFn: async () => {
-      const { data } = await cliente.get<InformeMateriales>('/api/actas/materiales', { params: parametros(filtro!) })
+      const { data } = await cliente.get<InformeMateriales>('/api/actas/materiales', {
+        params: { ...parametros(filtro!), orden: campo, direccion, pagina, tamano: TAMANO_PAGINA },
+      })
       return data
     },
   })
@@ -280,6 +285,8 @@ export function ReporteMateriales() {
         <TablaMateriales
           items={reporte.data.items}
           total={reporte.data.total}
+          cantidad={reporte.data.cantidad}
+          tamano={reporte.data.tamano}
           detallado={!reporte.data.agrupado}
           pagina={pagina}
           campo={campo}
@@ -305,6 +312,8 @@ export function ReporteMateriales() {
 function TablaMateriales({
   items,
   total,
+  cantidad,
+  tamano,
   detallado,
   pagina,
   campo,
@@ -315,6 +324,8 @@ function TablaMateriales({
 }: {
   items: ItemMaterial[]
   total: number
+  cantidad: number
+  tamano: number
   detallado: boolean
   pagina: number
   campo: Campo
@@ -323,11 +334,10 @@ function TablaMateriales({
   alCambiarPagina: (pagina: number) => void
   alOrdenar: (campo: Campo) => void
 }) {
-  const ordenados = useMemo(() => ordenar(items, campo, direccion), [items, campo, direccion])
-  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / TAMANO_PAGINA))
+  const filas = items
+  const tamanoPagina = tamano > 0 ? tamano : TAMANO_PAGINA
+  const totalPaginas = Math.max(1, Math.ceil((cantidad || filas.length) / tamanoPagina))
   const paginaVisible = Math.min(pagina, totalPaginas)
-  const inicio = (paginaVisible - 1) * TAMANO_PAGINA
-  const filas = ordenados.slice(inicio, inicio + TAMANO_PAGINA)
 
   return (
     <div className="catalogo-panel">
@@ -366,7 +376,7 @@ function TablaMateriales({
           </thead>
           <tbody>
             {filas.map((item, indice) => (
-              <tr key={`${item.numeroActa ?? ''}-${item.codigo}-${item.material}-${item.unidad}-${item.aprobado}-${inicio + indice}`}>
+              <tr key={`${item.numeroActa ?? ''}-${item.codigo}-${item.material}-${item.unidad}-${item.aprobado}-${indice}`}>
                 {detallado && <td>{item.numeroActa}</td>}
                 <td>{item.codigo}</td>
                 <td title={item.material}>{item.material}</td>
@@ -421,31 +431,6 @@ function Encabezado({
       </button>
     </th>
   )
-}
-
-function ordenar(items: ItemMaterial[], campo: Campo, direccion: Direccion) {
-  const factor = direccion === 'asc' ? 1 : -1
-  return [...items].sort((a, b) => factor * comparar(a, b, campo))
-}
-
-function comparar(a: ItemMaterial, b: ItemMaterial, campo: Campo) {
-  if (campo === 'acta') {
-    return (a.numeroActa ?? 0) - (b.numeroActa ?? 0)
-  }
-
-  if (campo === 'cantidad' || campo === 'precio' || campo === 'subtotal') {
-    return a[campo] - b[campo]
-  }
-
-  if (campo === 'estado') {
-    return (a.aprobado ? 'aprobado' : 'rechazado').localeCompare(b.aprobado ? 'aprobado' : 'rechazado', 'es')
-  }
-
-  return normalizar(a[campo]).localeCompare(normalizar(b[campo]), 'es')
-}
-
-function normalizar(valor: string) {
-  return valor.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es')
 }
 
 function lineasEncabezado(

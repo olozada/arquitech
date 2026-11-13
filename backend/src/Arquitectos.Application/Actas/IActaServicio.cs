@@ -56,7 +56,9 @@ public interface IActaServicio
         string? orden,
         bool descendente,
         bool romperPorActa,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        int pagina = 0,
+        int tamano = 0);
 
     Task<ResultadoActa<InformeMaterialesDto>> ConsultarMaterialesAsync(
         DateOnly? desde,
@@ -71,7 +73,9 @@ public interface IActaServicio
         CancellationToken cancellationToken,
         string? orden = null,
         bool descendente = false,
-        bool agrupado = true);
+        bool agrupado = true,
+        int pagina = 0,
+        int tamano = 0);
 
     Task<ResultadoActa<byte[]>> ExportarMaterialesAsync(
         DateOnly? desde,

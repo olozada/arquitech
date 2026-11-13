@@ -75,7 +75,8 @@ public sealed record ItemInformeDto(
     decimal Cantidad,
     decimal Precio,
     decimal Subtotal,
-    bool Aprobado);
+    bool Aprobado,
+    decimal? TotalActa = null);
 
 public sealed record ItemMaterialInformeDto(
     string Codigo,
@@ -93,7 +94,10 @@ public sealed record InformeMaterialesDto(
     IReadOnlyList<ItemMaterialInformeDto> Items,
     decimal Total,
     IReadOnlyList<string>? Encabezado = null,
-    bool Agrupado = true);
+    bool Agrupado = true,
+    int Cantidad = 0,
+    int Pagina = 1,
+    int Tamano = 0);
 
 public sealed record InformeItemsDto(
     bool Agrupado,
@@ -103,7 +107,10 @@ public sealed record InformeItemsDto(
     decimal Total,
     bool RomperPorActa = false,
     bool OcultarConstruccion = false,
-    IReadOnlyList<string>? Encabezado = null);
+    IReadOnlyList<string>? Encabezado = null,
+    int Cantidad = 0,
+    int Pagina = 1,
+    int Tamano = 0);
 
 public sealed record LineaActaDto(
     int Id,

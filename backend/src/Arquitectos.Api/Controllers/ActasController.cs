@@ -121,7 +121,9 @@ public sealed class ActasController : ControllerBase
         [FromQuery] string? orden,
         [FromQuery] string? direccion,
         [FromQuery] bool romperPorActa,
-        CancellationToken cancellationToken)
+        [FromQuery] int pagina = 0,
+        [FromQuery] int tamano = 0,
+        CancellationToken cancellationToken = default)
     {
         if (LeerUsuarioId() is not int usuarioId)
         {
@@ -141,7 +143,9 @@ public sealed class ActasController : ControllerBase
             orden,
             direccion?.Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) == true,
             romperPorActa,
-            cancellationToken);
+            cancellationToken,
+            pagina,
+            tamano);
         return Traducir(resultado);
     }
 
@@ -157,7 +161,11 @@ public sealed class ActasController : ControllerBase
         [FromQuery] int? proveedorId,
         [FromQuery] string? estado,
         [FromQuery] string? vista,
-        CancellationToken cancellationToken)
+        [FromQuery] string? orden,
+        [FromQuery] string? direccion,
+        [FromQuery] int pagina = 0,
+        [FromQuery] int tamano = 0,
+        CancellationToken cancellationToken = default)
     {
         if (LeerUsuarioId() is not int usuarioId)
         {
@@ -175,7 +183,11 @@ public sealed class ActasController : ControllerBase
             proveedorId,
             usuarioId,
             cancellationToken,
-            agrupado: VistaAgrupada(vista));
+            orden,
+            direccion?.Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) == true,
+            VistaAgrupada(vista),
+            pagina,
+            tamano);
         return Traducir(resultado);
     }
 

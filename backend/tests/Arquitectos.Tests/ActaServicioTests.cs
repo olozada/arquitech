@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Arquitectos.Application.Actas;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Actas;
@@ -5,6 +6,7 @@ using Arquitectos.Infrastructure.Persistence;
 using QuestPDF.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Arquitectos.Tests;
 
@@ -13,6 +15,7 @@ public sealed class ActaServicioTests : IDisposable
     private readonly SqliteConnection _conexion;
     private readonly ArquitectosDbContext _context;
     private readonly ActaServicio _servicio;
+    private readonly CapturaSql _captura = new();
 
     public ActaServicioTests()
     {
@@ -20,6 +23,7 @@ public sealed class ActaServicioTests : IDisposable
         _conexion.Open();
         var opciones = new DbContextOptionsBuilder<ArquitectosDbContext>()
             .UseSqlite(_conexion)
+            .AddInterceptors(_captura)
             .Options;
         _context = new ArquitectosDbContext(opciones);
         _context.Database.EnsureCreated();
@@ -755,6 +759,114 @@ public sealed class ActaServicioTests : IDisposable
         return resultado.Valor!;
     }
 
+    [Fact]
+    public async Task La_pagina_3_de_mil_actas_sale_de_sql_y_el_total_es_solo_de_esa_pagina()
+    {
+        var catalogos = await SembrarCatalogosAsync();
+        var actas = new List<Acta>(1000);
+        for (var i = 0; i < 1000; i++)
+        {
+            actas.Add(new Acta
+            {
+                FechaInicial = new DateOnly(2026, 1, 1),
+                FechaFinal = new DateOnly(2026, 1, 2),
+                ArquitectoId = catalogos.ArquitectoId,
+                RevisorId = catalogos.RevisorId,
+                ContratistaId = catalogos.ContratistaId,
+                FechaRegistro = DateTime.UtcNow,
+                RowVersion = [1]
+            });
+        }
+
+        _context.Actas.AddRange(actas);
+        await _context.SaveChangesAsync();
+
+        _captura.Consultas.Clear();
+        var primera = await _servicio.ConsultarAsync(
+            null, null, null, null, null, null, null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            pagina: 3,
+            tamano: 50);
+        var segunda = await _servicio.ConsultarAsync(
+            null, null, null, null, null, null, null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            pagina: 3,
+            tamano: 50);
+
+        Assert.Equal(EstadoActa.Ok, primera.Estado);
+        Assert.Equal(1000, primera.Valor!.Total);
+        Assert.Equal(50, primera.Valor.Items.Count);
+        Assert.Equal(3, primera.Valor.Pagina);
+        var numeros = primera.Valor.Items.Select(acta => acta.NumeroActa).ToList();
+        Assert.Equal(numeros, segunda.Valor!.Items.Select(acta => acta.NumeroActa));
+        Assert.True(numeros.Zip(numeros.Skip(1), (anterior, siguiente) => anterior > siguiente).All(ordenado => ordenado));
+        Assert.Contains(_captura.Consultas, sql => sql.Contains("OFFSET", StringComparison.OrdinalIgnoreCase));
+
+        var enPagina = numeros[0];
+        var paginaUno = await _servicio.ConsultarAsync(
+            null, null, null, null, null, null, null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            pagina: 1,
+            tamano: 50);
+        var fuera = paginaUno.Valor!.Items[0].NumeroActa;
+        Assert.DoesNotContain(numeros, numero => numero == fuera);
+        _context.ActaDetalles.Add(new ActaDetalle
+        {
+            NumeroActa = enPagina,
+            ConstruccionId = catalogos.ConstruccionId,
+            ConceptoId = catalogos.ConceptoId,
+            TipoUsuarioId = SemillaInicial.TipoAdministradorId,
+            Cantidad = 4,
+            Precio = 10,
+            Descripcion = "En la página",
+            Aprobado = true
+        });
+        _context.ActaDetalles.Add(new ActaDetalle
+        {
+            NumeroActa = fuera,
+            ConstruccionId = catalogos.ConstruccionId,
+            ConceptoId = catalogos.ConceptoId,
+            TipoUsuarioId = SemillaInicial.TipoAdministradorId,
+            Cantidad = 9,
+            Precio = 111,
+            Descripcion = "Fuera de la página",
+            Aprobado = true
+        });
+        await _context.SaveChangesAsync();
+
+        var pagina = await _servicio.ConsultarAsync(
+            null, null, null, null, null, null, null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            pagina: 3,
+            tamano: 50);
+        Assert.Equal(40m, pagina.Valor!.Items.Single(acta => acta.NumeroActa == enPagina).Total);
+        Assert.Equal(40m, pagina.Valor.TotalGeneral);
+        Assert.DoesNotContain(pagina.Valor.Items, acta => acta.NumeroActa == fuera);
+    }
+
+    [Fact]
+    public async Task El_filtro_lopez_encuentra_a_Lopez()
+    {
+        var catalogos = await SembrarCatalogosAsync();
+        var arquitecto = await _context.Arquitectos.SingleAsync(item => item.Id == catalogos.ArquitectoId);
+        arquitecto.Nombre = "López";
+        await _context.SaveChangesAsync();
+        await _servicio.CrearAsync(Solicitud(catalogos), SemillaInicial.UsuarioAdminId, CancellationToken.None);
+
+        var consulta = await _servicio.ConsultarAsync(
+            null, null, null, null, null, null, null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            nombreArquitecto: "lopez");
+
+        Assert.Equal(EstadoActa.Ok, consulta.Estado);
+        Assert.Equal("López", Assert.Single(consulta.Valor!.Items).Arquitecto);
+    }
+
     private async Task<ConsultaActasDto> Consultar(
         CrearActaSolicitud solicitud,
         int? arquitectoId,
@@ -825,6 +937,21 @@ public sealed class ActaServicioTests : IDisposable
             }
         ]
     };
+
+    private sealed class CapturaSql : DbCommandInterceptor
+    {
+        public List<string> Consultas { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Consultas.Add(command.CommandText);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
 
     private sealed record CatalogosActa(
         int ArquitectoId,

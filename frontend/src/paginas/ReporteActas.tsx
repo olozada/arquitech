@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -25,12 +25,16 @@ type ItemInforme = {
   precio: number
   subtotal: number
   aprobado: boolean
+  totalActa?: number | null
 }
 
 type Informe = {
   agrupado: boolean
   items: ItemInforme[]
   total: number
+  cantidad: number
+  pagina: number
+  tamano: number
 }
 
 type Filtro = {
@@ -74,11 +78,19 @@ export function ReporteActas() {
   const arquitectos = useCatalogo('arquitectos')
   const revisores = useCatalogo('revisores')
   const reporte = useQuery({
-    queryKey: ['reporte-actas', filtro],
+    queryKey: ['reporte-actas', filtro, pagina, campo, direccion],
     enabled: filtro != null,
     queryFn: async () => {
       const { data } = await cliente.get<Informe>('/api/actas/items', {
-        params: { ...parametros(filtro!), vista: filtro!.vista, romperPorActa: filtro!.romperPorActa || undefined },
+        params: {
+          ...parametros(filtro!),
+          vista: filtro!.vista,
+          romperPorActa: filtro!.romperPorActa || undefined,
+          orden: campo,
+          direccion,
+          pagina,
+          tamano: TAMANO_PAGINA,
+        },
       })
       return data
     },
@@ -317,14 +329,10 @@ function TablaItems({
 }) {
   const mostrarActa = !informe.agrupado || romper
   const mostrarConstruccion = !ocultarConstruccion
-  const ordenados = useMemo(
-    () => ordenarItems(informe.items, campoVisible(campo, informe.agrupado, romper, ocultarConstruccion), direccion, romper),
-    [informe.items, informe.agrupado, campo, direccion, romper, ocultarConstruccion],
-  )
-  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / TAMANO_PAGINA))
+  const filas = informe.items
+  const tamano = informe.tamano > 0 ? informe.tamano : TAMANO_PAGINA
+  const totalPaginas = Math.max(1, Math.ceil((informe.cantidad || filas.length) / tamano))
   const paginaVisible = Math.min(pagina, totalPaginas)
-  const inicio = (paginaVisible - 1) * TAMANO_PAGINA
-  const filas = ordenados.slice(inicio, inicio + TAMANO_PAGINA)
   const columnasAntesDelTotal = (mostrarActa ? 1 : 0) + (mostrarConstruccion ? 1 : 0) + 6
   const activo = campoVisible(campo, informe.agrupado, romper, ocultarConstruccion)
   const ancho = (mostrarActa ? 4.5 : 0) + (mostrarConstruccion ? 14 : 0) + 62
@@ -389,9 +397,8 @@ function TablaItems({
           </thead>
           <tbody>
             {filas.map((item, indice) => {
-              const siguiente = ordenados[inicio + indice + 1]
-              const cierraActa = romper && siguiente?.numeroActa !== item.numeroActa
-              const sumaActa = cierraActa ? sumaPorActa(ordenados, item.numeroActa) : 0
+              const cierraActa = romper && item.totalActa != null
+              const sumaActa = item.totalActa ?? 0
               return (
                 <Fragment key={item.id ?? `${item.numeroActa}-${item.construccion}-${item.concepto}-${item.precio}-${indice}`}>
                   <tr>
@@ -509,53 +516,6 @@ function lineasEncabezado(
   if (filtro.estado === 'abierta') lineas.push('Estado: Abierta')
   if (filtro.estado === 'cerrada') lineas.push('Estado: Cerrada')
   return lineas
-}
-
-function sumaPorActa(items: ItemInforme[], numeroActa: number | null) {
-  return items.reduce((suma, item) => (item.numeroActa === numeroActa ? suma + item.subtotal : suma), 0)
-}
-
-function ordenarItems(items: ItemInforme[], campo: CampoOrdenInforme | null, direccion: Direccion, romper = false) {
-  if (!campo && !romper) {
-    return items
-  }
-
-  const factor = direccion === 'asc' ? 1 : -1
-  return [...items].sort((a, b) => {
-    if (romper && campo !== 'acta') {
-      const porActa = (b.numeroActa ?? 0) - (a.numeroActa ?? 0)
-      if (porActa !== 0) return porActa
-    }
-
-    return campo ? factor * compararItem(a, b, campo) : 0
-  })
-}
-
-function compararItem(a: ItemInforme, b: ItemInforme, campo: CampoOrdenInforme) {
-  if (campo === 'acta') {
-    return (a.numeroActa ?? 0) - (b.numeroActa ?? 0)
-  }
-
-  if (campo === 'cantidad' || campo === 'precio' || campo === 'subtotal') {
-    return a[campo] - b[campo]
-  }
-
-  if (campo === 'estado') {
-    return textoEstado(a).localeCompare(textoEstado(b), 'es')
-  }
-
-  return normalizar(a[campo]).localeCompare(normalizar(b[campo]), 'es')
-}
-
-function textoEstado(item: ItemInforme) {
-  return item.aprobado ? 'aprobado' : 'rechazado'
-}
-
-function normalizar(valor: string) {
-  return valor
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase('es')
 }
 
 function avisar(texto: string) {
