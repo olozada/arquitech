@@ -4,6 +4,7 @@ import 'package:arquitectos_movil/app/controlador.dart';
 import 'package:arquitectos_movil/app/dependencias.dart';
 import 'package:arquitectos_movil/core/errores/mensajes.dart';
 import 'package:arquitectos_movil/core/seguridad/desbloqueador.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -11,8 +12,31 @@ import 'soporte.dart';
 
 void main() {
   setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+  });
+
+  test('Android sin canal nativo muestra requiereBloqueo', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final carpeta = await carpetaPrueba('bloqueo-canal-android');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final origen = await Directory(
+      '${carpeta.path}${Platform.pathSeparator}origen',
+    ).create();
+    final dependencias = dependenciasPrueba(
+      carpeta: carpeta,
+      cliente: ClienteFalso(await paqueteDePrueba(origen)),
+    ).copyWith(desbloqueador: DesbloqueadorLocal());
+    final controlador = ControladorAplicacion(dependencias);
+    addTearDown(controlador.dispose);
+
+    await controlador.iniciar();
+    await controlador.entrar('ana', 'Clave12345');
+
+    expect(controlador.aviso, Mensajes.requiereBloqueo);
+    expect(controlador.ruta, RutaAplicacion.login);
   });
 
   test('sin bloqueo del sistema, el login se rechaza', () async {

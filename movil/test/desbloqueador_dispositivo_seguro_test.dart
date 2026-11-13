@@ -26,6 +26,11 @@ void main() {
       expect(await desbloqueador.dispositivoSoportaBloqueo(), isFalse);
     });
 
+    test('sin canal registrado → false (MissingPluginException)', () async {
+      final desbloqueador = DesbloqueadorLocal();
+      expect(await desbloqueador.dispositivoSoportaBloqueo(), isFalse);
+    });
+
     test('canal devuelve true → hay bloqueo configurado', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(canalSeguridadDispositivo, (llamada) async {
