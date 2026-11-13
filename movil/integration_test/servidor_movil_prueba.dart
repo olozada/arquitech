@@ -46,14 +46,13 @@ class ServidorMovilPrueba {
       return;
     }
     if (metodo == 'GET' && ruta == '/api/movil/v1/paquete') {
-      final paq = _simulador.paquete();
       peticion.response.statusCode = HttpStatus.ok;
       peticion.response.headers
         ..set('content-type', 'application/gzip')
-        ..set('x-paquete-sha256', paq.sha256)
-        ..set('x-paquete-esquema', '${paq.esquema}')
-        ..set('x-paquete-generado', paq.generadoEn);
-      peticion.response.add(paq.gzip);
+        ..set('x-paquete-sha256', _simulador.sha256Paquete)
+        ..set('x-paquete-esquema', '1')
+        ..set('x-paquete-generado', _simulador.generadoPaquete);
+      peticion.response.add(_simulador.bytesGzip());
       await peticion.response.close();
       return;
     }

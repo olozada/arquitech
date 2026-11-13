@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../app/configuracion.dart';
@@ -119,17 +121,24 @@ class ClienteDio implements ClienteMovil {
   Future<PaqueteDescargado> descargarPaquete({
     required String token,
     required String dispositivoId,
+    required String rutaArchivoGz,
+    void Function(int recibidos, int? total)? onProgreso,
   }) async {
+    final destino = File(rutaArchivoGz);
+    await destino.parent.create(recursive: true);
+    if (await destino.exists()) {
+      await destino.delete();
+    }
+
     final respuesta = await _enviar(
-      () => _dio.get<Object?>(
+      () => _dio.download(
         '/api/movil/v1/paquete',
-        options: _opciones(token).copyWith(responseType: ResponseType.bytes),
+        destino.path,
+        options: _opciones(token),
+        deleteOnError: true,
+        onReceiveProgress: onProgreso,
       ),
     );
-    final cuerpo = respuesta.data;
-    if (cuerpo is! List<int>) {
-      throw const PaqueteInvalido('El paquete llegó vacío.');
-    }
     final sha = respuesta.headers.value('x-paquete-sha256');
     final esquema = int.tryParse(
       respuesta.headers.value('x-paquete-esquema') ?? '',
@@ -140,10 +149,16 @@ class ClienteDio implements ClienteMovil {
         esquema == null ||
         generado == null ||
         generado.isEmpty) {
+      if (await destino.exists()) {
+        await destino.delete();
+      }
       throw const PaqueteInvalido('El paquete no trae su huella.');
     }
+    if (!await destino.exists() || await destino.length() == 0) {
+      throw const PaqueteInvalido('El paquete llegó vacío.');
+    }
     return PaqueteDescargado(
-      gzip: List<int>.from(cuerpo),
+      archivoGz: destino,
       sha256: sha,
       esquema: esquema,
       generadoEn: generado,

@@ -14,6 +14,57 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
+  test('recuperar enviando fusiona la edición en AgregarLinea', () async {
+    final carpeta = await carpetaPrueba('cola-enviando');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final ruta = '${carpeta.path}${Platform.pathSeparator}local.sqlite';
+    final base = await baseConEsquema(ruta);
+    await sembrar(base);
+    final cola = ColaMovil(uuid: const Uuid());
+    final creada = DateTime.utc(2026, 11, 13, 12);
+
+    await cola.agregarLinea(
+      base: base,
+      numeroActa: 120,
+      tipoUsuarioId: 3,
+      linea: const LineaSincronizacion(
+        construccionId: 7,
+        conceptoId: 1,
+        cantidad: '1.0000',
+        precio: '100.00',
+        descripcion: 'Inicial',
+      ),
+      creadaEn: creada,
+    );
+    final idOp = (await cola.listarPendientes(base)).first.idOperacion;
+    await cola.marcarEnviando(base, [idOp]);
+    await cola.recuperarEnviando(base);
+    final filasNueva = await base.consultar(
+      "SELECT local_id FROM acta_detalles WHERE descripcion = 'Inicial'",
+    );
+    final localId = filasNueva.first['local_id']!.toString();
+    await cola.editarLinea(
+      base: base,
+      numeroActa: 120,
+      localId: localId,
+      linea: const LineaSincronizacion(
+        construccionId: 7,
+        conceptoId: 1,
+        cantidad: '2.0000',
+        precio: '150.00',
+        descripcion: 'Fusionada tras envío',
+      ),
+      creadaEn: creada.add(const Duration(minutes: 1)),
+    );
+    final colaFilas = await base.consultar(
+      "SELECT tipo, payload_json FROM outbox WHERE estado = 'pendiente'",
+    );
+    expect(colaFilas.length, 1);
+    expect(colaFilas.first['tipo'], 'AgregarLinea');
+    expect(colaFilas.first['payload_json'], contains('Fusionada tras envío'));
+    await base.cerrar();
+  });
+
   test('editar una línea nueva fusiona en un solo AgregarLinea', () async {
     final carpeta = await carpetaPrueba('cola');
     addTearDown(() => borrarCarpeta(carpeta));

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../sincronizacion/modelos.dart';
 
 class UsuarioMovil {
@@ -50,13 +52,13 @@ class ParTokens {
 
 class PaqueteDescargado {
   const PaqueteDescargado({
-    required this.gzip,
+    required this.archivoGz,
     required this.sha256,
     required this.esquema,
     required this.generadoEn,
   });
 
-  final List<int> gzip;
+  final File archivoGz;
   final String sha256;
   final int esquema;
   final String generadoEn;
@@ -99,6 +101,8 @@ abstract class ClienteMovil {
   Future<PaqueteDescargado> descargarPaquete({
     required String token,
     required String dispositivoId,
+    required String rutaArchivoGz,
+    void Function(int recibidos, int? total)? onProgreso,
   });
 
   Future<RespuestaSincronizacion> sincronizar({

@@ -80,7 +80,13 @@ Escenario de aceptación **6** del módulo móvil.
 ## Publicación (resumen)
 
 - **CI:** workflow `.github/workflows/movil.yml` — `format`, `analyze`, `test --coverage`, `apk --debug`.
-- **Android:** AAB firmado con keystore en secretos de CI; `allowBackup` desactivado.
+- **Android release:** crear `movil/android/key.properties` (no versionado) con:
+  - `storeFile` — ruta al `.jks` o `.keystore`
+  - `storePassword`, `keyAlias`, `keyPassword`
+- Generar keystore: `keytool -genkey -v -keystore arquitectos-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias arquitectos`
+- Sin `key.properties`, `flutter build appbundle --release` falla con mensaje explícito (no usa la firma debug).
+- Secretos de GitHub para CI release: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+- **Android:** AAB firmado con keystore en secretos de CI; `allowBackup` desactivado; release con minificación y reglas ProGuard para SQLCipher y `flutter_secure_storage`.
 - **iOS:** certificados y provisioning en secretos; distribución TestFlight o interna.
 - No commitear keystores, `.env` ni URLs de producción.
 

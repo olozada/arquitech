@@ -129,6 +129,12 @@ ORDER BY secuencia
     }
   }
 
+  Future<void> recuperarEnviando(BaseLocal base) async {
+    await base.ejecutar(
+      "UPDATE outbox SET estado = 'pendiente' WHERE estado = 'enviando'",
+    );
+  }
+
   Future<void> agregarLinea({
     required BaseLocal base,
     required int numeroActa,

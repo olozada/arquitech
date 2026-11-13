@@ -69,7 +69,7 @@ ORDER BY secuencia
     final base = _abierta!;
     await base.ejecutar(
       '''
-INSERT INTO operaciones_fallidas (
+INSERT OR REPLACE INTO operaciones_fallidas (
   id_operacion, secuencia, tipo, numero_acta, local_id, estado, mensaje,
   payload_json, resultado_json, registrada_en
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

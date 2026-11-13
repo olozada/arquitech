@@ -6,6 +6,7 @@ import '../core/api/cliente_movil.dart';
 import '../core/api/errores.dart';
 import '../core/db/base_local.dart';
 import '../core/db/pendientes_db.dart';
+import '../core/db/transaccion.dart';
 import 'cola_movil.dart';
 import 'modelos.dart';
 
@@ -99,11 +100,12 @@ class SincronizadorMovil {
       }
       switch (resultado.estado) {
         case 'Aplicada':
-          await cola.quitarOperacion(base, fila.idOperacion);
-          await _aplicarEnLocal(base, fila, resultado);
+          await transaccion(base, () async {
+            await cola.quitarOperacion(base, fila.idOperacion);
+            await _aplicarEnLocal(base, fila, resultado);
+          });
         case 'Rechazada':
         case 'Conflicto':
-          await cola.quitarOperacion(base, fila.idOperacion);
           await pendientes.insertar(
             OperacionFallidaRegistro(
               idOperacion: fila.idOperacion,
@@ -123,10 +125,13 @@ class SincronizadorMovil {
               registradaEn: instante,
             ),
           );
-          if (resultado.estado == 'Conflicto' &&
-              resultado.lineaServidor != null) {
-            await _reemplazarConServidor(base, fila.localId, resultado);
-          }
+          await transaccion(base, () async {
+            await cola.quitarOperacion(base, fila.idOperacion);
+            if (resultado.estado == 'Conflicto' &&
+                resultado.lineaServidor != null) {
+              await _reemplazarConServidor(base, fila.localId, resultado);
+            }
+          });
         default:
           await cola.devolverAPendiente(base, [fila.idOperacion]);
       }

@@ -3,6 +3,8 @@ import 'package:local_auth/local_auth.dart';
 
 abstract class Desbloqueador {
   Future<bool> desbloquear();
+
+  Future<bool> dispositivoSoportaBloqueo();
 }
 
 class DesbloqueadorLocal implements Desbloqueador {
@@ -10,6 +12,10 @@ class DesbloqueadorLocal implements Desbloqueador {
     : _autenticacion = autenticacion ?? LocalAuthentication();
 
   final LocalAuthentication _autenticacion;
+
+  @override
+  Future<bool> dispositivoSoportaBloqueo() =>
+      _autenticacion.isDeviceSupported();
 
   @override
   Future<bool> desbloquear() async {
@@ -29,9 +35,13 @@ class DesbloqueadorLocal implements Desbloqueador {
 }
 
 class DesbloqueadorFijo implements Desbloqueador {
-  DesbloqueadorFijo(this.acepta);
+  DesbloqueadorFijo(this.acepta, {this.soportaBloqueo = true});
 
   bool acepta;
+  final bool soportaBloqueo;
+
+  @override
+  Future<bool> dispositivoSoportaBloqueo() async => soportaBloqueo;
 
   @override
   Future<bool> desbloquear() async => acepta;

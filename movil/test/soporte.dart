@@ -204,10 +204,16 @@ class ClienteFalso implements ClienteMovil {
   Future<PaqueteDescargado> descargarPaquete({
     required String token,
     required String dispositivoId,
+    required String rutaArchivoGz,
+    void Function(int recibidos, int? total)? onProgreso,
   }) async {
     descargas += 1;
+    final archivo = File(rutaArchivoGz);
+    await archivo.parent.create(recursive: true);
+    await archivo.writeAsBytes(paquete.gzip);
+    onProgreso?.call(paquete.gzip.length, paquete.gzip.length);
     return PaqueteDescargado(
-      gzip: paquete.gzip,
+      archivoGz: archivo,
       sha256: paquete.sha256,
       esquema: 1,
       generadoEn: '2026-11-13T15:00:00Z',

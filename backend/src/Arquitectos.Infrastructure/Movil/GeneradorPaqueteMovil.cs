@@ -126,11 +126,20 @@ public sealed class GeneradorPaqueteMovil : IGeneradorPaqueteMovil
         }
 
         var desde = DateOnly.FromDateTime(generado).AddMonths(-_opciones.MesesHistorial);
-        var candidatas = await _context.Actas.AsNoTracking()
+        var consulta = _context.Actas.AsNoTracking()
+            .Where(acta => !acta.Cerrada || acta.FechaFinal >= desde);
+        consulta = usuario.TipoUsuarioId switch
+        {
+            PerfilesUsuario.Arquitecto => consulta.Where(acta => acta.ArquitectoId == usuario.ArquitectoId),
+            PerfilesUsuario.Contratista => consulta.Where(acta => acta.ContratistaId == usuario.ContratistaId),
+            PerfilesUsuario.Revisor => consulta.Where(acta => acta.RevisorId == usuario.RevisorId),
+            _ => consulta.Where(_ => false)
+        };
+        var actas = await consulta
             .Include(acta => acta.Detalles)
-            .Where(acta => !acta.Cerrada || acta.FechaFinal >= desde)
+            .OrderBy(acta => acta.NumeroActa)
             .ToListAsync(cancellationToken);
-        var actas = candidatas
+        actas = actas
             .Where(acta => PermisosActa.PuedeVer(
                 usuario.TipoUsuarioId,
                 usuario.ArquitectoId,
@@ -139,7 +148,6 @@ public sealed class GeneradorPaqueteMovil : IGeneradorPaqueteMovil
                 acta.ArquitectoId,
                 acta.ContratistaId,
                 acta.RevisorId))
-            .OrderBy(acta => acta.NumeroActa)
             .ToList();
 
         var datos = new DatosPaquete { Usuario = usuario, Generado = generado, Actas = actas };

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 
@@ -13,7 +15,7 @@ class ImportadorPaquete {
   final AbrirBase abrir;
 
   Future<void> importar({
-    required List<int> contenidoGzip,
+    required File archivoGz,
     required String sha256Esperado,
     required String clave,
     required String rutaActiva,
@@ -24,12 +26,6 @@ class ImportadorPaquete {
       throw const ReemplazoBloqueado(Mensajes.reemplazoBloqueado);
     }
 
-    final bytes = gzip.decode(contenidoGzip);
-    final resumen = sha256.convert(bytes).toString();
-    if (resumen != sha256Esperado.trim().toLowerCase()) {
-      throw const PaqueteInvalido(Mensajes.paqueteCorrupto);
-    }
-
     final plano = File('$rutaActiva.plano');
     final nueva = File('$rutaActiva.nueva');
     final activa = File(rutaActiva);
@@ -38,7 +34,15 @@ class ImportadorPaquete {
     await _borrarSiExiste(nueva);
 
     try {
-      await plano.writeAsBytes(bytes, flush: true);
+      final resumen = await Isolate.run(
+        () => _descomprimirYCalcularHuella(
+          _ParametrosImporte(rutaGz: archivoGz.path, rutaPlano: plano.path),
+        ),
+      );
+      if (resumen != sha256Esperado.trim().toLowerCase()) {
+        throw const PaqueteInvalido(Mensajes.paqueteCorrupto);
+      }
+
       await cifrador.exportar(plano.path, nueva.path, clave);
       await _validar(nueva.path, clave, versionEsquema);
       await _borrarSiExiste(plano);
@@ -65,6 +69,10 @@ class ImportadorPaquete {
         rethrow;
       }
       throw const PaqueteInvalido('No se pudo importar el paquete.');
+    } finally {
+      if (await archivoGz.exists()) {
+        await archivoGz.delete();
+      }
     }
   }
 
@@ -98,4 +106,30 @@ class ImportadorPaquete {
       await archivo.delete();
     }
   }
+}
+
+class _ParametrosImporte {
+  const _ParametrosImporte({required this.rutaGz, required this.rutaPlano});
+
+  final String rutaGz;
+  final String rutaPlano;
+}
+
+Future<String> _descomprimirYCalcularHuella(
+  _ParametrosImporte parametros,
+) async {
+  final gzipFile = File(parametros.rutaGz);
+  final plano = File(parametros.rutaPlano);
+  if (await plano.exists()) {
+    await plano.delete();
+  }
+  final escritura = plano.openWrite();
+  await gzipFile
+      .openRead()
+      .cast<List<int>>()
+      .transform(gzip.decoder)
+      .pipe(escritura);
+  await escritura.close();
+  final bytes = await sha256.bind(plano.openRead()).first;
+  return bytes.toString();
 }

@@ -13,6 +13,10 @@ class SimuladorApiMovil {
   late List<int> _gzip;
   late String _sha256;
   var _generado = '2026-11-13T15:00:00.0000000Z';
+
+  String get sha256Paquete => _sha256;
+
+  String get generadoPaquete => _generado;
   var _requierePaqueteTrasSync = false;
 
   Future<void> iniciar() async {
@@ -86,9 +90,14 @@ INSERT INTO acta_detalles (
     _generado = '2026-11-13T17:00:00.0000000Z';
   }
 
-  PaqueteDescargado paquete() {
+  List<int> bytesGzip() => List<int>.from(_gzip);
+
+  Future<PaqueteDescargado> paqueteEn(String rutaArchivoGz) async {
+    final archivo = File(rutaArchivoGz);
+    await archivo.parent.create(recursive: true);
+    await archivo.writeAsBytes(_gzip);
     return PaqueteDescargado(
-      gzip: List<int>.from(_gzip),
+      archivoGz: archivo,
       sha256: _sha256,
       esquema: 1,
       generadoEn: _generado,
@@ -208,7 +217,15 @@ class ClienteSimuladorApi implements ClienteMovil {
   Future<PaqueteDescargado> descargarPaquete({
     required String token,
     required String dispositivoId,
-  }) async => simulador.paquete();
+    required String rutaArchivoGz,
+    void Function(int recibidos, int? total)? onProgreso,
+  }) async {
+    final paq = await simulador.paqueteEn(rutaArchivoGz);
+    onProgreso?.call(_tamanoGz(paq.archivoGz), _tamanoGz(paq.archivoGz));
+    return paq;
+  }
+
+  int _tamanoGz(File archivo) => archivo.lengthSync();
 
   @override
   Future<RespuestaSincronizacion> sincronizar({

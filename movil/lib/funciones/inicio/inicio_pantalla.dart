@@ -44,6 +44,16 @@ class _EstadoInicio extends ConsumerState<InicioPantalla> {
             Text('Fallidas: ${controlador.fallidas}'),
             const SizedBox(height: 16),
             AvisoTexto(controlador.aviso),
+            if (controlador.progresoDescargaPaquete != null) ...[
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: controlador.progresoDescargaPaquete,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Descargando paquete… ${((controlador.progresoDescargaPaquete ?? 0) * 100).round()} %',
+              ),
+            ],
             FilledButton(
               key: const Key('sincronizar'),
               onPressed: controlador.ocupado ? null : controlador.sincronizar,

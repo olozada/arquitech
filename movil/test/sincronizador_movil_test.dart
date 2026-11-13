@@ -47,6 +47,8 @@ class _ClienteSincronizar implements ClienteMovil {
   Future<PaqueteDescargado> descargarPaquete({
     required String token,
     required String dispositivoId,
+    required String rutaArchivoGz,
+    void Function(int recibidos, int? total)? onProgreso,
   }) async => throw UnimplementedError();
 
   @override

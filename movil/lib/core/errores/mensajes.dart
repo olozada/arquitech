@@ -35,6 +35,8 @@ abstract final class Mensajes {
   static const revisorAgrega = 'El revisor no puede agregar ítems.';
   static const cerrada =
       'El acta ya está cerrada. No se pueden agregar, modificar ni eliminar ítems.';
+  static const requiereBloqueo =
+      'Configure un PIN, patrón o huella en el teléfono para usar Arquitectos.';
   static const sinConexion = 'Sin conexión.';
   static const faltaServidor = 'Falta la dirección del servidor (API_URL).';
   static const actualice = 'Actualice la aplicación.';

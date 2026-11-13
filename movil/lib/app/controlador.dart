@@ -55,6 +55,7 @@ class ControladorAplicacion extends ChangeNotifier
   int pendientes = 0;
   int fallidas = 0;
   bool sincronizando = false;
+  double? progresoDescargaPaquete;
 
   bool get edicionBloqueada => ocupado || sincronizando;
   String? ultimaSincronizacion;
@@ -85,6 +86,10 @@ class ControladorAplicacion extends ChangeNotifier
     ultimaSincronizacion = await dependencias.almacen.leer(Claves.ultima);
     tieneBase = await dependencias.repositorio.existe();
     if (tieneBase) {
+      final base = await _base();
+      if (base != null) {
+        await dependencias.cola.recuperarEnviando(base);
+      }
       pendientes = await _contarPendientes();
     }
     final refresh = await dependencias.almacen.leer(Claves.refresh);
@@ -111,6 +116,12 @@ class ControladorAplicacion extends ChangeNotifier
     }
     if (dependencias.configuracion.urlApi.isEmpty) {
       aviso = Mensajes.faltaServidor;
+      notifyListeners();
+      return;
+    }
+
+    if (!await dependencias.desbloqueador.dispositivoSoportaBloqueo()) {
+      aviso = Mensajes.requiereBloqueo;
       notifyListeners();
       return;
     }
@@ -152,6 +163,11 @@ class ControladorAplicacion extends ChangeNotifier
   }
 
   Future<void> desbloquear() async {
+    if (!await dependencias.desbloqueador.dispositivoSoportaBloqueo()) {
+      aviso = Mensajes.requiereBloqueo;
+      notifyListeners();
+      return;
+    }
     final aceptado = await dependencias.desbloqueador.desbloquear();
     if (!aceptado) {
       aviso =
@@ -229,6 +245,7 @@ class ControladorAplicacion extends ChangeNotifier
         }
         final clave = await _claveSql();
         await dependencias.pendientes.abrirDb(clave);
+        await dependencias.cola.recuperarEnviando(base);
         const maxVueltas = 10;
         var vueltas = 0;
         var sincronizacionIncompleta = false;
@@ -703,30 +720,52 @@ class ControladorAplicacion extends ChangeNotifier
   }
 
   Future<void> _traerPaquete() async {
-    final paquete = await _conToken(
-      (token) => dependencias.cliente.descargarPaquete(
-        token: token,
-        dispositivoId: dispositivoId!,
-      ),
-    );
-    if (paquete.esquema != dependencias.configuracion.versionEsquema) {
-      throw const PaqueteInvalido(Mensajes.paqueteDistinto);
+    final carpeta = await dependencias.directorio();
+    final rutaGz = '${carpeta.path}${Platform.pathSeparator}paquete.sqlite.gz';
+    progresoDescargaPaquete = 0;
+    notifyListeners();
+    try {
+      final paquete = await _conToken(
+        (token) => dependencias.cliente.descargarPaquete(
+          token: token,
+          dispositivoId: dispositivoId!,
+          rutaArchivoGz: rutaGz,
+          onProgreso: (recibidos, total) {
+            if (total != null && total > 0) {
+              progresoDescargaPaquete = recibidos / total;
+            }
+            notifyListeners();
+          },
+        ),
+      );
+      progresoDescargaPaquete = null;
+      notifyListeners();
+      if (paquete.esquema != dependencias.configuracion.versionEsquema) {
+        throw const PaqueteInvalido(Mensajes.paqueteDistinto);
+      }
+      final operaciones = tieneBase ? await _contarPendientes() : 0;
+      await dependencias.repositorio.cerrar();
+      await dependencias.importador.importar(
+        archivoGz: paquete.archivoGz,
+        sha256Esperado: paquete.sha256,
+        clave: await _claveSql(),
+        rutaActiva: await dependencias.repositorio.rutaActiva(),
+        operacionesPendientes: operaciones,
+        versionEsquema: dependencias.configuracion.versionEsquema,
+      );
+      ultimaSincronizacion = paquete.generadoEn;
+      await dependencias.almacen.guardar(Claves.ultima, paquete.generadoEn);
+      tieneBase = true;
+      pendientes = 0;
+      await _excluirRespaldo();
+    } finally {
+      progresoDescargaPaquete = null;
+      final residual = File(rutaGz);
+      if (await residual.exists()) {
+        await residual.delete();
+      }
+      notifyListeners();
     }
-    final operaciones = tieneBase ? await _contarPendientes() : 0;
-    await dependencias.repositorio.cerrar();
-    await dependencias.importador.importar(
-      contenidoGzip: paquete.gzip,
-      sha256Esperado: paquete.sha256,
-      clave: await _claveSql(),
-      rutaActiva: await dependencias.repositorio.rutaActiva(),
-      operacionesPendientes: operaciones,
-      versionEsquema: dependencias.configuracion.versionEsquema,
-    );
-    ultimaSincronizacion = paquete.generadoEn;
-    await dependencias.almacen.guardar(Claves.ultima, paquete.generadoEn);
-    tieneBase = true;
-    pendientes = 0;
-    await _excluirRespaldo();
   }
 
   Future<void> _ocupar(Future<void> Function() accion) async {

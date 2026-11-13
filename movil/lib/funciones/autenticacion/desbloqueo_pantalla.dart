@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/aplicacion.dart';
 import '../../app/tema.dart';
 import '../../core/decimal/dinero.dart';
+import '../../core/errores/mensajes.dart';
 
 class DesbloqueoPantalla extends ConsumerWidget {
   const DesbloqueoPantalla({super.key});
@@ -39,6 +40,16 @@ class DesbloqueoPantalla extends ConsumerWidget {
                 onPressed: controlador.ocupado ? null : controlador.desbloquear,
                 child: const Text('Desbloquear'),
               ),
+              if (controlador.aviso == Mensajes.requiereBloqueo) ...[
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  key: const Key('cerrar-sesion-bloqueo'),
+                  onPressed: controlador.ocupado
+                      ? null
+                      : controlador.cerrarSesion,
+                  child: const Text('Cerrar sesión'),
+                ),
+              ],
               const Spacer(),
             ],
           ),
