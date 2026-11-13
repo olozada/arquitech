@@ -86,7 +86,8 @@ Escenario de aceptación **6** del módulo móvil.
 - Generar keystore: `keytool -genkey -v -keystore arquitectos-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias arquitectos`
 - Sin `key.properties`, `flutter build appbundle --release` falla con mensaje explícito (no usa la firma debug).
 - Secretos de GitHub para CI release: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
-- **Android:** AAB firmado con keystore en secretos de CI; `allowBackup` desactivado; release con minificación y reglas ProGuard para SQLCipher y `flutter_secure_storage`.
+- **Android:** AAB firmado con keystore en secretos de CI; `allowBackup` desactivado; release con `isMinifyEnabled` y reglas en `android/app/proguard-rules.pro` para `net.zetetic` (SQLCipher), `com.davidmartos96.sqflite_sqlcipher`, `com.tekartik.sqflite` y `flutter_secure_storage`.
+- **Aceptación release en dispositivo** (manual, tras `flutter build appbundle --release` + `bundletool install-apks` en teléfono físico): login → descarga de paquete → abrir acta → agregar línea → sincronizar → cerrar y reabrir → desbloquear, sin cierres inesperados. Registro: _pendiente de ejecución en equipo físico_ (última revisión de reglas ProGuard: 2026-11-13, paquetes alineados con `sqflite_sqlcipher` 3.4.x / `net.zetetic:sqlcipher-android`).
 - **iOS:** certificados y provisioning en secretos; distribución TestFlight o interna.
 - No commitear keystores, `.env` ni URLs de producción.
 
