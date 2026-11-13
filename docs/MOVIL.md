@@ -33,7 +33,7 @@ Versión `user_version = 1`. Tablas principales: `actas`, `acta_detalles`, `outb
 | Ubicación | `getApplicationSupportDirectory()`. |
 | Android | `android:allowBackup="false"` y exclusiones en `res/xml/`. |
 | iOS | `NSURLIsExcludedFromBackupKey` en Application Support al arranque y tras importar paquete (`MethodChannel` `com.celuweb.arquitectos/respaldo`). |
-| Bloqueo | Biometría o PIN (`local_auth`) al abrir; tras **5 minutos** en segundo plano vuelve la pantalla de desbloqueo. |
+| Bloqueo | Login y reapertura exigen bloqueo real del SO: canal `arquitectos/seguridad` / `dispositivoSeguro` (`KeyguardManager.isDeviceSecure` en Android, `LAContext.deviceOwnerAuthentication` en iOS), no solo `local_auth.isDeviceSupported()`. Tras **5 minutos** en segundo plano vuelve la pantalla de desbloqueo (`local_auth`). |
 | Privacidad visual | Android release: `FLAG_SECURE` en `MainActivity` (no capturas ni recientes). iOS/Android: velo `VeloPrivacidad` en `inactive`/`paused`. |
 | API en release | Login rechaza `API_URL` sin `https://` (mismo aviso que URL vacía). |
 | UI Material | Dependencia `material_ui` en pub.dev: paquete oficial del equipo Flutter (`flutter/packages`, descripción “official Flutter Material UI Library”); se mantiene en lugar de `package:flutter/material.dart`. |
@@ -71,6 +71,8 @@ flutter test test/flujo_integracion_sync_test.dart
 ```
 
 En dispositivo (carpeta `integration_test/`) hace falta plataforma desktop o symlinks en Windows.
+
+**Bloqueo del sistema (manual):** en Android con lector de huella pero **sin** PIN/patrón/huella configurados, el login debe mostrar `Mensajes.requiereBloqueo` y no avanzar. Tras configurar bloqueo en Ajustes, el login debe continuar. Registrar fecha y modelo en la tabla de aceptación del equipo si difiere del comportamiento esperado.
 
 ## Revocar un dispositivo
 

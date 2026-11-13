@@ -1,4 +1,5 @@
 import Flutter
+import LocalAuthentication
 import UIKit
 
 @main
@@ -40,6 +41,23 @@ import UIKit
           AppDelegate.excluirDelRespaldo(ruta: ruta)
         }
         resultado(nil)
+      } else {
+        resultado(FlutterMethodNotImplemented)
+      }
+    }
+    let seguridad = FlutterMethodChannel(
+      name: "arquitectos/seguridad",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    seguridad.setMethodCallHandler { llamada, resultado in
+      if llamada.method == "dispositivoSeguro" {
+        let contexto = LAContext()
+        var error: NSError?
+        let configurado = contexto.canEvaluatePolicy(
+          .deviceOwnerAuthentication,
+          error: &error
+        )
+        resultado(configurado)
       } else {
         resultado(FlutterMethodNotImplemented)
       }

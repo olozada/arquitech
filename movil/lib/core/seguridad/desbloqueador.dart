@@ -1,5 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+
+/// Canal nativo: `KeyguardManager.isDeviceSecure` (Android) o
+/// `LAContext.deviceOwnerAuthentication` (iOS).
+const canalSeguridadDispositivo = MethodChannel('arquitectos/seguridad');
 
 abstract class Desbloqueador {
   Future<bool> desbloquear();
@@ -8,14 +13,32 @@ abstract class Desbloqueador {
 }
 
 class DesbloqueadorLocal implements Desbloqueador {
-  DesbloqueadorLocal([LocalAuthentication? autenticacion])
-    : _autenticacion = autenticacion ?? LocalAuthentication();
+  DesbloqueadorLocal([
+    LocalAuthentication? autenticacion,
+    MethodChannel? canalSeguridad,
+  ]) : _autenticacion = autenticacion ?? LocalAuthentication(),
+       _canalSeguridad = canalSeguridad ?? canalSeguridadDispositivo;
 
   final LocalAuthentication _autenticacion;
+  final MethodChannel _canalSeguridad;
 
   @override
-  Future<bool> dispositivoSoportaBloqueo() =>
-      _autenticacion.isDeviceSupported();
+  Future<bool> dispositivoSoportaBloqueo() async {
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        final seguro = await _canalSeguridad.invokeMethod<bool>(
+          'dispositivoSeguro',
+        );
+        return seguro ?? false;
+      } on PlatformException {
+        return false;
+      } on MissingPluginException {
+        return false;
+      }
+    }
+    return _autenticacion.isDeviceSupported();
+  }
 
   @override
   Future<bool> desbloquear() async {
