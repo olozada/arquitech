@@ -307,6 +307,7 @@ Dependencias dependenciasPrueba({
   required ClienteMovil cliente,
   ConfiguracionApp configuracion = const ConfiguracionApp(
     urlApi: 'http://localhost:5190',
+    versionApp: '1.0.0+1',
   ),
   AlmacenSeguro? almacen,
   Set<String> comunes = const {},

@@ -4,7 +4,14 @@ import 'almacen_seguro.dart';
 
 class AlmacenFlutter implements AlmacenSeguro {
   AlmacenFlutter([FlutterSecureStorage? caja])
-    : _caja = caja ?? const FlutterSecureStorage();
+    : _caja =
+          caja ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
+          );
 
   final FlutterSecureStorage _caja;
 

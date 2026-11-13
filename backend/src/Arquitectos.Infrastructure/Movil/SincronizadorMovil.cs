@@ -6,6 +6,7 @@ using Arquitectos.Application.Movil;
 using Arquitectos.Application.Usuarios;
 using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Persistence;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -101,13 +102,32 @@ public sealed class SincronizadorMovil : ISincronizadorMovil
         var ahora = _reloj.GetUtcNow().UtcDateTime;
         var clientes = new Dictionary<Guid, EstadoCliente>();
         var resultados = new List<ResultadoLineaMovil>();
-        foreach (var operacion in solicitud.Operaciones.OrderBy(item => item.Secuencia))
+        var bloqueo = _context.Database.IsSqlServer()
+            ? await _context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        try
         {
-            var resultado = await UnaAsync(operacion, actor, solicitud.DispositivoId, ahora, clientes, cancellationToken);
-            resultados.Add(resultado);
-            if (operacion.IdCliente is Guid cliente)
+            await AdquirirBloqueoDispositivoAsync(solicitud.DispositivoId, cancellationToken);
+            foreach (var operacion in solicitud.Operaciones.OrderBy(item => item.Secuencia))
             {
-                clientes[cliente] = new EstadoCliente(resultado.Estado, resultado.LineaId, resultado.RowVersion);
+                var resultado = await UnaAsync(operacion, actor, solicitud.DispositivoId, ahora, clientes, cancellationToken);
+                resultados.Add(resultado);
+                if (operacion.IdCliente is Guid cliente)
+                {
+                    clientes[cliente] = new EstadoCliente(resultado.Estado, resultado.LineaId, resultado.RowVersion);
+                }
+            }
+
+            if (bloqueo is not null)
+            {
+                await bloqueo.CommitAsync(cancellationToken);
+            }
+        }
+        finally
+        {
+            if (bloqueo is not null)
+            {
+                await bloqueo.DisposeAsync();
             }
         }
 
@@ -151,7 +171,6 @@ public sealed class SincronizadorMovil : ISincronizadorMovil
             return Rechazar(operacion, "La operación ya fue registrada.");
         }
 
-        await using var transaccion = await _context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             ResultadoLineaMovil resultado;
@@ -184,15 +203,56 @@ public sealed class SincronizadorMovil : ISincronizadorMovil
                         : DateTime.SpecifyKind(operacion.CreadaEn, DateTimeKind.Utc)
             });
             await _context.SaveChangesAsync(cancellationToken);
-            await transaccion.CommitAsync(cancellationToken);
             return resultado;
         }
-        catch
+        catch (DbUpdateException ex) when (EsOperacionDuplicada(ex))
         {
-            await transaccion.RollbackAsync(cancellationToken);
             _context.ChangeTracker.Clear();
-            throw;
+            return await ResultadoOperacionGuardadaAsync(operacion.IdOperacion, actor.UsuarioId, operacion, cancellationToken)
+                ?? Rechazar(operacion, "La operación ya fue registrada.");
         }
+    }
+
+    private async Task AdquirirBloqueoDispositivoAsync(Guid dispositivoId, CancellationToken cancellationToken)
+    {
+        if (!_context.Database.IsSqlServer())
+        {
+            return;
+        }
+
+        var recurso = $"movil-sync-{dispositivoId:D}";
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"EXEC sp_getapplock @Resource = {recurso}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 30000",
+            cancellationToken);
+    }
+
+    private static bool EsOperacionDuplicada(DbUpdateException ex)
+    {
+        if (ex.InnerException is Microsoft.Data.SqlClient.SqlException sql)
+        {
+            return sql.Number is 2601 or 2627;
+        }
+
+        return ex.InnerException is SqliteException sqlite && sqlite.SqliteErrorCode == 19;
+    }
+
+    private async Task<ResultadoLineaMovil?> ResultadoOperacionGuardadaAsync(
+        Guid idOperacion,
+        int usuarioId,
+        OperacionMovilSolicitud operacion,
+        CancellationToken cancellationToken)
+    {
+        var guardada = await _context.OperacionesMovil.AsNoTracking()
+            .Where(item => item.IdOperacion == idOperacion && item.UsuarioId == usuarioId)
+            .Select(item => item.ResultadoJson)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrEmpty(guardada))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<ResultadoLineaMovil>(guardada, JsonPaquete.Opciones)
+            ?? Rechazar(operacion, "La operación ya fue registrada.");
     }
 
     private async Task<ResultadoLineaMovil> AplicarAsync(

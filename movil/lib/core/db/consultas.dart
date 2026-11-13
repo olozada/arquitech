@@ -2,6 +2,9 @@ import 'package:decimal/decimal.dart';
 
 import 'base_local.dart';
 
+part 'consultas_actas.dart';
+part 'consultas_catalogo.dart';
+
 enum EstadoActaFiltro { todas, abiertas, cerradas }
 
 enum OrdenActas { fechaInicial, fechaFinal, numero }
@@ -212,10 +215,35 @@ class PresupuestoPaquete {
   final String? seguimientoJson;
 }
 
-class ConsultasLocales {
+abstract class ConsultasBase {
+  BaseLocal get base;
+
+  int _entero(Object? valor);
+  int? _opcional(Object? valor);
+  String _texto(Object? valor);
+}
+
+class ConsultasLocales extends ConsultasBase
+    with ConsultasCatalogo, ConsultasActas {
   ConsultasLocales(this.base);
 
+  @override
   final BaseLocal base;
+
+  @override
+  int _entero(Object? valor) =>
+      valor is int ? valor : int.parse(valor.toString());
+
+  @override
+  int? _opcional(Object? valor) {
+    if (valor == null) {
+      return null;
+    }
+    return valor is int ? valor : int.tryParse(valor.toString());
+  }
+
+  @override
+  String _texto(Object? valor) => valor?.toString() ?? '';
 
   Future<int> pendientes() async {
     final filas = await base.consultar(
@@ -239,330 +267,108 @@ class ConsultasLocales {
   }
 
   Future<List<ActaResumen>> listarActas(FiltroActas filtro) async {
-    final actas = await base.consultar('''
-SELECT a.numero_acta, a.fecha_inicial, a.fecha_final, a.cerrada,
-       ar.nombre AS arquitecto, re.nombre AS revisor, co.nombre AS contratista
-FROM actas a
-JOIN arquitectos ar ON ar.id = a.arquitecto_id
-JOIN revisores re ON re.id = a.revisor_id
-JOIN contratistas co ON co.id = a.contratista_id
-''');
-    final lineas = await base.consultar(
-      'SELECT numero_acta, construccion_id, subtotal, aprobado, estado_local FROM acta_detalles',
-    );
-    final cola = await base.consultar(
-      "SELECT numero_acta FROM outbox WHERE estado IN ('pendiente', 'enviando')",
-    );
-    final enCola = cola.map((fila) => _entero(fila['numero_acta'])).toSet();
-    final porActa = <int, List<Map<String, Object?>>>{};
-    for (final linea in lineas) {
-      porActa.putIfAbsent(_entero(linea['numero_acta']), () => []).add(linea);
+    final condiciones = <String>['1=1'];
+    final parametros = <Object?>[];
+    switch (filtro.estado) {
+      case EstadoActaFiltro.abiertas:
+        condiciones.add('a.cerrada = 0');
+      case EstadoActaFiltro.cerradas:
+        condiciones.add('a.cerrada = 1');
+      case EstadoActaFiltro.todas:
+        break;
     }
-
+    if (filtro.desde != null) {
+      condiciones.add('a.fecha_final >= ?');
+      parametros.add(filtro.desde);
+    }
+    if (filtro.hasta != null) {
+      condiciones.add('a.fecha_inicial <= ?');
+      parametros.add(filtro.hasta);
+    }
     final busqueda = filtro.texto.trim().toLowerCase();
-    final resultado = <ActaResumen>[];
-    for (final fila in actas) {
-      final numero = _entero(fila['numero_acta']);
-      final fechaInicial = _texto(fila['fecha_inicial']);
-      final fechaFinal = _texto(fila['fecha_final']);
-      final cerrada = _entero(fila['cerrada']) == 1;
-      final arquitecto = _texto(fila['arquitecto']);
-      final revisor = _texto(fila['revisor']);
-      final contratista = _texto(fila['contratista']);
-      if (filtro.estado == EstadoActaFiltro.abiertas && cerrada) {
-        continue;
-      }
-      if (filtro.estado == EstadoActaFiltro.cerradas && !cerrada) {
-        continue;
-      }
-      if (filtro.desde != null && fechaFinal.compareTo(filtro.desde!) < 0) {
-        continue;
-      }
-      if (filtro.hasta != null && fechaInicial.compareTo(filtro.hasta!) > 0) {
-        continue;
-      }
-      if (busqueda.isNotEmpty) {
-        final texto = '$numero $arquitecto $revisor $contratista'.toLowerCase();
-        if (!texto.contains(busqueda)) {
-          continue;
-        }
-      }
-
-      final propias = porActa[numero] ?? const <Map<String, Object?>>[];
-      if (filtro.obraId != null &&
-          !propias.any(
-            (linea) =>
-                _texto(linea['estado_local']) != 'eliminado' &&
-                _entero(linea['construccion_id']) == filtro.obraId,
-          )) {
-        continue;
-      }
-
-      var total = Decimal.zero;
-      var cambios = enCola.contains(numero);
-      for (final linea in propias) {
-        final estado = _texto(linea['estado_local']);
-        if (estado != 'sincronizado') {
-          cambios = true;
-        }
-        if (estado == 'eliminado' || _entero(linea['aprobado']) != 1) {
-          continue;
-        }
-        total += Decimal.parse(_texto(linea['subtotal']));
-      }
-
-      resultado.add(
-        ActaResumen(
-          numero: numero,
-          fechaInicial: fechaInicial,
-          fechaFinal: fechaFinal,
-          arquitecto: arquitecto,
-          revisor: revisor,
-          contratista: contratista,
-          cerrada: cerrada,
-          totalAprobado: total,
-          cambiosSinSincronizar: cambios,
-        ),
-      );
+    if (busqueda.isNotEmpty) {
+      condiciones.add('''
+(lower(cast(a.numero_acta as text)) || ' ' || lower(ar.nombre) || ' ' || lower(re.nombre) || ' ' || lower(co.nombre))
+ LIKE ?
+''');
+      parametros.add('%$busqueda%');
     }
+    if (filtro.obraId != null) {
+      condiciones.add('''
+EXISTS (
+  SELECT 1 FROM acta_detalles d
+  WHERE d.numero_acta = a.numero_acta
+    AND d.estado_local != 'eliminado'
+    AND d.construccion_id = ?
+)
+''');
+      parametros.add(filtro.obraId);
+    }
+    final ordenSql = switch (filtro.orden) {
+      OrdenActas.fechaInicial => 'a.fecha_inicial DESC',
+      OrdenActas.fechaFinal => 'a.fecha_final DESC',
+      OrdenActas.numero => 'a.numero_acta DESC',
+    };
 
-    resultado.sort((a, b) {
-      final comparacion = switch (filtro.orden) {
-        OrdenActas.fechaInicial => a.fechaInicial.compareTo(b.fechaInicial),
-        OrdenActas.fechaFinal => a.fechaFinal.compareTo(b.fechaFinal),
-        OrdenActas.numero => a.numero.compareTo(b.numero),
-      };
-      return -comparacion;
-    });
-    return resultado;
-  }
-
-  Future<DetalleActa?> detalleActa(int numero) async {
-    final actas = await base.consultar(
-      '''
-SELECT a.numero_acta, a.fecha_inicial, a.fecha_final, a.observacion, a.cerrada,
-       ar.nombre AS arquitecto, re.nombre AS revisor, co.nombre AS contratista
+    final filas = await base.consultar('''
+SELECT a.numero_acta, a.fecha_inicial, a.fecha_final, a.cerrada,
+       ar.nombre AS arquitecto, re.nombre AS revisor, co.nombre AS contratista,
+       EXISTS(
+         SELECT 1 FROM outbox o
+         WHERE o.numero_acta = a.numero_acta
+           AND o.estado IN ('pendiente', 'enviando')
+       ) AS en_cola,
+       EXISTS(
+         SELECT 1 FROM acta_detalles dl
+         WHERE dl.numero_acta = a.numero_acta
+           AND dl.estado_local != 'sincronizado'
+           AND dl.estado_local != 'eliminado'
+       ) AS cambios_local
 FROM actas a
 JOIN arquitectos ar ON ar.id = a.arquitecto_id
 JOIN revisores re ON re.id = a.revisor_id
 JOIN contratistas co ON co.id = a.contratista_id
-WHERE a.numero_acta = ?
-''',
-      [numero],
-    );
-    if (actas.isEmpty) {
-      return null;
-    }
-    final acta = actas.first;
-    final lineas = await base.consultar(
-      '''
-SELECT d.local_id, d.construccion_id, d.concepto_id, d.unidad_medida_id, d.insumo_id,
-       d.presupuesto_item_id, d.tipo_usuario_id, d.cantidad, d.precio, d.subtotal,
-       d.descripcion, d.aprobado, d.estado_local,
-       c.descripcion AS construccion, t.nombre AS perfil
-FROM acta_detalles d
-JOIN construcciones c ON c.id = d.construccion_id
-JOIN tipos_usuario t ON t.id = d.tipo_usuario_id
-WHERE d.numero_acta = ? AND d.estado_local != 'eliminado'
-ORDER BY c.descripcion, d.local_id
-''',
-      [numero],
-    );
-    var total = Decimal.zero;
-    final visibles = <LineaDetalle>[];
-    for (final fila in lineas) {
-      final subtotal = Decimal.parse(_texto(fila['subtotal']));
-      if (_entero(fila['aprobado']) == 1) {
-        total += subtotal;
-      }
-      visibles.add(
-        LineaDetalle(
-          localId: _texto(fila['local_id']),
-          construccionId: _entero(fila['construccion_id']),
-          construccion: _texto(fila['construccion']),
-          conceptoId: _entero(fila['concepto_id']),
-          tipoUsuarioId: _entero(fila['tipo_usuario_id']),
-          perfil: _texto(fila['perfil']),
-          descripcion: _texto(fila['descripcion']),
-          cantidad: _texto(fila['cantidad']),
-          precio: _texto(fila['precio']),
-          subtotal: _texto(fila['subtotal']),
-          aprobado: _entero(fila['aprobado']) == 1,
-          estadoLocal: _texto(fila['estado_local']),
-          unidadMedidaId: _opcional(fila['unidad_medida_id']),
-          insumoId: _opcional(fila['insumo_id']),
-          presupuestoItemId: _opcional(fila['presupuesto_item_id']),
-        ),
-      );
-    }
+WHERE ${condiciones.join(' AND ')}
+ORDER BY $ordenSql
+''', parametros);
 
-    final observacion = acta['observacion']?.toString();
-    return DetalleActa(
-      numero: _entero(acta['numero_acta']),
-      fechaInicial: _texto(acta['fecha_inicial']),
-      fechaFinal: _texto(acta['fecha_final']),
-      arquitecto: _texto(acta['arquitecto']),
-      revisor: _texto(acta['revisor']),
-      contratista: _texto(acta['contratista']),
-      observacion: observacion == null || observacion.isEmpty
-          ? null
-          : observacion,
-      cerrada: _entero(acta['cerrada']) == 1,
-      totalAprobado: total,
-      lineas: visibles,
-    );
-  }
-
-  Future<List<PresupuestoResumen>> presupuestos() async {
-    final filas = await base.consultar('''
-SELECT id, nombre, construccion, estado, total
-FROM presupuestos
-ORDER BY nombre
-''');
-    return filas
-        .map(
-          (fila) => PresupuestoResumen(
-            id: _entero(fila['id']),
-            nombre: _texto(fila['nombre']),
-            construccion: _texto(fila['construccion']),
-            estado: _texto(fila['estado']),
-            total: fila['total']?.toString(),
-          ),
-        )
-        .toList();
-  }
-
-  Future<PresupuestoPaquete?> presupuestoPorId(int id) async {
-    final filas = await base.consultar(
-      '''
-SELECT id, nombre, construccion, estado, detalle_json, validacion_json, seguimiento_json
-FROM presupuestos
-WHERE id = ?
-''',
-      [id],
-    );
     if (filas.isEmpty) {
-      return null;
-    }
-    final fila = filas.first;
-    return PresupuestoPaquete(
-      id: _entero(fila['id']),
-      nombre: _texto(fila['nombre']),
-      construccion: _texto(fila['construccion']),
-      estado: _texto(fila['estado']),
-      detalleJson: _texto(fila['detalle_json']),
-      validacionJson: fila['validacion_json']?.toString(),
-      seguimientoJson: fila['seguimiento_json']?.toString(),
-    );
-  }
-
-  Future<List<OpcionCatalogo>> construcciones() async {
-    final filas = await base.consultar(
-      'SELECT id, descripcion FROM construcciones ORDER BY descripcion',
-    );
-    return filas
-        .map(
-          (fila) => OpcionCatalogo(
-            id: _entero(fila['id']),
-            descripcion: _texto(fila['descripcion']),
-          ),
-        )
-        .toList();
-  }
-
-  Future<List<OpcionCatalogo>> conceptos() async {
-    final filas = await base.consultar(
-      'SELECT id, descripcion FROM conceptos ORDER BY descripcion',
-    );
-    return filas
-        .map(
-          (fila) => OpcionCatalogo(
-            id: _entero(fila['id']),
-            descripcion: _texto(fila['descripcion']),
-          ),
-        )
-        .toList();
-  }
-
-  Future<List<OpcionCatalogo>> unidadesMedida() async {
-    final filas = await base.consultar(
-      'SELECT id, descripcion FROM unidades_medida ORDER BY descripcion',
-    );
-    return filas
-        .map(
-          (fila) => OpcionCatalogo(
-            id: _entero(fila['id']),
-            descripcion: _texto(fila['descripcion']),
-          ),
-        )
-        .toList();
-  }
-
-  Future<List<InsumoOpcion>> buscarInsumos(
-    String texto, {
-    int limite = 40,
-  }) async {
-    final busqueda = texto.trim();
-    if (busqueda.length < 2) {
       return const [];
     }
-    final patron = '%${busqueda.replaceAll('%', '')}%';
-    final filas = await base.consultar(
-      '''
-SELECT id, codigo, descripcion FROM insumos
-WHERE descripcion LIKE ? OR codigo LIKE ?
-ORDER BY descripcion
-LIMIT ?
-''',
-      [patron, patron, limite],
-    );
-    return filas
-        .map(
-          (fila) => InsumoOpcion(
-            id: _entero(fila['id']),
-            codigo: fila['codigo']?.toString(),
-            descripcion: _texto(fila['descripcion']),
-          ),
-        )
-        .toList();
-  }
 
-  Future<List<ItemPresupuestoOpcion>> itemsPresupuesto(
-    int construccionId,
-  ) async {
-    final filas = await base.consultar(
-      '''
-SELECT id, descripcion, concepto_id, unidad_medida_id, precio
-FROM items_presupuesto_acta
-WHERE construccion_id = ?
-ORDER BY descripcion
-''',
-      [construccionId],
-    );
-    return filas
-        .map(
-          (fila) => ItemPresupuestoOpcion(
-            id: _entero(fila['id']),
-            descripcion: _texto(fila['descripcion']),
-            conceptoId: _entero(fila['concepto_id']),
-            unidadMedidaId: _opcional(fila['unidad_medida_id']),
-            precio: fila['precio']?.toString(),
-          ),
-        )
-        .toList();
-  }
-
-  int _entero(Object? valor) =>
-      valor is int ? valor : int.parse(valor.toString());
-
-  int? _opcional(Object? valor) {
-    if (valor == null) {
-      return null;
+    final numeros = filas.map((f) => _entero(f['numero_acta'])).toList();
+    final marcadores = List.filled(numeros.length, '?').join(',');
+    final subtotales = await base.consultar('''
+SELECT numero_acta, subtotal
+FROM acta_detalles
+WHERE numero_acta IN ($marcadores)
+  AND aprobado = 1
+  AND estado_local != 'eliminado'
+''', numeros);
+    final totales = <int, Decimal>{};
+    for (final fila in subtotales) {
+      final numero = _entero(fila['numero_acta']);
+      final parcial = Decimal.parse(_texto(fila['subtotal']));
+      totales[numero] = (totales[numero] ?? Decimal.zero) + parcial;
     }
-    return valor is int ? valor : int.tryParse(valor.toString());
-  }
 
-  String _texto(Object? valor) => valor?.toString() ?? '';
+    return [
+      for (final fila in filas)
+        ActaResumen(
+          numero: _entero(fila['numero_acta']),
+          fechaInicial: _texto(fila['fecha_inicial']),
+          fechaFinal: _texto(fila['fecha_final']),
+          arquitecto: _texto(fila['arquitecto']),
+          revisor: _texto(fila['revisor']),
+          contratista: _texto(fila['contratista']),
+          cerrada: _entero(fila['cerrada']) == 1,
+          totalAprobado: totales[_entero(fila['numero_acta'])] ?? Decimal.zero,
+          cambiosSinSincronizar:
+              _entero(fila['en_cola']) == 1 ||
+              _entero(fila['cambios_local']) == 1,
+        ),
+    ];
+  }
 }
 
 String nombrePerfil(int tipoUsuarioId) {

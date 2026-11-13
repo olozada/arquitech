@@ -3,17 +3,20 @@
 class ConfiguracionApp {
   const ConfiguracionApp({
     required this.urlApi,
-    this.versionApp = '1.0.0',
+    required this.versionApp,
     this.versionEsquema = 1,
     this.maxOperacionesLote = 500,
   });
 
-  factory ConfiguracionApp.desdeEntorno() {
-    return const ConfiguracionApp(
-      urlApi: String.fromEnvironment('API_URL'),
-      versionApp: String.fromEnvironment('APP_VERSION', defaultValue: '1.0.0'),
-      versionEsquema: int.fromEnvironment('VERSION_ESQUEMA', defaultValue: 1),
-      maxOperacionesLote: int.fromEnvironment(
+  factory ConfiguracionApp.desdeEntorno({required String versionApp}) {
+    return ConfiguracionApp(
+      urlApi: const String.fromEnvironment('API_URL'),
+      versionApp: versionApp,
+      versionEsquema: const int.fromEnvironment(
+        'VERSION_ESQUEMA',
+        defaultValue: 1,
+      ),
+      maxOperacionesLote: const int.fromEnvironment(
         'MAX_OPS_LOTE',
         defaultValue: 500,
       ),

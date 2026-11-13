@@ -58,7 +58,7 @@ Variables útiles:
 | Define | Uso |
 | --- | --- |
 | `API_URL` | Base del backend (obligatoria en builds reales). |
-| `APP_VERSION` | Cabecera `X-Version-App` (default `1.0.0`). |
+| _(automático)_ | La cabecera `X-Version-App` sale de `package_info_plus` (`version+buildNumber` del `pubspec.yaml`). |
 | `VERSION_ESQUEMA` | Debe coincidir con `Movil:VersionEsquema` del servidor. |
 
 Prueba de integración en VM:
@@ -92,5 +92,7 @@ Escenario de aceptación **6** del módulo móvil.
 
 ## Sincronización en segundo plano
 
-- **Android:** `workmanager` marca `sync_pendiente.flag` cada ~30 min; al volver a primer plano la app sincroniza si hay red y pendientes.
+- **Android:** la tarea de `workmanager` cada ~30 min **solo crea** `sync_pendiente.flag`; no abre la base ni sincroniza en el isolate de fondo (evita acceso concurrente a SQLCipher). La sincronización real ocurre al volver a **primer plano** en `ControladorAplicacion.alFrente()` si hay red y la marca o la cola lo exigen.
 - **iOS:** solo en primer plano (limitación del sistema).
+
+Detalle histórico del diseño: `docs/historico/MODULO_MOVIL_SEGUNDO_PLANO.md`.

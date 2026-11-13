@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../core/api/cliente_dio.dart';
@@ -60,7 +61,9 @@ class Dependencias {
   final Random aleatorio;
 
   static Future<Dependencias> crear() async {
-    final configuracion = ConfiguracionApp.desdeEntorno();
+    final paquete = await PackageInfo.fromPlatform();
+    final versionApp = '${paquete.version}+${paquete.buildNumber}';
+    final configuracion = ConfiguracionApp.desdeEntorno(versionApp: versionApp);
     final almacen = AlmacenFlutter();
     final abrir = AbrirSqlCipher();
     final directorio = getApplicationSupportDirectory;

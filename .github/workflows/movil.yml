@@ -18,10 +18,33 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.38.4'
           channel: stable
           cache: true
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed .
       - run: flutter analyze
       - run: flutter test --coverage --concurrency=1
+      - name: Cobertura core y sincronización
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lcov > /dev/null
+          lcov --extract coverage/lcov.info 'lib/core/*' 'lib/sincronizacion/*' -o coverage/movil-core.info
+          PCT=$(lcov --summary coverage/movil-core.info 2>&1 | awk '/lines/{print $2}' | tr -d '%')
+          echo "Cobertura líneas core+sync: ${PCT}%"
+          awk "BEGIN{exit !(${PCT} >= 60)}"
       - run: flutter build apk --debug
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: movil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.4'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --no-codesign

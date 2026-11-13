@@ -38,6 +38,8 @@ abstract final class Mensajes {
   static const requiereBloqueo =
       'Configure un PIN, patrón o huella en el teléfono para usar Arquitectos.';
   static const sinConexion = 'Sin conexión.';
+  static const servidorLento = 'El servidor tardó demasiado.';
+  static const conexionInsegura = 'Conexión no segura con el servidor.';
   static const faltaServidor = 'Falta la dirección del servidor (API_URL).';
   static const actualice = 'Actualice la aplicación.';
   static const datosActualizados = 'Datos actualizados.';

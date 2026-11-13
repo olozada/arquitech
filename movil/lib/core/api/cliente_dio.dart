@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:logger/logger.dart';
 
 import '../../app/configuracion.dart';
 import '../../sincronizacion/modelos.dart';
@@ -12,21 +13,27 @@ class ClienteDio implements ClienteMovil {
   ClienteDio({
     required ConfiguracionApp configuracion,
     required this.dispositivoId,
-  }) : _dio = Dio(
-         BaseOptions(
-           baseUrl: configuracion.urlApi,
-           connectTimeout: const Duration(seconds: 20),
-           receiveTimeout: const Duration(minutes: 2),
-           headers: {
-             'X-Requested-With': 'arquitectos',
-             'X-Version-App': configuracion.versionApp,
-             'X-Version-Esquema': '${configuracion.versionEsquema}',
-           },
-           validateStatus: (estado) => estado != null && estado < 600,
-         ),
-       );
+    Logger? registro,
+    Dio? dio,
+  }) : _registro = registro ?? Logger(printer: PrettyPrinter(methodCount: 0)),
+       _dio =
+           dio ??
+           Dio(
+             BaseOptions(
+               baseUrl: configuracion.urlApi,
+               connectTimeout: const Duration(seconds: 20),
+               receiveTimeout: const Duration(minutes: 2),
+               headers: {
+                 'X-Requested-With': 'arquitectos',
+                 'X-Version-App': configuracion.versionApp,
+                 'X-Version-Esquema': '${configuracion.versionEsquema}',
+               },
+               validateStatus: (estado) => estado != null && estado < 600,
+             ),
+           );
 
   final Dio _dio;
+  final Logger _registro;
   final String Function() dispositivoId;
 
   @override
@@ -261,8 +268,17 @@ class ClienteDio implements ClienteMovil {
     final Response<Object?> respuesta;
     try {
       respuesta = await llamada();
-    } on DioException {
-      throw const ErrorServidor(Mensajes.sinConexion, estado: 0);
+    } on DioException catch (error) {
+      _registro.w('Error de red (${error.type})', error: error);
+      final mensaje = switch (error.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.sendTimeout => Mensajes.servidorLento,
+        DioExceptionType.badCertificate => Mensajes.conexionInsegura,
+        DioExceptionType.connectionError => Mensajes.sinConexion,
+        _ => Mensajes.sinConexion,
+      };
+      throw ErrorServidor(mensaje, estado: 0);
     }
 
     final estado = respuesta.statusCode ?? 0;

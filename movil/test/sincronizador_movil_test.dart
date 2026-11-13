@@ -135,7 +135,10 @@ void main() {
       ),
       cola: cola,
       pendientes: pendientesDb,
-      configuracion: const ConfiguracionApp(urlApi: 'http://localhost'),
+      configuracion: const ConfiguracionApp(
+        urlApi: 'http://localhost',
+        versionApp: '1.0.0+1',
+      ),
     );
     await sincronizador.subirLote(
       base: base,
@@ -192,7 +195,10 @@ void main() {
       ),
       cola: cola,
       pendientes: pendientesDb,
-      configuracion: const ConfiguracionApp(urlApi: 'http://localhost'),
+      configuracion: const ConfiguracionApp(
+        urlApi: 'http://localhost',
+        versionApp: '1.0.0+1',
+      ),
     );
     await sincronizador.subirLote(base: base, token: 't', dispositivoId: 'd');
     expect(await cola.pendientes(base), 0);
