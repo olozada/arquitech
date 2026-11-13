@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:arquitectos_movil/app/controlador.dart';
+import 'package:arquitectos_movil/core/api/cliente_movil.dart';
 import 'package:arquitectos_movil/core/errores/mensajes.dart';
 import 'package:arquitectos_movil/core/seguridad/claves.dart';
 import 'package:arquitectos_movil/sincronizacion/modelos.dart';
@@ -15,6 +16,74 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+  });
+
+  test('desbloquear sin base local descarga el paquete', () async {
+    final carpeta = await carpetaPrueba('sync-sin-base');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final origen = await Directory(
+      '${carpeta.path}${Platform.pathSeparator}origen',
+    ).create();
+    final paquete = await paqueteDePrueba(origen);
+    final cliente = ClienteFalso(paquete);
+    final almacen = AlmacenMemoria();
+    await almacen.guardar(Claves.refresh, 'refresh-valido');
+    await almacen.guardar(Claves.usuarioId, '4');
+    await almacen.guardar(Claves.tipo, '2');
+    await almacen.guardar(Claves.usuarioNombre, 'Ana');
+    await almacen.guardar(Claves.login, 'ana');
+    await almacen.guardar(
+      Claves.dispositivo,
+      '00000000-0000-4000-8000-000000000099',
+    );
+    final dependencias = dependenciasPrueba(
+      carpeta: carpeta,
+      cliente: cliente,
+      almacen: almacen,
+    );
+    final controlador = ControladorAplicacion(dependencias);
+    addTearDown(controlador.dispose);
+
+    await controlador.iniciar();
+    expect(controlador.tieneBase, isFalse);
+    expect(controlador.ruta, RutaAplicacion.desbloqueo);
+
+    await controlador.desbloquear();
+
+    expect(cliente.descargas, 1);
+    expect(controlador.tieneBase, isTrue);
+  });
+
+  test('sincronizar sin base local descarga el paquete', () async {
+    final carpeta = await carpetaPrueba('sync-null-base');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final origen = await Directory(
+      '${carpeta.path}${Platform.pathSeparator}origen',
+    ).create();
+    final paquete = await paqueteDePrueba(origen);
+    final cliente = ClienteFalso(paquete);
+    final almacen = AlmacenMemoria();
+    await almacen.guardar(Claves.refresh, 'refresh-valido');
+    await almacen.guardar(Claves.sql, 'a' * 64);
+    await almacen.guardar(Claves.dispositivo, '00000000-0000-4000-8000-000000000001');
+    final dependencias = dependenciasPrueba(
+      carpeta: carpeta,
+      cliente: cliente,
+      almacen: almacen,
+    );
+    final controlador = ControladorAplicacion(dependencias);
+    addTearDown(controlador.dispose);
+    await controlador.iniciar();
+    controlador
+      ..ruta = RutaAplicacion.inicio
+      ..dispositivoId = '00000000-0000-4000-8000-000000000001'
+      ..usuario = const UsuarioMovil(id: 4, nombre: 'Ana', tipoUsuarioId: 2);
+
+    await controlador.sincronizar();
+
+    expect(cliente.descargas, 1);
+    expect(controlador.tieneBase, isTrue);
+    expect(controlador.aviso, Mensajes.datosActualizados);
   });
 
   test('con outbox vacía, sincronizar descarga el paquete', () async {

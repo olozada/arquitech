@@ -14,6 +14,49 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
+  test('alIniciar restaura arquitectos.sqlite desde .anterior', () async {
+    final carpeta = await carpetaPrueba('limpieza-anterior');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final anterior = File(
+      '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
+    );
+    await anterior.writeAsString('desde-anterior');
+    await File(
+      '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.plano',
+    ).writeAsString('plano');
+
+    await LimpiezaLocal.alIniciar(carpeta);
+
+    final activa = File(
+      '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite',
+    );
+    expect(await activa.exists(), isTrue);
+    expect(await activa.readAsString(), 'desde-anterior');
+    expect(await anterior.exists(), isFalse);
+  });
+
+  test('alIniciar con activa y anterior borra solo .anterior', () async {
+    final carpeta = await carpetaPrueba('limpieza-ambas');
+    addTearDown(() => borrarCarpeta(carpeta));
+    final activa = File(
+      '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite',
+    );
+    await activa.writeAsString('activa');
+    await File(
+      '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
+    ).writeAsString('vieja');
+
+    await LimpiezaLocal.alIniciar(carpeta);
+
+    expect(await activa.readAsString(), 'activa');
+    expect(
+      await File(
+            '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
+          ).exists(),
+      isFalse,
+    );
+  });
+
   test('alIniciar borra restos y conserva la base activa', () async {
     final carpeta = await carpetaPrueba('limpieza-inicio');
     addTearDown(() => borrarCarpeta(carpeta));

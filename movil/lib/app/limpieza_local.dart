@@ -22,6 +22,12 @@ class LimpiezaLocal {
     final activa = File(
       '${raiz.path}${Platform.pathSeparator}arquitectos.sqlite',
     );
+    final anterior = File(
+      '${raiz.path}${Platform.pathSeparator}arquitectos.sqlite.anterior',
+    );
+    if (!await activa.exists() && await anterior.exists()) {
+      await anterior.rename(activa.path);
+    }
     final incluirAnterior = await activa.exists();
     for (final nombre in nombresRestosImportacion) {
       await _borrarSiExiste(

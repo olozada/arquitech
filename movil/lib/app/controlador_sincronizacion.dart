@@ -14,7 +14,9 @@ mixin ControladorSincronizacion on ControladorBase {
       try {
         final base = await _base();
         if (base == null) {
-          throw const PaqueteInvalido('No hay base local.');
+          await _traerPaquete();
+          aviso = Mensajes.datosActualizados;
+          return;
         }
         final clave = await _claveSql();
         await dependencias.pendientes.abrirDb(clave);
