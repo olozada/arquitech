@@ -22,19 +22,68 @@ class SimuladorApiMovil {
     _sha256 = paquete.sha256;
   }
 
-  Credenciales login() {
+  Credenciales login(String usuario) {
+    final revisor =
+        usuario.toLowerCase().contains('rosa') ||
+        usuario.toLowerCase() == 'revisor';
     return Credenciales(
       accessToken: 'token-prueba',
       expiraEn: DateTime.utc(2026, 11, 14, 12),
       refreshToken: 'refresh-prueba',
       debeCambiarContrasena: false,
-      usuario: const UsuarioMovil(
-        id: 4,
-        nombre: 'Carlos Contratista',
-        tipoUsuarioId: 3,
-        contratistaId: 1,
-      ),
+      usuario: revisor
+          ? const UsuarioMovil(
+              id: 5,
+              nombre: 'Rosa Revisor',
+              tipoUsuarioId: 4,
+              revisorId: 1,
+            )
+          : const UsuarioMovil(
+              id: 4,
+              nombre: 'Carlos Contratista',
+              tipoUsuarioId: 3,
+              contratistaId: 1,
+            ),
     );
+  }
+
+  /// Simula en el servidor una línea ya sincronizada por otro perfil.
+  Future<void> agregarLineaRemotaEnPaquete({
+    required String descripcion,
+    int lineaId = 777,
+  }) async {
+    final carpeta = await Directory.systemTemp.createTemp('sim-remota');
+    final plano = File('${carpeta.path}${Platform.pathSeparator}plano.sqlite');
+    final db = await baseConEsquema(plano.path);
+    await sembrar(db);
+    final cantidad = '1.0000';
+    final precio = '200.00';
+    final subtotal = subtotalLinea(
+      Decimal.parse(cantidad),
+      Decimal.parse(precio),
+    ).toString();
+    await db.ejecutar(
+      '''
+INSERT INTO acta_detalles (
+  local_id, id, id_cliente, numero_acta, construccion_id, concepto_id, cantidad, precio, subtotal,
+  descripcion, tipo_usuario_id, aprobado, row_version, estado_local
+) VALUES (?, ?, ?, 120, 7, 1, ?, ?, ?, ?, 3, 1, 'REM-777', 'sincronizado')
+''',
+      [
+        'remota-777',
+        lineaId,
+        'remota-777',
+        cantidad,
+        precio,
+        subtotal,
+        descripcion,
+      ],
+    );
+    await db.cerrar();
+    final bytes = await plano.readAsBytes();
+    _gzip = gzip.encode(bytes);
+    _sha256 = sha256.convert(bytes).toString();
+    _generado = '2026-11-13T17:00:00.0000000Z';
   }
 
   PaqueteDescargado paquete() {
@@ -128,7 +177,7 @@ class ClienteSimuladorApi implements ClienteMovil {
     required String usuario,
     required String contrasena,
     required DispositivoEnvio dispositivo,
-  }) async => simulador.login();
+  }) async => simulador.login(usuario);
 
   @override
   Future<ParTokens> renovar({

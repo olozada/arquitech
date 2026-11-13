@@ -27,7 +27,10 @@ class ServidorMovilPrueba {
     final metodo = peticion.method;
     final ruta = peticion.uri.path;
     if (metodo == 'POST' && ruta == '/api/movil/v1/auth/login') {
-      final cred = _simulador.login();
+      final cuerpoLogin = await utf8.decoder.bind(peticion).join();
+      final loginMapa = jsonDecode(cuerpoLogin) as Map<String, Object?>;
+      final usuario = loginMapa['usuario'] as String? ?? 'carlos';
+      final cred = _simulador.login(usuario);
       await _json(peticion, 200, {
         'accessToken': cred.accessToken,
         'expiraEn': cred.expiraEn.toUtc().toIso8601String(),

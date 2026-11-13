@@ -39,6 +39,8 @@ abstract final class Mensajes {
   static const faltaServidor = 'Falta la dirección del servidor (API_URL).';
   static const actualice = 'Actualice la aplicación.';
   static const datosActualizados = 'Datos actualizados.';
+  static const sincronizacionIncompleta =
+      'Quedaron cambios sin enviar. Intente de nuevo más tarde.';
   static const reemplazoBloqueado =
       'Hay operaciones pendientes. No se reemplaza la base hasta sincronizarlas.';
   static const paqueteDistinto = 'El paquete tiene un esquema distinto.';

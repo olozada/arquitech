@@ -17,7 +17,7 @@ assets/
 
 - **Paquete:** `GET /api/movil/v1/paquete` → gzip + SHA-256 → SQLite cifrado en el dispositivo.
 - **Cola:** comandos de negocio (`AgregarLinea`, `EditarLinea`, …) en `outbox`, con compactación local.
-- **Sync:** `POST /api/movil/v1/sincronizar` por lotes; si la cola queda vacía, descarga paquete nuevo.
+- **Sync:** `POST /api/movil/v1/sincronizar` por lotes. El campo `requiereNuevoPaquete` es informativo; el cliente **siempre** descarga un paquete nuevo al terminar si la outbox y los envíos quedaron en cero (aunque el servidor no haya aplicado cambios locales o todas las operaciones salgan rechazadas). Si aún hay operaciones en cola, no reemplaza la base y muestra el aviso correspondiente.
 
 Detalle de reglas y API: `MODULO_MOVIL_FLUTTER.md` en la raíz del repo (no versionado si así lo indica el equipo).
 

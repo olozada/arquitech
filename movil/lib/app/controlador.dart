@@ -229,8 +229,13 @@ class ControladorAplicacion extends ChangeNotifier
         }
         final clave = await _claveSql();
         await dependencias.pendientes.abrirDb(clave);
+        const maxVueltas = 10;
+        var vueltas = 0;
+        var sincronizacionIncompleta = false;
         var requierePaquete = false;
-        while (await dependencias.cola.pendientes(base) > 0) {
+        var antes = await dependencias.cola.pendientes(base);
+        while (antes > 0 && vueltas < maxVueltas) {
+          vueltas++;
           requierePaquete =
               await dependencias.sincronizador.subirLote(
                 base: base,
@@ -238,13 +243,34 @@ class ControladorAplicacion extends ChangeNotifier
                 dispositivoId: dispositivoId!,
               ) ||
               requierePaquete;
+          final despues = await dependencias.cola.pendientes(base);
+          if (despues >= antes) {
+            _registro.w('La sincronización no avanzó: $despues pendientes');
+            aviso = Mensajes.sincronizacionIncompleta;
+            sincronizacionIncompleta = true;
+            break;
+          }
+          antes = despues;
+        }
+        if (antes > 0 && vueltas >= maxVueltas && !sincronizacionIncompleta) {
+          aviso = Mensajes.sincronizacionIncompleta;
+          sincronizacionIncompleta = true;
         }
         pendientes = await dependencias.cola.pendientes(base);
         fallidas = await dependencias.pendientes.contar();
-        if (requierePaquete && pendientes == 0) {
+        if (pendientes == 0) {
           await _traerPaquete();
+          if (!sincronizacionIncompleta) {
+            aviso = Mensajes.datosActualizados;
+          }
+        } else if (!sincronizacionIncompleta) {
+          aviso = Mensajes.reemplazoBloqueado;
         }
-        aviso = Mensajes.datosActualizados;
+        if (requierePaquete) {
+          _registro.d(
+            'Servidor indicó paquete nuevo (descarga según cola vacía).',
+          );
+        }
       } finally {
         sincronizando = false;
       }
