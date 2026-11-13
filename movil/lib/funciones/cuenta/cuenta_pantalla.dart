@@ -23,7 +23,7 @@ class CuentaPantalla extends ConsumerWidget {
           Text('Dispositivo: ${controlador.dispositivoId ?? ''}'),
           const SizedBox(height: 8),
           Text(
-            'Versión de la app: ${controlador.dependencias.configuracion.versionApp}',
+            'Versión de la app: ${controlador.dependencias.configuracion.versionAppRegistro}',
           ),
           const SizedBox(height: 8),
           Text(

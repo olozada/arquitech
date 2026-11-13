@@ -137,7 +137,8 @@ void main() {
       pendientes: pendientesDb,
       configuracion: const ConfiguracionApp(
         urlApi: 'http://localhost',
-        versionApp: '1.0.0+1',
+        versionApp: '1.0.0',
+        buildApp: '1',
       ),
     );
     await sincronizador.subirLote(
@@ -197,7 +198,8 @@ void main() {
       pendientes: pendientesDb,
       configuracion: const ConfiguracionApp(
         urlApi: 'http://localhost',
-        versionApp: '1.0.0+1',
+        versionApp: '1.0.0',
+        buildApp: '1',
       ),
     );
     await sincronizador.subirLote(base: base, token: 't', dispositivoId: 'd');

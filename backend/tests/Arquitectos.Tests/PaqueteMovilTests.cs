@@ -63,6 +63,24 @@ public sealed class PaqueteMovilTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Paquete_con_version_semver_mas_build_no_responde_426()
+    {
+        var dispositivo = Guid.NewGuid();
+        var ingreso = await LoginAsync("arq.paquete", dispositivo);
+        Assert.Equal(HttpStatusCode.OK, ingreso.StatusCode);
+        using var json = await JsonDocument.ParseAsync(await ingreso.Content.ReadAsStreamAsync());
+        var token = json.RootElement.GetProperty("accessToken").GetString();
+        var peticion = new HttpRequestMessage(HttpMethod.Get, "/api/movil/v1/paquete");
+        peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        peticion.Headers.TryAddWithoutValidation("X-Version-App", "1.0.0+1");
+        peticion.Headers.TryAddWithoutValidation("X-Requested-With", "arquitectos");
+        var respuesta = await _cliente.SendAsync(peticion);
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        respuesta.Dispose();
+        ingreso.Dispose();
+    }
+
+    [Fact]
     public async Task Cada_perfil_recibe_solo_sus_actas_y_el_arquitecto_sus_presupuestos()
     {
         var carpeta = Path.Combine(Path.GetTempPath(), "arquitectos-movil");

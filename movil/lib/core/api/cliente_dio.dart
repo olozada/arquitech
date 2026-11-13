@@ -9,6 +9,16 @@ import '../errores/mensajes.dart';
 import 'cliente_movil.dart';
 import 'errores.dart';
 
+Map<String, String> cabecerasMovil(ConfiguracionApp configuracion) {
+  return {
+    'X-Requested-With': 'arquitectos',
+    'X-Version-App': configuracion.versionApp,
+    if (configuracion.buildApp.isNotEmpty)
+      'X-Build-App': configuracion.buildApp,
+    'X-Version-Esquema': '${configuracion.versionEsquema}',
+  };
+}
+
 class ClienteDio implements ClienteMovil {
   ClienteDio({
     required ConfiguracionApp configuracion,
@@ -23,11 +33,7 @@ class ClienteDio implements ClienteMovil {
                baseUrl: configuracion.urlApi,
                connectTimeout: const Duration(seconds: 20),
                receiveTimeout: const Duration(minutes: 2),
-               headers: {
-                 'X-Requested-With': 'arquitectos',
-                 'X-Version-App': configuracion.versionApp,
-                 'X-Version-Esquema': '${configuracion.versionEsquema}',
-               },
+               headers: cabecerasMovil(configuracion),
                validateStatus: (estado) => estado != null && estado < 600,
              ),
            );

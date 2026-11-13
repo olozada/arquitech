@@ -52,7 +52,7 @@ mixin ControladorSesion on ControladorBase {
           id: dispositivoId!,
           nombre: _nombreDispositivo(dispositivoId!),
           plataforma: _plataforma(),
-          versionApp: dependencias.configuracion.versionApp,
+          versionApp: dependencias.configuracion.versionAppRegistro,
         ),
       );
       await _aplicarCredenciales(credenciales, usuarioTexto);

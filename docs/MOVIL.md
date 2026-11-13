@@ -58,7 +58,7 @@ Variables útiles:
 | Define | Uso |
 | --- | --- |
 | `API_URL` | Base del backend (obligatoria en builds reales). |
-| _(automático)_ | La cabecera `X-Version-App` sale de `package_info_plus` (`version+buildNumber` del `pubspec.yaml`). |
+| _(automático)_ | `X-Version-App` = `package_info.version`; `X-Build-App` = `buildNumber`. El login guarda `version+build` solo en el registro del dispositivo. El servidor compara versiones sin metadatos (`+`/`-`). |
 | `VERSION_ESQUEMA` | Debe coincidir con `Movil:VersionEsquema` del servidor. |
 
 Prueba de integración en VM:

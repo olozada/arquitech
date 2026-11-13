@@ -43,7 +43,8 @@ void main() {
       ..id = '00000000-0000-4000-8000-000000000099';
     final configuracion = const ConfiguracionApp(
       urlApi: 'http://simulador.test',
-      versionApp: '1.0.0+1',
+      versionApp: '1.0.0',
+      buildApp: '1',
     );
     final cola = ColaMovil();
     final pendientes = PendientesDb(

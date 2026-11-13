@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:arquitectos_movil/core/api/version_app_movil.dart';
 import 'package:arquitectos_movil/sincronizacion/modelos.dart';
 
 import 'simulador_api_movil.dart';
+
+const _versionMinimaApp = '1.0.0';
 
 /// Servidor HTTP opcional (E2E con dispositivo y `HttpOverrides`).
 class ServidorMovilPrueba {
@@ -24,6 +27,14 @@ class ServidorMovilPrueba {
   }
 
   Future<void> _atender(HttpRequest peticion) async {
+    if (_requiereVersion(peticion)) {
+      final anunciada = peticion.headers.value('x-version-app') ?? '';
+      if (versionAppEsMenor(anunciada, _versionMinimaApp)) {
+        peticion.response.statusCode = HttpStatus.upgradeRequired;
+        await peticion.response.close();
+        return;
+      }
+    }
     final metodo = peticion.method;
     final ruta = peticion.uri.path;
     if (metodo == 'POST' && ruta == '/api/movil/v1/auth/login') {
@@ -80,6 +91,16 @@ class ServidorMovilPrueba {
     }
     peticion.response.statusCode = HttpStatus.notFound;
     await peticion.response.close();
+  }
+
+  bool _requiereVersion(HttpRequest peticion) {
+    final ruta = peticion.uri.path;
+    if (ruta == '/api/movil/v1/paquete' ||
+        ruta == '/api/movil/v1/sincronizar' ||
+        ruta == '/api/movil/v1/auth/login') {
+      return true;
+    }
+    return false;
   }
 
   List<OperacionSalida> _leerOperaciones(Object? lista) {

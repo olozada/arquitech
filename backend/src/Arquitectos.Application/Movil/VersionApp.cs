@@ -20,7 +20,13 @@ public static class VersionApp
     private static string Normalizar(string? valor)
     {
         var texto = (valor ?? "").Trim();
+        var corte = texto.IndexOfAny(['+', '-']);
+        if (corte >= 0)
+        {
+            texto = texto[..corte];
+        }
+
         var partes = texto.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        return partes.Length >= 2 ? texto : "";
+        return partes.Length is >= 2 and <= 4 ? texto : "";
     }
 }

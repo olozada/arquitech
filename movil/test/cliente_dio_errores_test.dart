@@ -16,7 +16,8 @@ void main() {
     final cliente = ClienteDio(
       configuracion: const ConfiguracionApp(
         urlApi: 'http://localhost',
-        versionApp: '1.0.0+1',
+        versionApp: '1.0.0',
+        buildApp: '1',
       ),
       dispositivoId: () => 'dev',
       dio: dio,

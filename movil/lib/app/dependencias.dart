@@ -62,8 +62,10 @@ class Dependencias {
 
   static Future<Dependencias> crear() async {
     final paquete = await PackageInfo.fromPlatform();
-    final versionApp = '${paquete.version}+${paquete.buildNumber}';
-    final configuracion = ConfiguracionApp.desdeEntorno(versionApp: versionApp);
+    final configuracion = ConfiguracionApp.desdeEntorno(
+      versionApp: paquete.version,
+      buildApp: paquete.buildNumber,
+    );
     final almacen = AlmacenFlutter();
     final abrir = AbrirSqlCipher();
     final directorio = getApplicationSupportDirectory;
