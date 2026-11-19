@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:arquitectos_movil/core/api/cliente_movil.dart';
 import 'package:arquitectos_movil/core/api/version_app_movil.dart';
 import 'package:arquitectos_movil/sincronizacion/modelos.dart';
 
@@ -37,22 +38,24 @@ class ServidorMovilPrueba {
     }
     final metodo = peticion.method;
     final ruta = peticion.uri.path;
-    if (metodo == 'POST' && ruta == '/api/movil/v1/auth/login') {
+    if (metodo == 'POST' && ruta == '/api/auth/login') {
       final cuerpoLogin = await utf8.decoder.bind(peticion).join();
       final loginMapa = jsonDecode(cuerpoLogin) as Map<String, Object?>;
       final usuario = loginMapa['usuario'] as String? ?? 'carlos';
       final cred = _simulador.login(usuario);
+      final acceso = _jwt(cred);
+      peticion.response.headers
+        ..add('set-cookie', 'arquitectos.acceso=$acceso; path=/api; httponly')
+        ..add(
+          'set-cookie',
+          'arquitectos.renovacion=${cred.refreshToken}; path=/api/auth/renovar; httponly',
+        );
       await _json(peticion, 200, {
-        'accessToken': cred.accessToken,
-        'expiraEn': cred.expiraEn.toUtc().toIso8601String(),
-        'refreshToken': cred.refreshToken,
+        'nombre': cred.usuario.nombre,
+        'tipoUsuario': cred.usuario.tipoUsuarioId == 4
+            ? 'Revisor'
+            : 'Contratista',
         'debeCambiarContrasena': cred.debeCambiarContrasena,
-        'usuario': {
-          'id': cred.usuario.id,
-          'nombre': cred.usuario.nombre,
-          'tipoUsuarioId': cred.usuario.tipoUsuarioId,
-          'contratistaId': cred.usuario.contratistaId,
-        },
       });
       return;
     }
@@ -96,8 +99,7 @@ class ServidorMovilPrueba {
   bool _requiereVersion(HttpRequest peticion) {
     final ruta = peticion.uri.path;
     if (ruta == '/api/movil/v1/paquete' ||
-        ruta == '/api/movil/v1/sincronizar' ||
-        ruta == '/api/movil/v1/auth/login') {
+        ruta == '/api/movil/v1/sincronizar') {
       return true;
     }
     return false;
@@ -123,6 +125,17 @@ class ServidorMovilPrueba {
             : null,
       );
     }).toList();
+  }
+
+  String _jwt(Credenciales cred) {
+    String parte(Object valor) {
+      return base64Url
+          .encode(utf8.encode(jsonEncode(valor)))
+          .replaceAll('=', '');
+    }
+
+    final exp = cred.expiraEn.millisecondsSinceEpoch ~/ 1000;
+    return '${parte({'alg': 'none'})}.${parte({'sub': '${cred.usuario.id}', 'tipoUsuarioId': '${cred.usuario.tipoUsuarioId}', 'exp': exp})}.firma';
   }
 
   Future<void> _json(HttpRequest peticion, int estado, Object cuerpo) async {

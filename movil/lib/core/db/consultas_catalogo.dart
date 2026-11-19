@@ -1,5 +1,50 @@
 part of 'consultas.dart';
 
+String plegarTexto(String texto) {
+  final plano = texto.trim().toLowerCase();
+  final buffer = StringBuffer();
+  for (final caracter in plano.runes) {
+    buffer.write(_sinTilde(String.fromCharCode(caracter)));
+  }
+  return buffer.toString();
+}
+
+String sqlSinTildes(String columna) {
+  var expresion = columna;
+  const cambios = {
+    'á': 'a',
+    'Á': 'a',
+    'é': 'e',
+    'É': 'e',
+    'í': 'i',
+    'Í': 'i',
+    'ó': 'o',
+    'Ó': 'o',
+    'ú': 'u',
+    'Ú': 'u',
+    'ü': 'u',
+    'Ü': 'u',
+    'ñ': 'n',
+    'Ñ': 'n',
+  };
+  for (final cambio in cambios.entries) {
+    expresion = "replace($expresion, '${cambio.key}', '${cambio.value}')";
+  }
+  return 'lower($expresion)';
+}
+
+String _sinTilde(String caracter) {
+  return switch (caracter) {
+    'á' || 'à' || 'ä' => 'a',
+    'é' || 'è' || 'ë' => 'e',
+    'í' || 'ì' || 'ï' => 'i',
+    'ó' || 'ò' || 'ö' => 'o',
+    'ú' || 'ù' || 'ü' => 'u',
+    'ñ' => 'n',
+    _ => caracter,
+  };
+}
+
 mixin ConsultasCatalogo on ConsultasBase {
   Future<List<PresupuestoResumen>> presupuestos() async {
     final filas = await base.consultar('''
@@ -90,15 +135,17 @@ WHERE id = ?
     String texto, {
     int limite = 40,
   }) async {
-    final busqueda = texto.trim();
+    final busqueda = plegarTexto(texto);
     if (busqueda.length < 2) {
       return const [];
     }
-    final patron = '%${busqueda.replaceAll('%', '')}%';
+    final patron = '%${busqueda.replaceAll('%', '').replaceAll('_', '')}%';
+    final descripcion = sqlSinTildes('descripcion');
+    final codigo = sqlSinTildes('codigo');
     final filas = await base.consultar(
       '''
 SELECT id, codigo, descripcion FROM insumos
-WHERE descripcion LIKE ? OR codigo LIKE ?
+WHERE $descripcion LIKE ? OR $codigo LIKE ?
 ORDER BY descripcion
 LIMIT ?
 ''',

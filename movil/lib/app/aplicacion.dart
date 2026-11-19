@@ -70,22 +70,19 @@ class _EstadoAplicacion extends State<Aplicacion> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: [controladorProvider.overrideWith((ref) => controlador)],
-      child: Stack(
-        children: [
-          MaterialApp.router(
-            title: 'Arquitectos',
-            debugShowCheckedModeBanner: false,
-            theme: temaArquitectos(),
-            routerConfig: enrutador,
-          ),
-          if (_veloPrivacidad)
-            Positioned.fill(
-              child: Theme(
-                data: temaArquitectos(),
-                child: const VeloPrivacidad(),
-              ),
-            ),
-        ],
+      child: MaterialApp.router(
+        title: 'Arquitectos',
+        debugShowCheckedModeBanner: false,
+        theme: temaArquitectos(),
+        routerConfig: enrutador,
+        builder: (context, child) {
+          return Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              if (_veloPrivacidad) const Positioned.fill(child: VeloPrivacidad()),
+            ],
+          );
+        },
       ),
     );
   }

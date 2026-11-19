@@ -22,11 +22,18 @@ class DetalleActaPantalla extends ConsumerStatefulWidget {
 class _EstadoDetalle extends ConsumerState<DetalleActaPantalla> {
   DetalleActa? _detalle;
   var _cargando = true;
+  var _enPrimerPlano = false;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _cargar());
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (visible && !_enPrimerPlano) {
+      _enPrimerPlano = true;
+      _cargar();
+    } else if (!visible) {
+      _enPrimerPlano = false;
+    }
   }
 
   Future<void> _cargar() async {
@@ -154,7 +161,10 @@ class DetalleActaLayout extends StatelessWidget {
       ),
       floatingActionButton: puedeAgregar
           ? FloatingActionButton.extended(
-              onPressed: () => context.push('/actas/$numero/linea/nueva'),
+              onPressed: () async {
+                await context.push('/actas/$numero/linea/nueva');
+                await onActualizado?.call();
+              },
               label: const Text('Agregar línea'),
               icon: const Icon(Icons.add),
             )
@@ -282,19 +292,22 @@ class _Linea extends StatelessWidget {
               Row(
                 children: [
                   TextButton(
-                    onPressed: () => context.push(
-                      '/actas/$numeroActa/linea/${linea.localId}',
-                      extra: LineaSincronizacion(
-                        construccionId: linea.construccionId,
-                        conceptoId: linea.conceptoId,
-                        unidadMedidaId: linea.unidadMedidaId,
-                        insumoId: linea.insumoId,
-                        presupuestoItemId: linea.presupuestoItemId,
-                        cantidad: linea.cantidad,
-                        precio: linea.precio,
-                        descripcion: linea.descripcion,
-                      ),
-                    ),
+                    onPressed: () async {
+                      await context.push(
+                        '/actas/$numeroActa/linea/${linea.localId}',
+                        extra: LineaSincronizacion(
+                          construccionId: linea.construccionId,
+                          conceptoId: linea.conceptoId,
+                          unidadMedidaId: linea.unidadMedidaId,
+                          insumoId: linea.insumoId,
+                          presupuestoItemId: linea.presupuestoItemId,
+                          cantidad: linea.cantidad,
+                          precio: linea.precio,
+                          descripcion: linea.descripcion,
+                        ),
+                      );
+                      await onActualizado?.call();
+                    },
                     child: const Text('Editar'),
                   ),
                   TextButton(

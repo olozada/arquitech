@@ -59,6 +59,23 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
     });
   }
 
+  String _mensajeVacio() {
+    final texto = _texto.text.trim();
+    final estado = switch (_estado) {
+      EstadoActaFiltro.abiertas => 'abiertas',
+      EstadoActaFiltro.cerradas => 'cerradas',
+      EstadoActaFiltro.todas => '',
+    };
+    if (texto.isNotEmpty) {
+      final cuales = estado.isEmpty ? 'actas' : 'actas $estado';
+      return 'No hay $cuales que coincidan con «$texto». Borre la búsqueda para ver el resto.';
+    }
+    if (estado.isEmpty) {
+      return 'No hay actas descargadas.';
+    }
+    return 'No hay actas $estado.';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,19 +122,26 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
                 Expanded(
                   child: DropdownButtonFormField<OrdenActas>(
                     initialValue: _orden,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Orden'),
                     items: const [
                       DropdownMenuItem(
                         value: OrdenActas.fechaInicial,
-                        child: Text('Fecha inicial'),
+                        child: Text(
+                          'Fecha inicial',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: OrdenActas.fechaFinal,
-                        child: Text('Fecha final'),
+                        child: Text(
+                          'Fecha final',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: OrdenActas.numero,
-                        child: Text('Número'),
+                        child: Text('Número', overflow: TextOverflow.ellipsis),
                       ),
                     ],
                     onChanged: (valor) {
@@ -133,16 +157,20 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
                 Expanded(
                   child: DropdownButtonFormField<int?>(
                     initialValue: _obraId,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Obra'),
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('Todas'),
+                        child: Text('Todas', overflow: TextOverflow.ellipsis),
                       ),
                       for (final obra in _obras)
                         DropdownMenuItem(
                           value: obra.id,
-                          child: Text(obra.descripcion),
+                          child: Text(
+                            obra.descripcion,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                     ],
                     onChanged: (valor) {
@@ -183,7 +211,12 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
             child: _cargando
                 ? const Center(child: Text('Cargando actas…'))
                 : _actas.isEmpty
-                ? const Center(child: Text('No hay actas con ese filtro.'))
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(_mensajeVacio(), textAlign: TextAlign.center),
+                    ),
+                  )
                 : ListView.builder(
                     itemCount: _actas.length,
                     itemBuilder: (context, indice) {

@@ -60,7 +60,8 @@ void main() {
       'Debe indicar el precio del ítem.',
     );
     expect(errorPrecio(Decimal.zero), isNull);
-    expect(errorDescripcion('   '), 'Debe indicar la descripción del ítem.');
+    expect(errorDescripcion('   '), isNull);
+    expect(errorDescripcion(''), isNull);
     expect(
       errorDescripcion('x' * 501),
       'La descripción no puede superar 500 caracteres.',

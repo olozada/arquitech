@@ -65,4 +65,23 @@ void main() {
       await base.cerrar();
     },
   );
+
+  test('la búsqueda de insumos ignora mayúsculas y tildes', () async {
+    final base = await baseConEsquema(
+      '${carpeta.path}${Platform.pathSeparator}insumos.sqlite',
+    );
+    await base.ejecutar(
+      "INSERT INTO insumos (id, codigo, descripcion, unidad) VALUES (1, 'CEM', 'Cemento', 'bulto'), (2, 'ARN', 'Arena de río', 'm3')",
+    );
+    final consultas = ConsultasLocales(base);
+
+    final porMinuscula = await consultas.buscarInsumos('cem');
+    final porTilde = await consultas.buscarInsumos('rio');
+    final corta = await consultas.buscarInsumos('c');
+
+    expect(porMinuscula.map((item) => item.descripcion), ['Cemento']);
+    expect(porTilde.map((item) => item.descripcion), ['Arena de río']);
+    expect(corta, isEmpty);
+    await base.cerrar();
+  });
 }

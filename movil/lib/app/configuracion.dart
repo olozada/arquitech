@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-/// La URL llega solo con `--dart-define=API_URL=...`.
-/// dev, qa y prod se distinguen por ese valor al compilar. No hay URL en el código.
+/// La URL de qa y prod llega con `--dart-define=API_URL=...`.
+/// En debug y profile, si no llega, se usa el servidor de la red local.
 bool urlApiPermitidaEnRelease(ConfiguracionApp configuracion) {
   if (!configuracion.esRelease || configuracion.urlApi.isEmpty) {
     return true;
@@ -10,6 +10,8 @@ bool urlApiPermitidaEnRelease(ConfiguracionApp configuracion) {
 }
 
 class ConfiguracionApp {
+  static const urlApiDesarrollo = 'http://10.200.220.99:5190';
+
   const ConfiguracionApp({
     required this.urlApi,
     required this.versionApp,
@@ -26,8 +28,12 @@ class ConfiguracionApp {
     required String versionApp,
     required String buildApp,
   }) {
+    const urlEntorno = String.fromEnvironment('API_URL');
+    final urlApi = urlEntorno.isNotEmpty
+        ? urlEntorno
+        : (kReleaseMode ? '' : urlApiDesarrollo);
     return ConfiguracionApp(
-      urlApi: const String.fromEnvironment('API_URL'),
+      urlApi: urlApi,
       versionApp: versionApp,
       buildApp: buildApp,
       versionEsquema: const int.fromEnvironment(

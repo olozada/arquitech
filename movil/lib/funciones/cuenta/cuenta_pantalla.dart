@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/aplicacion.dart';
 import '../../core/db/consultas.dart';
+import 'cerrar_sesion.dart';
 
 class CuentaPantalla extends ConsumerWidget {
   const CuentaPantalla({super.key});
@@ -31,35 +32,10 @@ class CuentaPantalla extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           FilledButton(
+            key: const Key('cerrar-sesion'),
             onPressed: controlador.ocupado
                 ? null
-                : () async {
-                    if (controlador.pendientes > 0) {
-                      final continuar = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Cerrar sesión'),
-                          content: const Text(
-                            'Hay operaciones pendientes. Si cierra sesión, se perderán.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancelar'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Cerrar sesión'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (continuar != true) {
-                        return;
-                      }
-                    }
-                    await controlador.cerrarSesion();
-                  },
+                : () => confirmarCerrarSesion(context, controlador),
             child: const Text('Cerrar sesión'),
           ),
         ],

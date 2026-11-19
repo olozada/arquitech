@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/tema.dart';
 import '../../core/db/consultas.dart';
 import '../../core/decimal/dinero.dart';
+import '../../core/errores/mensajes.dart';
 import '../../sincronizacion/modelos.dart';
 
 class FormularioLineaPantalla extends ConsumerStatefulWidget {
@@ -34,12 +38,19 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
   List<OpcionCatalogo> _unidades = const [];
   List<ItemPresupuestoOpcion> _items = const [];
   List<InsumoOpcion> _insumosEncontrados = const [];
+  final _bloqueInsumo = GlobalKey();
+  Timer? _relojInsumo;
+  var _buscandoInsumo = false;
+  var _consultaInsumo = '';
+  var _generacionInsumo = 0;
+  var _silenciarBusqueda = false;
   int? _construccionId;
   int? _conceptoId;
   int? _unidadMedidaId;
   int? _insumoId;
   int? _presupuestoItemId;
   var _cargando = true;
+  String? _aviso;
 
   bool get _edicion => widget.localId != null;
 
@@ -65,6 +76,7 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
     _descripcion.dispose();
     _cantidad.dispose();
     _precio.dispose();
+    _relojInsumo?.cancel();
     _insumoBusqueda.dispose();
     super.dispose();
   }
@@ -107,16 +119,53 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
     });
   }
 
-  Future<void> _buscarInsumo(String texto) async {
-    if (texto.trim().length < 2) {
-      setState(() => _insumosEncontrados = const []);
+  void _buscarInsumo(String texto) {
+    if (_silenciarBusqueda) {
       return;
     }
-    final lista = await ref.read(controladorProvider).buscarInsumos(texto);
-    if (!mounted) {
+    _relojInsumo?.cancel();
+    final generacion = ++_generacionInsumo;
+    final consulta = texto.trim();
+    if (consulta.length < 2) {
+      if (_insumosEncontrados.isNotEmpty ||
+          _buscandoInsumo ||
+          _consultaInsumo.isNotEmpty) {
+        setState(() {
+          _insumosEncontrados = const [];
+          _buscandoInsumo = false;
+          _consultaInsumo = '';
+        });
+      }
       return;
     }
-    setState(() => _insumosEncontrados = lista);
+    _relojInsumo = Timer(const Duration(milliseconds: 250), () async {
+      if (!mounted || generacion != _generacionInsumo) {
+        return;
+      }
+      setState(() {
+        _buscandoInsumo = true;
+        _consultaInsumo = consulta;
+      });
+      final lista = await ref.read(controladorProvider).buscarInsumos(consulta);
+      if (!mounted || generacion != _generacionInsumo) {
+        return;
+      }
+      setState(() {
+        _insumosEncontrados = lista;
+        _buscandoInsumo = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final contexto = _bloqueInsumo.currentContext;
+        if (contexto == null || !contexto.mounted) {
+          return;
+        }
+        Scrollable.ensureVisible(
+          contexto,
+          alignment: 1,
+          duration: const Duration(milliseconds: 200),
+        );
+      });
+    });
   }
 
   Future<void> _cambiarConstruccion(int? id) async {
@@ -136,9 +185,16 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
   }
 
   Future<void> _guardar() async {
+    final controlador = ref.read(controladorProvider);
     if (_construccionId == null || _conceptoId == null) {
+      setState(() {
+        _aviso = _construccionId == null
+            ? Mensajes.construccion
+            : Mensajes.concepto;
+      });
       return;
     }
+    setState(() => _aviso = null);
     ItemPresupuestoOpcion? item;
     if (_presupuestoItemId != null) {
       for (final candidato in _items) {
@@ -158,7 +214,6 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
       precio: _precio.text.trim().replaceAll(',', '.'),
       descripcion: _descripcion.text,
     );
-    final controlador = ref.read(controladorProvider);
     if (controlador.edicionBloqueada) {
       return;
     }
@@ -196,14 +251,19 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
               const Text('Sincronizando… No edite hasta terminar.'),
               const SizedBox(height: 12),
             ],
+            AvisoTexto(_aviso ?? controlador.aviso),
             DropdownButtonFormField<int>(
               initialValue: _construccionId,
+              isExpanded: true,
               decoration: const InputDecoration(labelText: 'Construcción'),
               items: _construcciones
                   .map(
                     (opcion) => DropdownMenuItem(
                       value: opcion.id,
-                      child: Text(opcion.descripcion),
+                      child: Text(
+                        opcion.descripcion,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(),
@@ -213,12 +273,16 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
             if (_items.isEmpty)
               DropdownButtonFormField<int>(
                 initialValue: _conceptoId,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Concepto'),
                 items: _conceptos
                     .map(
                       (opcion) => DropdownMenuItem(
                         value: opcion.id,
-                        child: Text(opcion.descripcion),
+                        child: Text(
+                          opcion.descripcion,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     )
                     .toList(),
@@ -227,6 +291,7 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
             else ...[
               DropdownButtonFormField<int>(
                 initialValue: _presupuestoItemId,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Ítem de presupuesto (opcional)',
                 ),
@@ -238,7 +303,10 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
                   ..._items.map(
                     (opcion) => DropdownMenuItem(
                       value: opcion.id,
-                      child: Text(opcion.descripcion),
+                      child: Text(
+                        opcion.descripcion,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
@@ -271,12 +339,16 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   initialValue: _conceptoId,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Concepto'),
                   items: _conceptos
                       .map(
                         (opcion) => DropdownMenuItem(
                           value: opcion.id,
-                          child: Text(opcion.descripcion),
+                          child: Text(
+                            opcion.descripcion,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       )
                       .toList(),
@@ -288,6 +360,7 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
             if (_unidades.isNotEmpty)
               DropdownButtonFormField<int>(
                 initialValue: _unidadMedidaId,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Unidad de medida',
                 ),
@@ -299,7 +372,10 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
                   ..._unidades.map(
                     (opcion) => DropdownMenuItem(
                       value: opcion.id,
-                      child: Text(opcion.descripcion),
+                      child: Text(
+                        opcion.descripcion,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
@@ -308,39 +384,83 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
                     : (valor) => setState(() => _unidadMedidaId = valor),
               ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _insumoBusqueda,
-              decoration: const InputDecoration(
-                labelText: 'Buscar insumo (opcional)',
-                hintText: 'Mínimo 2 caracteres',
-              ),
-              onChanged: bloqueado ? null : _buscarInsumo,
-            ),
-            if (_insumoId != null)
-              ListTile(
-                title: Text('Insumo seleccionado (#$_insumoId)'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: bloqueado
-                      ? null
-                      : () => setState(() {
-                          _insumoId = null;
-                          _insumoBusqueda.clear();
-                          _insumosEncontrados = const [];
-                        }),
+            Column(
+              key: _bloqueInsumo,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_buscandoInsumo)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text('Buscando insumos…'),
+                  )
+                else if (_consultaInsumo.length >= 2 &&
+                    _insumosEncontrados.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'No hay insumos que coincidan con «$_consultaInsumo».',
+                    ),
+                  )
+                else if (_insumosEncontrados.isNotEmpty)
+                  SizedBox(
+                    height: _insumosEncontrados.length * 56.0 > 220
+                        ? 220
+                        : _insumosEncontrados.length * 56.0,
+                    child: ListView(
+                      children: [
+                        for (final insumo in _insumosEncontrados)
+                          ListTile(
+                            title: Text(
+                              insumo.etiqueta,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: bloqueado
+                                ? null
+                                : () {
+                                    _relojInsumo?.cancel();
+                                    _generacionInsumo++;
+                                    _silenciarBusqueda = true;
+                                    setState(() {
+                                      _insumoId = insumo.id;
+                                      _insumosEncontrados = const [];
+                                      _buscandoInsumo = false;
+                                      _consultaInsumo = '';
+                                      _insumoBusqueda.text = insumo.etiqueta;
+                                    });
+                                    _silenciarBusqueda = false;
+                                  },
+                          ),
+                      ],
+                    ),
+                  ),
+                TextField(
+                  controller: _insumoBusqueda,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar insumo (opcional)',
+                    helperText: 'Escriba al menos 2 letras',
+                  ),
+                  textInputAction: TextInputAction.search,
+                  onChanged: bloqueado ? null : _buscarInsumo,
                 ),
-              ),
-            for (final insumo in _insumosEncontrados)
-              ListTile(
-                title: Text(insumo.etiqueta),
-                onTap: bloqueado
-                    ? null
-                    : () => setState(() {
-                        _insumoId = insumo.id;
-                        _insumosEncontrados = const [];
-                        _insumoBusqueda.text = insumo.etiqueta;
-                      }),
-              ),
+                if (_insumoId != null)
+                  ListTile(
+                    title: Text('Insumo seleccionado (#$_insumoId)'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: bloqueado
+                          ? null
+                          : () => setState(() {
+                              _relojInsumo?.cancel();
+                              _insumoId = null;
+                              _insumoBusqueda.clear();
+                              _insumosEncontrados = const [];
+                              _buscandoInsumo = false;
+                              _consultaInsumo = '';
+                            }),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _descripcion,

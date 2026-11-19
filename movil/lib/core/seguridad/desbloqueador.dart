@@ -24,6 +24,9 @@ class DesbloqueadorLocal implements Desbloqueador {
 
   @override
   Future<bool> dispositivoSoportaBloqueo() async {
+    if (await _emuladorEnDesarrollo()) {
+      return true;
+    }
     if (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS) {
       try {
@@ -42,6 +45,9 @@ class DesbloqueadorLocal implements Desbloqueador {
 
   @override
   Future<bool> desbloquear() async {
+    if (await _emuladorEnDesarrollo()) {
+      return true;
+    }
     try {
       return await _autenticacion.authenticate(
         localizedReason:
@@ -52,6 +58,21 @@ class DesbloqueadorLocal implements Desbloqueador {
         ),
       );
     } on PlatformException {
+      return false;
+    }
+  }
+
+  /// En debug y profile el emulador no tiene PIN. Release sigue exigiéndolo.
+  Future<bool> _emuladorEnDesarrollo() async {
+    if (kReleaseMode || defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+    try {
+      final emulador = await _canalSeguridad.invokeMethod<bool>('esEmulador');
+      return emulador ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }

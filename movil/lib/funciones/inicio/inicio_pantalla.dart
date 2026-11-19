@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/aplicacion.dart';
 import '../../app/tema.dart';
 import '../../core/decimal/dinero.dart';
+import '../cuenta/cerrar_sesion.dart';
 
 class InicioPantalla extends ConsumerStatefulWidget {
   const InicioPantalla({super.key});
@@ -84,6 +85,14 @@ class _EstadoInicio extends ConsumerState<InicioPantalla> {
             OutlinedButton(
               onPressed: () => context.push('/cuenta'),
               child: const Text('Cuenta'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              key: const Key('cerrar-sesion-inicio'),
+              onPressed: controlador.ocupado
+                  ? null
+                  : () => confirmarCerrarSesion(context, controlador),
+              child: const Text('Cerrar sesión'),
             ),
           ],
         ),

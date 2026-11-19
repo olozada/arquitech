@@ -42,6 +42,7 @@ mixin ControladorActas on ControladorBase {
       linea: linea,
       creadaEn: dependencias.ahora().toUtc(),
     );
+    aviso = null;
     await refrescarConteos();
   }
 
@@ -70,6 +71,7 @@ mixin ControladorActas on ControladorBase {
       linea: linea,
       creadaEn: dependencias.ahora().toUtc(),
     );
+    aviso = null;
     await refrescarConteos();
   }
 

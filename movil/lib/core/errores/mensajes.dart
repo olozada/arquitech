@@ -129,9 +129,6 @@ String? errorPrecio(Decimal? valor) {
 
 String? errorDescripcion(String? valor) {
   final texto = valor?.trim() ?? '';
-  if (texto.isEmpty) {
-    return Mensajes.descripcion;
-  }
   if (texto.length > 500) {
     return Mensajes.descripcionLarga;
   }

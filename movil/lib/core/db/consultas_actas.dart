@@ -23,10 +23,11 @@ WHERE a.numero_acta = ?
 SELECT d.local_id, d.construccion_id, d.concepto_id, d.unidad_medida_id, d.insumo_id,
        d.presupuesto_item_id, d.tipo_usuario_id, d.cantidad, d.precio, d.subtotal,
        d.descripcion, d.aprobado, d.estado_local,
-       c.descripcion AS construccion, t.nombre AS perfil
+       COALESCE(c.descripcion, '') AS construccion,
+       COALESCE(t.nombre, '') AS perfil
 FROM acta_detalles d
-JOIN construcciones c ON c.id = d.construccion_id
-JOIN tipos_usuario t ON t.id = d.tipo_usuario_id
+LEFT JOIN construcciones c ON c.id = d.construccion_id
+LEFT JOIN tipos_usuario t ON t.id = d.tipo_usuario_id
 WHERE d.numero_acta = ? AND d.estado_local != 'eliminado'
 ORDER BY c.descripcion, d.local_id
 ''',

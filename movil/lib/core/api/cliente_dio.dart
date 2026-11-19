@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -38,6 +39,9 @@ class ClienteDio implements ClienteMovil {
              ),
            );
 
+  static const _cookieAcceso = 'arquitectos.acceso';
+  static const _cookieRenovacion = 'arquitectos.renovacion';
+
   final Dio _dio;
   final Logger _registro;
   final String Function() dispositivoId;
@@ -50,34 +54,24 @@ class ClienteDio implements ClienteMovil {
   }) async {
     final respuesta = await _enviar(
       () => _dio.post<Object?>(
-        '/api/movil/v1/auth/login',
-        data: {
-          'usuario': usuario,
-          'contrasena': contrasena,
-          'dispositivo': {
-            'id': dispositivo.id,
-            'nombre': dispositivo.nombre,
-            'plataforma': dispositivo.plataforma,
-            'versionApp': dispositivo.versionApp,
-          },
-        },
+        '/api/auth/login',
+        data: {'usuario': usuario, 'password': contrasena},
         options: _opciones(),
       ),
     );
     final mapa = _mapa(respuesta.data);
-    final persona = _mapa(mapa['usuario']);
+    final acceso = _cookie(respuesta, _cookieAcceso);
+    final renovacion = _cookie(respuesta, _cookieRenovacion);
+    final claims = _jwt(acceso);
     return Credenciales(
-      accessToken: _texto(mapa['accessToken']),
-      expiraEn: DateTime.parse(_texto(mapa['expiraEn'])).toUtc(),
-      refreshToken: _texto(mapa['refreshToken']),
+      accessToken: acceso,
+      expiraEn: _expira(claims),
+      refreshToken: renovacion,
       debeCambiarContrasena: mapa['debeCambiarContrasena'] == true,
       usuario: UsuarioMovil(
-        id: _entero(persona['id']),
-        nombre: _texto(persona['nombre']),
-        tipoUsuarioId: _entero(persona['tipoUsuarioId']),
-        arquitectoId: _opcional(persona['arquitectoId']),
-        contratistaId: _opcional(persona['contratistaId']),
-        revisorId: _opcional(persona['revisorId']),
+        id: _entero(claims['sub']),
+        nombre: _texto(mapa['nombre']),
+        tipoUsuarioId: _entero(claims['tipoUsuarioId']),
       ),
     );
   }
@@ -89,16 +83,18 @@ class ClienteDio implements ClienteMovil {
   }) async {
     final respuesta = await _enviar(
       () => _dio.post<Object?>(
-        '/api/movil/v1/auth/renovar',
-        data: {'refreshToken': refreshToken, 'dispositivoId': dispositivoId},
-        options: _opciones(),
+        '/api/auth/renovar',
+        options: _opciones().copyWith(
+          headers: {'Cookie': '$_cookieRenovacion=$refreshToken'},
+        ),
       ),
     );
-    final mapa = _mapa(respuesta.data);
+    final acceso = _cookie(respuesta, _cookieAcceso);
+    final renovacion = _cookie(respuesta, _cookieRenovacion);
     return ParTokens(
-      accessToken: _texto(mapa['accessToken']),
-      expiraEn: DateTime.parse(_texto(mapa['expiraEn'])).toUtc(),
-      refreshToken: _texto(mapa['refreshToken']),
+      accessToken: acceso,
+      expiraEn: _expira(_jwt(acceso)),
+      refreshToken: renovacion,
     );
   }
 
@@ -123,10 +119,7 @@ class ClienteDio implements ClienteMovil {
     required String dispositivoId,
   }) async {
     await _enviar(
-      () => _dio.post<Object?>(
-        '/api/movil/v1/auth/salir',
-        options: _opciones(token),
-      ),
+      () => _dio.post<Object?>('/api/auth/salir', options: _opciones(token)),
     );
   }
 
@@ -334,6 +327,57 @@ class ClienteDio implements ClienteMovil {
     return null;
   }
 
+  String _cookie(Response<Object?> respuesta, String nombre) {
+    final cabeceras = respuesta.headers['set-cookie'];
+    if (cabeceras == null) {
+      throw const ErrorServidor('La respuesta del servidor no es válida.');
+    }
+    final marca = '$nombre=';
+    for (final cruda in cabeceras) {
+      final inicio = cruda.indexOf(marca);
+      if (inicio < 0) {
+        continue;
+      }
+      final desde = inicio + marca.length;
+      final fin = cruda.indexOf(';', desde);
+      final valor =
+          (fin < 0 ? cruda.substring(desde) : cruda.substring(desde, fin))
+              .trim();
+      if (valor.isNotEmpty) {
+        return valor;
+      }
+    }
+    throw const ErrorServidor('La respuesta del servidor no es válida.');
+  }
+
+  Map<String, Object?> _jwt(String token) {
+    final partes = token.split('.');
+    if (partes.length < 2) {
+      throw const ErrorServidor('La respuesta del servidor no es válida.');
+    }
+    try {
+      final json = utf8.decode(
+        base64Url.decode(base64Url.normalize(partes[1])),
+      );
+      final mapa = jsonDecode(json);
+      if (mapa is Map) {
+        return Map<String, Object?>.from(mapa);
+      }
+    } on FormatException {
+      throw const ErrorServidor('La respuesta del servidor no es válida.');
+    }
+    throw const ErrorServidor('La respuesta del servidor no es válida.');
+  }
+
+  DateTime _expira(Map<String, Object?> claims) {
+    final exp = claims['exp'];
+    final segundos = exp is int ? exp : int.tryParse('$exp');
+    if (segundos == null) {
+      throw const ErrorServidor('La respuesta del servidor no es válida.');
+    }
+    return DateTime.fromMillisecondsSinceEpoch(segundos * 1000, isUtc: true);
+  }
+
   Map<String, Object?> _mapa(Object? valor) {
     if (valor is Map) {
       return Map<String, Object?>.from(valor);
@@ -345,11 +389,4 @@ class ClienteDio implements ClienteMovil {
 
   int _entero(Object? valor) =>
       valor is int ? valor : int.parse(valor.toString());
-
-  int? _opcional(Object? valor) {
-    if (valor == null) {
-      return null;
-    }
-    return valor is int ? valor : int.tryParse(valor.toString());
-  }
 }
