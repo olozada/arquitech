@@ -30,7 +30,7 @@ export function ListadoActas() {
   const [hasta, setHasta] = useState('')
   const [estado, setEstado] = useState('')
   const [campo, setCampo] = useState<CampoOrden>(ordenInicial)
-  const [direccion, setDireccion] = useState<Direccion>('desc')
+  const [direccion, setDireccion] = useState<Direccion>('asc')
   const [pagina, setPagina] = useState(1)
   const fechasInvalidas = Boolean(desde && hasta && hasta < desde)
   const listado = useQuery({
@@ -76,7 +76,7 @@ export function ListadoActas() {
     setHasta('')
     setEstado('')
     setCampo(ordenInicial)
-    setDireccion('desc')
+    setDireccion('asc')
   }
 
   return (
@@ -146,7 +146,7 @@ export function ListadoActas() {
           </Col>
         </Row>
         <div className="catalogo-acciones mt-3">
-          <Button type="button" variant="outline-secondary" disabled={!hayFiltro && campo === ordenInicial && direccion === 'desc'} onClick={limpiar}>
+          <Button type="button" variant="outline-secondary" disabled={!hayFiltro && campo === ordenInicial && direccion === 'asc'} onClick={limpiar}>
             Limpiar
           </Button>
         </div>
@@ -208,9 +208,15 @@ export function ListadoActas() {
                       <Button type="button" size="sm" variant="outline-primary" onClick={() => void abrirPdf(acta.numeroActa)}>
                         Imprimir
                       </Button>
-                      <Link to={`/actas/${acta.numeroActa}`} className="btn btn-sm btn-outline-secondary">
-                        Modificar
-                      </Link>
+                      {acta.cerrada ? (
+                        <Link to={`/actas/${acta.numeroActa}`} className="btn btn-sm btn-outline-secondary">
+                          Ver
+                        </Link>
+                      ) : (
+                        <Link to={`/actas/${acta.numeroActa}`} className="btn btn-sm btn-primary">
+                          Modificar
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

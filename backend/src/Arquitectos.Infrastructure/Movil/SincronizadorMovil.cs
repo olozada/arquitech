@@ -76,9 +76,20 @@ public sealed class SincronizadorMovil : ISincronizadorMovil
 
         var dispositivo = await _context.Dispositivos.AsNoTracking()
             .SingleOrDefaultAsync(item => item.Id == solicitud.DispositivoId, cancellationToken);
-        if (dispositivo is null || dispositivo.UsuarioId != usuarioId)
+        if (dispositivo is { UsuarioId: var dueno } && dueno != usuarioId)
         {
             return ResultadoSincronizacion.Prohibido("El dispositivo no está registrado para este usuario.");
+        }
+
+        if (dispositivo is null)
+        {
+            if (!await RecuperarDispositivoAsync(usuarioId, sesionId, solicitud.DispositivoId, cancellationToken))
+            {
+                return ResultadoSincronizacion.Prohibido("El dispositivo no está registrado para este usuario.");
+            }
+
+            dispositivo = await _context.Dispositivos.AsNoTracking()
+                .SingleAsync(item => item.Id == solicitud.DispositivoId, cancellationToken);
         }
 
         if (dispositivo.RevocadoEn is not null)
@@ -447,6 +458,73 @@ public sealed class SincronizadorMovil : ISincronizadorMovil
         new(operacion.IdOperacion, "Rechazada", null, operacion.IdCliente, null, mensaje, null);
 
     private static string Texto(decimal valor) => valor.ToString(CultureInfo.InvariantCulture);
+
+    private async Task<bool> RecuperarDispositivoAsync(
+        int usuarioId,
+        long? sesionId,
+        Guid dispositivoId,
+        CancellationToken cancellationToken)
+    {
+        if (sesionId is not long idSesion)
+        {
+            return false;
+        }
+
+        var sesion = await _context.SesionesUsuario
+            .SingleOrDefaultAsync(
+                item => item.Id == idSesion && item.UsuarioId == usuarioId && item.RevocadoEn == null,
+                cancellationToken);
+        if (sesion is null)
+        {
+            return false;
+        }
+
+        if (sesion.DispositivoId is Guid enSesion && enSesion != dispositivoId)
+        {
+            return false;
+        }
+
+        var ahora = _reloj.GetUtcNow().UtcDateTime;
+        var existente = await _context.Dispositivos
+            .SingleOrDefaultAsync(item => item.Id == dispositivoId, cancellationToken);
+        if (existente is not null)
+        {
+            if (existente.UsuarioId != usuarioId)
+            {
+                return false;
+            }
+
+            if (existente.RevocadoEn is not null)
+            {
+                existente.RevocadoEn = null;
+            }
+        }
+        else
+        {
+            _context.Dispositivos.Add(new Dispositivo
+            {
+                Id = dispositivoId,
+                UsuarioId = usuarioId,
+                Nombre = "Dispositivo recuperado",
+                Plataforma = "desconocida",
+                VersionApp = "0",
+                RegistradoEn = ahora
+            });
+        }
+
+        if (sesion.DispositivoId is null)
+        {
+            sesion.DispositivoId = dispositivoId;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogWarning(
+            "Dispositivo móvil {DispositivoId} re-registrado para el usuario {UsuarioId} en la sesión {SesionId}.",
+            dispositivoId,
+            usuarioId,
+            idSesion);
+        return true;
+    }
 
     private sealed record UsuarioSync(int Id, int TipoUsuarioId, int? ArquitectoId, int? ContratistaId, int? RevisorId, bool Activo);
 
