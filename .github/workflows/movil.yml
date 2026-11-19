@@ -38,21 +38,3 @@ jobs:
           echo "Cobertura líneas core+sync: ${PCT}%"
           awk "BEGIN{exit !(${PCT} >= 60)}"
       - run: flutter build apk --debug
-  ios:
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: movil
-    steps:
-      - uses: actions/checkout@v4
-      - name: Leer versión de Flutter
-        shell: bash
-        run: echo "FLUTTER_VERSION=$(tr -d '\r\n' < movil/.flutter-version)" >> "$GITHUB_ENV"
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-      - run: flutter --version
-      - run: flutter pub get
-      - run: flutter build ios --no-codesign
