@@ -34,21 +34,22 @@ void main() {
     await borrarCarpeta(carpeta);
   });
 
-  testWidgets('la aplicación arranca y cubre la pantalla al pasar a segundo plano', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      Aplicacion(dependencias: dependencias, controlador: controlador),
-    );
-    await tester.pump();
+  testWidgets(
+    'la aplicación arranca y cubre la pantalla al pasar a segundo plano',
+    (tester) async {
+      await tester.pumpWidget(
+        Aplicacion(dependencias: dependencias, controlador: controlador),
+      );
+      await tester.pump();
 
-    expect(find.text('Abriendo Arquitectos…'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      expect(find.text('Abriendo Arquitectos…'), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
 
-    expect(find.text('Arquitectos'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('Arquitectos'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

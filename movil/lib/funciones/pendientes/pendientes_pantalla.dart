@@ -140,7 +140,12 @@ class _EstadoPendientes extends ConsumerState<PendientesPantalla> {
                               datos: ComparacionFallida.desde(registro),
                             ),
                             const SizedBox(height: 8),
-                            Row(
+                            // En fila si cabe; si no (texto grande), apilados.
+                            OverflowBar(
+                              alignment: MainAxisAlignment.spaceBetween,
+                              overflowAlignment: OverflowBarAlignment.end,
+                              spacing: 8,
+                              overflowSpacing: 8,
                               children: [
                                 TextButton(
                                   onPressed: () async {
@@ -151,9 +156,13 @@ class _EstadoPendientes extends ConsumerState<PendientesPantalla> {
                                   },
                                   child: const Text('Descartar'),
                                 ),
-                                const SizedBox(width: 8),
                                 if (_lineaDesde(registro) != null)
+                                  // El tema da a FilledButton ancho mínimo
+                                  // infinito; aquí se usa el ancho del texto.
                                   FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      minimumSize: const Size(88, 48),
+                                    ),
                                     onPressed: () => _rehacer(registro),
                                     child: const Text('Rehacer'),
                                   ),

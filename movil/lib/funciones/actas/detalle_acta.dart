@@ -172,7 +172,9 @@ class DetalleActaLayout extends StatelessWidget {
       body: AbsorbPointer(
         absorbing: edicionBloqueada,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          // Con «Agregar línea» se deja espacio para que el botón flotante
+          // no tape la última línea.
+          padding: EdgeInsets.fromLTRB(16, 16, 16, puedeAgregar ? 96 : 16),
           children: [
             if (edicionBloqueada) ...[
               const Text('Sincronizando…'),
@@ -243,7 +245,9 @@ class _Linea extends StatelessWidget {
     final estado = linea.aprobado ? 'Aprobado' : 'Rechazado';
     final local = linea.estadoLocal == 'sincronizado'
         ? ''
-        : ' · ${linea.estadoLocal}';
+        : ' · Sin sincronizar';
+    final esquema = Theme.of(context).colorScheme;
+    final sinDescripcion = linea.descripcion.trim().isEmpty;
     final puedeEditar =
         acciones.puedeEditarLinea(linea, actaCerrada) && !edicionBloqueada;
     final esRevisor = acciones.esRevisor() && !actaCerrada;
@@ -254,7 +258,15 @@ class _Linea extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(linea.descripcion),
+            Text(
+              sinDescripcion ? 'Sin descripción' : linea.descripcion,
+              style: sinDescripcion
+                  ? TextStyle(
+                      color: esquema.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    )
+                  : null,
+            ),
             const SizedBox(height: 4),
             Text('${linea.perfil} · $estado$local'),
             const SizedBox(height: 4),
@@ -263,23 +275,27 @@ class _Linea extends StatelessWidget {
             ),
             if (esRevisor) ...[
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text('Aprobar'),
-                  Switch(
-                    value: linea.aprobado,
-                    onChanged: edicionBloqueada
-                        ? null
-                        : (valor) async {
-                            await acciones.revisarLinea(
-                              numeroActa,
-                              linea.localId,
-                              valor,
-                            );
-                            await onActualizado?.call();
-                          },
-                  ),
-                ],
+              // Un solo nodo de accesibilidad: el lector dice «Aprobar» y el
+              // estado del interruptor.
+              MergeSemantics(
+                child: Row(
+                  children: [
+                    const Text('Aprobar'),
+                    Switch(
+                      value: linea.aprobado,
+                      onChanged: edicionBloqueada
+                          ? null
+                          : (valor) async {
+                              await acciones.revisarLinea(
+                                numeroActa,
+                                linea.localId,
+                                valor,
+                              );
+                              await onActualizado?.call();
+                            },
+                    ),
+                  ],
+                ),
               ),
             ],
             if (puedeEditar) ...[

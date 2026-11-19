@@ -54,3 +54,10 @@ app.*.map.json
 .widget_preview/
 .test_tmp/
 traza_flujo.txt
+
+# FVM (SDK local del proyecto; la versión se fija en .fvmrc)
+.fvm/
+.claude
+CLAUDE.md
+.fvmrc
+skills-lock.json

@@ -88,7 +88,7 @@ class ComparacionFallidaVista extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
-        if (datos.localDescripcion != null)
+        if (datos.localDescripcion?.trim().isNotEmpty ?? false)
           Text('Local: ${datos.localDescripcion}'),
         if (datos.localCantidad != null || datos.localPrecio != null)
           Text(
@@ -97,7 +97,7 @@ class ComparacionFallidaVista extends StatelessWidget {
           ),
         if (datos.hayServidor) ...[
           const SizedBox(height: 4),
-          if (datos.servidorDescripcion != null)
+          if (datos.servidorDescripcion?.trim().isNotEmpty ?? false)
             Text('Servidor: ${datos.servidorDescripcion}'),
           if (datos.servidorCantidad != null || datos.servidorPrecio != null)
             Text(

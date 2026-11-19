@@ -308,6 +308,7 @@ class _EstadoSeguimiento extends State<_PestanaSeguimiento> {
         if (capitulos.isNotEmpty) ...[
           const SizedBox(height: 12),
           DropdownMenu<int>(
+            expandedInsets: EdgeInsets.zero,
             initialSelection: _capituloId,
             label: const Text('Capítulo'),
             dropdownMenuEntries: [

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/formulario_adaptable.dart';
 import '../../app/tema.dart';
 
 class CambioContrasenaPantalla extends ConsumerStatefulWidget {
@@ -27,58 +28,64 @@ class _EstadoCambio extends ConsumerState<CambioContrasenaPantalla> {
   @override
   Widget build(BuildContext context) {
     final controlador = ref.watch(controladorProvider);
+    final tema = Theme.of(context);
+    void guardar() => controlador.cambiarContrasena(
+      _actual.text,
+      _nueva.text,
+      _confirmacion.text,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Cambiar contraseña')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            if (controlador.debeCambiar)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text('Debe cambiar la contraseña para continuar.'),
-              ),
-            AvisoTexto(controlador.aviso),
-            TextField(
-              key: const Key('contrasena-actual'),
-              controller: _actual,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña actual *',
+      body: CuerpoFormulario(
+        anchoMaximo: 480,
+        children: [
+          if (controlador.debeCambiar)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Debe cambiar la contraseña para continuar.',
+                style: tema.textTheme.bodyLarge,
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('contrasena-nueva'),
-              controller: _nueva,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña nueva *',
-              ),
+          AvisoTexto(controlador.aviso),
+          AutofillGroup(
+            child: SeccionFormulario(
+              titulo: 'Contraseña',
+              icono: Icons.password,
+              espacio: 16,
+              children: [
+                CampoContrasena(
+                  key: const Key('contrasena-actual'),
+                  controller: _actual,
+                  etiqueta: 'Contraseña actual *',
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.password],
+                ),
+                CampoContrasena(
+                  key: const Key('contrasena-nueva'),
+                  controller: _nueva,
+                  etiqueta: 'Contraseña nueva *',
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.newPassword],
+                ),
+                CampoContrasena(
+                  key: const Key('contrasena-confirmacion'),
+                  controller: _confirmacion,
+                  etiqueta: 'Confirmar contraseña *',
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.newPassword],
+                  onSubmitted: controlador.ocupado ? null : (_) => guardar(),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('contrasena-confirmacion'),
-              controller: _confirmacion,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirmar contraseña *',
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              key: const Key('guardar-contrasena'),
-              onPressed: controlador.ocupado
-                  ? null
-                  : () => controlador.cambiarContrasena(
-                      _actual.text,
-                      _nueva.text,
-                      _confirmacion.text,
-                    ),
-              child: Text(controlador.ocupado ? 'Guardando…' : 'Guardar'),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            key: const Key('guardar-contrasena'),
+            onPressed: controlador.ocupado ? null : guardar,
+            child: Text(controlador.ocupado ? 'Guardando…' : 'Guardar'),
+          ),
+        ],
       ),
     );
   }

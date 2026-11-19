@@ -17,4 +17,22 @@ void main() {
     expect(find.textContaining('Local: Local'), findsOneWidget);
     expect(find.textContaining('Servidor: Servidor'), findsOneWidget);
   });
+
+  testWidgets('sin descripción no deja una fila «Local:» vacía', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ComparacionFallidaVista(
+          datos: ComparacionFallida(
+            localDescripcion: '',
+            localCantidad: '2',
+            localPrecio: '45000',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Local: '), findsNothing);
+    expect(find.textContaining('Local: cant. 2'), findsOneWidget);
+  });
 }

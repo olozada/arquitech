@@ -79,7 +79,8 @@ class _EstadoAplicacion extends State<Aplicacion> with WidgetsBindingObserver {
           return Stack(
             children: [
               child ?? const SizedBox.shrink(),
-              if (_veloPrivacidad) const Positioned.fill(child: VeloPrivacidad()),
+              if (_veloPrivacidad)
+                const Positioned.fill(child: VeloPrivacidad()),
             ],
           );
         },

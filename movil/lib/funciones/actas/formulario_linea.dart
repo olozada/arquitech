@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/formulario_adaptable.dart';
 import '../../app/tema.dart';
 import '../../core/db/consultas.dart';
 import '../../core/decimal/dinero.dart';
@@ -230,274 +231,435 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
     }
   }
 
+  void _elegirInsumo(InsumoOpcion insumo) {
+    _relojInsumo?.cancel();
+    _generacionInsumo++;
+    _silenciarBusqueda = true;
+    setState(() {
+      _insumoId = insumo.id;
+      _insumosEncontrados = const [];
+      _buscandoInsumo = false;
+      _consultaInsumo = '';
+      _insumoBusqueda.text = insumo.etiqueta;
+    });
+    _silenciarBusqueda = false;
+  }
+
+  void _quitarInsumo() {
+    setState(() {
+      _relojInsumo?.cancel();
+      _insumoId = null;
+      _insumoBusqueda.clear();
+      _insumosEncontrados = const [];
+      _buscandoInsumo = false;
+      _consultaInsumo = '';
+    });
+  }
+
+  Future<void> _elegirItem(int? valor) async {
+    setState(() => _presupuestoItemId = valor);
+    if (valor == null) {
+      return;
+    }
+    ItemPresupuestoOpcion? elegido;
+    for (final candidato in _items) {
+      if (candidato.id == valor) {
+        elegido = candidato;
+        break;
+      }
+    }
+    if (elegido == null) {
+      return;
+    }
+    setState(() {
+      _conceptoId = elegido!.conceptoId;
+      _unidadMedidaId = elegido.unidadMedidaId;
+      if (elegido.precio != null) {
+        _precio.text = elegido.precio!;
+      }
+    });
+    _actualizarSubtotal();
+  }
+
   @override
   Widget build(BuildContext context) {
     final controlador = ref.watch(controladorProvider);
     final bloqueado = controlador.edicionBloqueada;
+    final titulo = Text(_edicion ? 'Editar línea' : 'Nueva línea');
     if (_cargando) {
       return Scaffold(
-        appBar: AppBar(title: Text(_edicion ? 'Editar línea' : 'Nueva línea')),
+        appBar: AppBar(title: titulo),
         body: const Center(child: Text('Cargando catálogos…')),
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: Text(_edicion ? 'Editar línea' : 'Nueva línea')),
-      body: AbsorbPointer(
-        absorbing: bloqueado,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+    final concepto = _Desplegable<int>(
+      etiqueta: 'Concepto',
+      valor: _conceptoId,
+      opciones: [
+        for (final opcion in _conceptos) (opcion.id, opcion.descripcion),
+      ],
+      onChanged: (valor) => setState(() => _conceptoId = valor),
+    );
+    final obra = SeccionFormulario(
+      titulo: 'Obra y actividad',
+      icono: Icons.apartment_outlined,
+      children: [
+        FilaAdaptable(
           children: [
-            if (bloqueado) ...[
-              const Text('Sincronizando… No edite hasta terminar.'),
-              const SizedBox(height: 12),
-            ],
-            AvisoTexto(_aviso ?? controlador.aviso),
-            DropdownButtonFormField<int>(
-              initialValue: _construccionId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Construcción'),
-              items: _construcciones
-                  .map(
-                    (opcion) => DropdownMenuItem(
-                      value: opcion.id,
-                      child: Text(
-                        opcion.descripcion,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  )
-                  .toList(),
+            _Desplegable<int>(
+              etiqueta: 'Construcción',
+              valor: _construccionId,
+              opciones: [
+                for (final opcion in _construcciones)
+                  (opcion.id, opcion.descripcion),
+              ],
               onChanged: bloqueado ? null : _cambiarConstruccion,
             ),
-            const SizedBox(height: 12),
             if (_items.isEmpty)
-              DropdownButtonFormField<int>(
-                initialValue: _conceptoId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Concepto'),
-                items: _conceptos
-                    .map(
-                      (opcion) => DropdownMenuItem(
-                        value: opcion.id,
-                        child: Text(
-                          opcion.descripcion,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (valor) => setState(() => _conceptoId = valor),
-              )
-            else ...[
-              DropdownButtonFormField<int>(
-                initialValue: _presupuestoItemId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Ítem de presupuesto (opcional)',
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Sin ítem de presupuesto'),
-                  ),
-                  ..._items.map(
-                    (opcion) => DropdownMenuItem(
-                      value: opcion.id,
-                      child: Text(
-                        opcion.descripcion,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
+              concepto
+            else
+              _Desplegable<int>(
+                etiqueta: 'Ítem de presupuesto (opcional)',
+                valor: _presupuestoItemId,
+                vacio: 'Sin ítem de presupuesto',
+                opciones: [
+                  for (final opcion in _items) (opcion.id, opcion.descripcion),
                 ],
-                onChanged: (valor) async {
-                  setState(() => _presupuestoItemId = valor);
-                  if (valor == null) {
-                    return;
-                  }
-                  ItemPresupuestoOpcion? elegido;
-                  for (final candidato in _items) {
-                    if (candidato.id == valor) {
-                      elegido = candidato;
-                      break;
-                    }
-                  }
-                  if (elegido == null) {
-                    return;
-                  }
-                  setState(() {
-                    _conceptoId = elegido!.conceptoId;
-                    _unidadMedidaId = elegido.unidadMedidaId;
-                    if (elegido.precio != null) {
-                      _precio.text = elegido.precio!;
-                    }
-                  });
-                  _actualizarSubtotal();
-                },
+                onChanged: _elegirItem,
               ),
-              if (_presupuestoItemId == null) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  initialValue: _conceptoId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Concepto'),
-                  items: _conceptos
-                      .map(
-                        (opcion) => DropdownMenuItem(
-                          value: opcion.id,
-                          child: Text(
-                            opcion.descripcion,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (valor) => setState(() => _conceptoId = valor),
+          ],
+        ),
+        if (_items.isNotEmpty && _presupuestoItemId == null) concepto,
+      ],
+    );
+    final insumo = SeccionFormulario(
+      titulo: 'Insumo',
+      icono: Icons.inventory_2_outlined,
+      children: [
+        Column(
+          key: _bloqueInsumo,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ResultadosInsumo(
+              buscando: _buscandoInsumo,
+              consulta: _consultaInsumo,
+              encontrados: _insumosEncontrados,
+              onElegir: bloqueado ? null : _elegirInsumo,
+            ),
+            TextField(
+              controller: _insumoBusqueda,
+              decoration: const InputDecoration(
+                labelText: 'Buscar insumo (opcional)',
+                helperText: 'Escriba al menos 2 letras',
+                prefixIcon: Icon(Icons.search),
+              ),
+              textInputAction: TextInputAction.search,
+              onChanged: bloqueado ? null : _buscarInsumo,
+            ),
+            if (_insumoId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: InputChip(
+                    avatar: const Icon(Icons.check_circle_outline),
+                    label: Text('Insumo seleccionado (#$_insumoId)'),
+                    deleteButtonTooltipMessage: 'Quitar insumo',
+                    onDeleted: bloqueado ? null : _quitarInsumo,
+                  ),
                 ),
-              ],
+              ),
+          ],
+        ),
+      ],
+    );
+    final subtotal = _subtotalVisible;
+    final valores = SeccionFormulario(
+      titulo: 'Cantidad y precio',
+      icono: Icons.calculate_outlined,
+      children: [
+        if (_unidades.isNotEmpty)
+          _Desplegable<int>(
+            etiqueta: 'Unidad de medida',
+            valor: _unidadMedidaId,
+            vacio: 'Sin unidad',
+            opciones: [
+              for (final opcion in _unidades) (opcion.id, opcion.descripcion),
             ],
-            const SizedBox(height: 12),
-            if (_unidades.isNotEmpty)
-              DropdownButtonFormField<int>(
-                initialValue: _unidadMedidaId,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unidad de medida',
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Sin unidad'),
-                  ),
-                  ..._unidades.map(
-                    (opcion) => DropdownMenuItem(
-                      value: opcion.id,
-                      child: Text(
-                        opcion.descripcion,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
-                onChanged: bloqueado
-                    ? null
-                    : (valor) => setState(() => _unidadMedidaId = valor),
-              ),
-            const SizedBox(height: 12),
-            Column(
-              key: _bloqueInsumo,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_buscandoInsumo)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text('Buscando insumos…'),
-                  )
-                else if (_consultaInsumo.length >= 2 &&
-                    _insumosEncontrados.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'No hay insumos que coincidan con «$_consultaInsumo».',
-                    ),
-                  )
-                else if (_insumosEncontrados.isNotEmpty)
-                  SizedBox(
-                    height: _insumosEncontrados.length * 56.0 > 220
-                        ? 220
-                        : _insumosEncontrados.length * 56.0,
-                    child: ListView(
-                      children: [
-                        for (final insumo in _insumosEncontrados)
-                          ListTile(
-                            title: Text(
-                              insumo.etiqueta,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: bloqueado
-                                ? null
-                                : () {
-                                    _relojInsumo?.cancel();
-                                    _generacionInsumo++;
-                                    _silenciarBusqueda = true;
-                                    setState(() {
-                                      _insumoId = insumo.id;
-                                      _insumosEncontrados = const [];
-                                      _buscandoInsumo = false;
-                                      _consultaInsumo = '';
-                                      _insumoBusqueda.text = insumo.etiqueta;
-                                    });
-                                    _silenciarBusqueda = false;
-                                  },
-                          ),
-                      ],
-                    ),
-                  ),
-                TextField(
-                  controller: _insumoBusqueda,
-                  decoration: const InputDecoration(
-                    labelText: 'Buscar insumo (opcional)',
-                    helperText: 'Escriba al menos 2 letras',
-                  ),
-                  textInputAction: TextInputAction.search,
-                  onChanged: bloqueado ? null : _buscarInsumo,
-                ),
-                if (_insumoId != null)
-                  ListTile(
-                    title: Text('Insumo seleccionado (#$_insumoId)'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: bloqueado
-                          ? null
-                          : () => setState(() {
-                              _relojInsumo?.cancel();
-                              _insumoId = null;
-                              _insumoBusqueda.clear();
-                              _insumosEncontrados = const [];
-                              _buscandoInsumo = false;
-                              _consultaInsumo = '';
-                            }),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descripcion,
-              decoration: const InputDecoration(labelText: 'Descripción'),
-              maxLength: 500,
-            ),
-            const SizedBox(height: 12),
-            TextField(
+            onChanged: bloqueado
+                ? null
+                : (valor) => setState(() => _unidadMedidaId = valor),
+          ),
+        FilaAdaptable(
+          anchoMinimoFila: 320,
+          children: [
+            _CampoNumero(
               controller: _cantidad,
-              decoration: const InputDecoration(labelText: 'Cantidad'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              etiqueta: 'Cantidad',
               onChanged: (_) => _actualizarSubtotal(),
             ),
-            const SizedBox(height: 12),
-            TextField(
+            _CampoNumero(
               controller: _precio,
-              decoration: const InputDecoration(labelText: 'Precio'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              etiqueta: 'Precio',
               onChanged: (_) => _actualizarSubtotal(),
-            ),
-            if (_subtotalVisible != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Subtotal: ${_subtotalVisible!}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: bloqueado ? null : _guardar,
-              child: const Text('Guardar'),
             ),
           ],
+        ),
+        if (subtotal != null) _Subtotal(subtotal),
+      ],
+    );
+    final descripcion = SeccionFormulario(
+      titulo: 'Descripción',
+      icono: Icons.notes,
+      children: [
+        TextField(
+          controller: _descripcion,
+          decoration: const InputDecoration(
+            labelText: 'Descripción',
+            alignLabelWithHint: true,
+          ),
+          minLines: 2,
+          maxLines: 5,
+          maxLength: 500,
+          keyboardType: TextInputType.multiline,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+      ],
+    );
+    return Scaffold(
+      appBar: AppBar(title: titulo),
+      body: AbsorbPointer(
+        absorbing: bloqueado,
+        child: CuerpoFormulario(
+          anchoMaximo: 1080,
+          children: [
+            if (bloqueado) const _AvisoSincronizando(),
+            AvisoTexto(_aviso ?? controlador.aviso),
+            ColumnasAdaptables(
+              izquierda: [obra, insumo],
+              derecha: [valores, descripcion],
+            ),
+            const SizedBox(height: 8),
+            AccionesFormulario(
+              child: FilledButton.icon(
+                onPressed: bloqueado ? null : _guardar,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Guardar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Desplegable con una opción vacía opcional ([vacio]) y textos que se
+/// cortan con puntos suspensivos en lugar de desbordar.
+class _Desplegable<T> extends StatelessWidget {
+  const _Desplegable({
+    required this.etiqueta,
+    required this.valor,
+    required this.opciones,
+    required this.onChanged,
+    this.vacio,
+  });
+
+  final String etiqueta;
+  final T? valor;
+  final String? vacio;
+  final List<(T, String)> opciones;
+  final ValueChanged<T?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: etiqueta),
+      items: [
+        if (vacio != null)
+          DropdownMenuItem<T>(
+            value: null,
+            child: Text(vacio!, overflow: TextOverflow.ellipsis),
+          ),
+        for (final (id, descripcion) in opciones)
+          DropdownMenuItem<T>(
+            value: id,
+            child: Text(descripcion, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _CampoNumero extends StatelessWidget {
+  const _CampoNumero({
+    required this.controller,
+    required this.etiqueta,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String etiqueta;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: etiqueta),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.next,
+      textAlign: TextAlign.end,
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _ResultadosInsumo extends StatelessWidget {
+  const _ResultadosInsumo({
+    required this.buscando,
+    required this.consulta,
+    required this.encontrados,
+    required this.onElegir,
+  });
+
+  final bool buscando;
+  final String consulta;
+  final List<InsumoOpcion> encontrados;
+  final ValueChanged<InsumoOpcion>? onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    final esquema = Theme.of(context).colorScheme;
+    final secundario = Theme.of(context).textTheme.bodyMedium
+        ?.copyWith(color: esquema.onSurfaceVariant);
+    if (buscando) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text('Buscando insumos…', style: secundario),
+      );
+    }
+    if (consulta.length >= 2 && encontrados.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          'No hay insumos que coincidan con «$consulta».',
+          style: secundario,
+        ),
+      );
+    }
+    if (encontrados.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final alto = encontrados.length * 56.0 > 220
+        ? 220.0
+        : encontrados.length * 56.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: esquema.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            height: alto,
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: encontrados.length,
+              itemBuilder: (context, indice) {
+                final insumo = encontrados[indice];
+                return ListTile(
+                  leading: const Icon(Icons.inventory_2_outlined),
+                  title: Text(insumo.etiqueta, overflow: TextOverflow.ellipsis),
+                  onTap: onElegir == null ? null : () => onElegir!(insumo),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Subtotal extends StatelessWidget {
+  const _Subtotal(this.valor);
+
+  final String valor;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    return Semantics(
+      label: 'Subtotal: $valor',
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: esquema.primaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Text(
+                'Subtotal',
+                style: tema.textTheme.titleSmall?.copyWith(
+                  color: esquema.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  valor,
+                  textAlign: TextAlign.end,
+                  style: tema.textTheme.titleLarge?.copyWith(
+                    color: esquema.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AvisoSincronizando extends StatelessWidget {
+  const _AvisoSincronizando();
+
+  @override
+  Widget build(BuildContext context) {
+    final esquema = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: esquema.secondaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.sync, size: 20, color: esquema.onSecondaryContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Sincronizando… No edite hasta terminar.',
+                  style: TextStyle(color: esquema.onSecondaryContainer),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/formulario_adaptable.dart';
 import '../../core/db/consultas.dart';
 import '../../core/decimal/dinero.dart';
 
@@ -76,169 +77,241 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
     return 'No hay actas $estado.';
   }
 
+  Widget _actaTile(ActaResumen acta) {
+    final esquema = Theme.of(context).colorScheme;
+    return ListTile(
+      key: Key('acta-${acta.numero}'),
+      minVerticalPadding: 12,
+      title: Text('Acta ${acta.numero}'),
+      subtitle: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text:
+                  '${fechaVisible(acta.fechaInicial)} – ${fechaVisible(acta.fechaFinal)}\n'
+                  '${acta.arquitecto} · ${acta.contratista} · ${acta.revisor}',
+            ),
+            if (acta.cerrada) const TextSpan(text: '\nCerrada'),
+            if (acta.cambiosSinSincronizar)
+              TextSpan(
+                text: '\nCambios sin sincronizar',
+                style: TextStyle(
+                  color: esquema.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+      ),
+      isThreeLine: true,
+      trailing: Text(dinero(acta.totalAprobado)),
+      onTap: () async {
+        await context.push('/actas/${acta.numero}');
+        // Al volver, el total y «Cambios sin sincronizar» pueden haber cambiado.
+        if (mounted) {
+          await _cargar();
+        }
+      },
+    );
+  }
+
+  Widget? _estadoVacio() {
+    if (_cargando) {
+      return const Center(child: Text('Cargando actas…'));
+    }
+    if (_actas.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(_mensajeVacio(), textAlign: TextAlign.center),
+        ),
+      );
+    }
+    return null;
+  }
+
+  List<Widget> _filtros({required bool panel}) {
+    return [
+      TextField(
+        key: const Key('buscar-acta'),
+        controller: _texto,
+        decoration: const InputDecoration(
+          labelText: 'Número o nombre',
+          prefixIcon: Icon(Icons.search),
+        ),
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _cargar(),
+      ),
+      const SizedBox(height: 12),
+      SegmentedButton<EstadoActaFiltro>(
+        expandedInsets: EdgeInsets.zero,
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: EstadoActaFiltro.todas, label: Text('Todas')),
+          ButtonSegment(
+            value: EstadoActaFiltro.abiertas,
+            label: Text('Abiertas'),
+          ),
+          ButtonSegment(
+            value: EstadoActaFiltro.cerradas,
+            label: Text('Cerradas'),
+          ),
+        ],
+        selected: {_estado},
+        onSelectionChanged: (seleccion) {
+          setState(() => _estado = seleccion.first);
+          _cargar();
+        },
+      ),
+      const SizedBox(height: 12),
+      FilaAdaptable(
+        anchoMinimoFila: panel ? double.infinity : 300,
+        children: [
+          DropdownButtonFormField<OrdenActas>(
+            initialValue: _orden,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Orden'),
+            items: const [
+              DropdownMenuItem(
+                value: OrdenActas.fechaInicial,
+                child: Text('Fecha inicial', overflow: TextOverflow.ellipsis),
+              ),
+              DropdownMenuItem(
+                value: OrdenActas.fechaFinal,
+                child: Text('Fecha final', overflow: TextOverflow.ellipsis),
+              ),
+              DropdownMenuItem(
+                value: OrdenActas.numero,
+                child: Text('Número', overflow: TextOverflow.ellipsis),
+              ),
+            ],
+            onChanged: (valor) {
+              if (valor == null) {
+                return;
+              }
+              setState(() => _orden = valor);
+              _cargar();
+            },
+          ),
+          DropdownButtonFormField<int?>(
+            initialValue: _obraId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Obra'),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Todas', overflow: TextOverflow.ellipsis),
+              ),
+              for (final obra in _obras)
+                DropdownMenuItem(
+                  value: obra.id,
+                  child: Text(
+                    obra.descripcion,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (valor) {
+              setState(() => _obraId = valor);
+              _cargar();
+            },
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _FechaCampo(
+              etiqueta: 'Desde',
+              onChanged: (valor) => _desde = valor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _FechaCampo(
+              etiqueta: 'Hasta',
+              onChanged: (valor) => _hasta = valor,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: IconButton.filledTonal(
+              tooltip: 'Aplicar fechas',
+              onPressed: _cargar,
+              icon: const Icon(Icons.search),
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Actas')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              key: const Key('buscar-acta'),
-              controller: _texto,
-              decoration: const InputDecoration(labelText: 'Número o nombre'),
-              onSubmitted: (_) => _cargar(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SegmentedButton<EstadoActaFiltro>(
-              segments: const [
-                ButtonSegment(
-                  value: EstadoActaFiltro.todas,
-                  label: Text('Todas'),
-                ),
-                ButtonSegment(
-                  value: EstadoActaFiltro.abiertas,
-                  label: Text('Abiertas'),
-                ),
-                ButtonSegment(
-                  value: EstadoActaFiltro.cerradas,
-                  label: Text('Cerradas'),
-                ),
-              ],
-              selected: {_estado},
-              onSelectionChanged: (seleccion) {
-                setState(() => _estado = seleccion.first);
-                _cargar();
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+      body: LayoutBuilder(
+        builder: (context, restricciones) {
+          final ventana = TamanoVentana.desdeAncho(restricciones.maxWidth);
+          final vacio = _estadoVacio();
+          if (ventana == TamanoVentana.expandido) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<OrdenActas>(
-                    initialValue: _orden,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Orden'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: OrdenActas.fechaInicial,
-                        child: Text(
-                          'Fecha inicial',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenActas.fechaFinal,
-                        child: Text(
-                          'Fecha final',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenActas.numero,
-                        child: Text('Número', overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
-                    onChanged: (valor) {
-                      if (valor == null) {
-                        return;
-                      }
-                      setState(() => _orden = valor);
-                      _cargar();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<int?>(
-                    initialValue: _obraId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Obra'),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('Todas', overflow: TextOverflow.ellipsis),
-                      ),
-                      for (final obra in _obras)
-                        DropdownMenuItem(
-                          value: obra.id,
-                          child: Text(
-                            obra.descripcion,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: (valor) {
-                      setState(() => _obraId = valor);
-                      _cargar();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _FechaCampo(
-                    etiqueta: 'Desde',
-                    onChanged: (valor) => _desde = valor,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _FechaCampo(
-                    etiqueta: 'Hasta',
-                    onChanged: (valor) => _hasta = valor,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Aplicar fechas',
-                  onPressed: _cargar,
-                  icon: const Icon(Icons.search),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _cargando
-                ? const Center(child: Text('Cargando actas…'))
-                : _actas.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(_mensajeVacio(), textAlign: TextAlign.center),
+                SizedBox(
+                  width: 360,
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _filtros(panel: true),
                     ),
-                  )
-                : ListView.builder(
-                    itemCount: _actas.length,
-                    itemBuilder: (context, indice) {
-                      final acta = _actas[indice];
-                      return ListTile(
-                        key: Key('acta-${acta.numero}'),
-                        minVerticalPadding: 12,
-                        title: Text('Acta ${acta.numero}'),
-                        subtitle: Text(
-                          '${fechaVisible(acta.fechaInicial)} – ${fechaVisible(acta.fechaFinal)}\n'
-                          '${acta.arquitecto} · ${acta.contratista} · ${acta.revisor}'
-                          '${acta.cerrada ? '\nCerrada' : ''}'
-                          '${acta.cambiosSinSincronizar ? '\nCambios sin sincronizar' : ''}',
-                        ),
-                        isThreeLine: true,
-                        trailing: Text(dinero(acta.totalAprobado)),
-                        onTap: () => context.push('/actas/${acta.numero}'),
-                      );
-                    },
                   ),
-          ),
-        ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child:
+                      vacio ??
+                      ListView.builder(
+                        itemCount: _actas.length,
+                        itemBuilder: (context, indice) =>
+                            _actaTile(_actas[indice]),
+                      ),
+                ),
+              ],
+            );
+          }
+          return CustomScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  ventana.margen,
+                  8,
+                  ventana.margen,
+                  8,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _filtros(panel: false),
+                  ),
+                ),
+              ),
+              if (vacio != null)
+                SliverFillRemaining(hasScrollBody: false, child: vacio)
+              else
+                SliverList.builder(
+                  itemCount: _actas.length,
+                  itemBuilder: (context, indice) => _actaTile(_actas[indice]),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -254,6 +327,7 @@ class _FechaCampo extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       decoration: InputDecoration(labelText: etiqueta, hintText: 'aaaa-mm-dd'),
+      keyboardType: TextInputType.datetime,
       onChanged: (valor) {
         final texto = valor.trim();
         onChanged(

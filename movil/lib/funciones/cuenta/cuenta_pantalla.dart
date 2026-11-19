@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/formulario_adaptable.dart';
 import '../../core/db/consultas.dart';
 import 'cerrar_sesion.dart';
 
@@ -14,8 +15,8 @@ class CuentaPantalla extends ConsumerWidget {
     final usuario = controlador.usuario;
     return Scaffold(
       appBar: AppBar(title: const Text('Cuenta')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: CuerpoFormulario(
+        anchoMaximo: 480,
         children: [
           Text(usuario?.nombre ?? ''),
           const SizedBox(height: 8),
