@@ -42,8 +42,9 @@ class _EstadoPresupuestos extends ConsumerState<ListaPresupuestosPantalla> {
           ? const Center(child: Text('Cargando presupuestos…'))
           : _filas.isEmpty
           ? const Center(child: Text('No hay presupuestos en el paquete.'))
-          : ListView.builder(
+          : ListView.separated(
               itemCount: _filas.length,
+              separatorBuilder: (_, _) => const Divider(),
               itemBuilder: (context, indice) {
                 final fila = _filas[indice];
                 final total = fila.total == null

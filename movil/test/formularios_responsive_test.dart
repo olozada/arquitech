@@ -5,6 +5,7 @@ import 'package:arquitectos_movil/app/aplicacion.dart';
 import 'package:arquitectos_movil/app/controlador.dart';
 import 'package:arquitectos_movil/app/dependencias.dart';
 import 'package:arquitectos_movil/app/formulario_adaptable.dart';
+import 'package:arquitectos_movil/app/pantalla_marca.dart';
 import 'package:arquitectos_movil/app/tema.dart';
 import 'package:arquitectos_movil/core/db/pendientes_db.dart';
 import 'package:arquitectos_movil/funciones/actas/formulario_linea.dart';
@@ -108,17 +109,11 @@ void main() {
           const FormularioLineaPantalla(numeroActa: 1),
         );
         expect(find.text('Cargando catálogos…'), findsNothing);
-        await tester.enterText(
-          find.widgetWithText(TextField, 'Cantidad'),
-          '2,5',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextField, 'Precio'),
-          '1000',
-        );
+        await tester.enterText(find.byKey(const Key('linea-cantidad')), '2,5');
+        await tester.enterText(find.byKey(const Key('linea-precio')), '1000');
         await tester.pump();
         expect(tester.takeException(), isNull);
-        expect(find.text('Subtotal'), findsOneWidget);
+        expect(find.text('Subtotal:'), findsOneWidget);
         expect(boton('Guardar'), findsOneWidget);
       });
 
@@ -180,21 +175,26 @@ void main() {
   });
 
   group('el layout se adapta al ancho', () {
-    testWidgets('login: una columna en teléfono, dos paneles en tablet', (
+    testWidgets('login: cabecera arriba en teléfono, dos paneles en tablet', (
       tester,
     ) async {
       await mostrar(tester, _tamanos['teléfono']!, const LoginPantalla());
-      expect(find.text('Arquitectos'), findsOneWidget);
-      expect(find.text('Iniciar sesión'), findsNothing);
+      expect(find.byType(LogoArquitech), findsOneWidget);
+      expect(find.text('Iniciar sesión'), findsOneWidget);
+      final logoTelefono = tester.getRect(find.byType(LogoArquitech));
+      final campoTelefono = tester.getRect(find.byKey(const Key('usuario')));
+      expect(campoTelefono.top, greaterThan(logoTelefono.bottom));
 
       await mostrar(
         tester,
         _tamanos['tablet horizontal']!,
         const LoginPantalla(),
       );
-      expect(find.text('Arquitectos'), findsOneWidget);
+      expect(find.byType(LogoArquitech), findsOneWidget);
       expect(find.text('Iniciar sesión'), findsOneWidget);
+      final logo = tester.getRect(find.byType(LogoArquitech));
       final campo = tester.getRect(find.byKey(const Key('usuario')));
+      expect(logo.right, lessThanOrEqualTo(640));
       expect(campo.left, greaterThan(640));
       expect(campo.width, lessThanOrEqualTo(420));
     });
@@ -208,16 +208,12 @@ void main() {
         const FormularioLineaPantalla(numeroActa: 1),
       );
       final construccion = tester.getRect(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Construcción'),
+        find.byKey(const Key('linea-construccion')),
       );
-      final concepto = tester.getRect(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Concepto'),
-      );
+      final concepto = tester.getRect(find.byKey(const Key('linea-concepto')));
       expect(concepto.top, greaterThan(construccion.bottom));
-      final cantidad = tester.getRect(
-        find.widgetWithText(TextField, 'Cantidad'),
-      );
-      final precio = tester.getRect(find.widgetWithText(TextField, 'Precio'));
+      final cantidad = tester.getRect(find.byKey(const Key('linea-cantidad')));
+      final precio = tester.getRect(find.byKey(const Key('linea-precio')));
       expect(precio.top, greaterThan(cantidad.bottom));
       expect(tester.getSize(boton('Guardar')).width, 320 - 2 * 16);
     });
@@ -230,10 +226,8 @@ void main() {
         _tamanos['teléfono']!,
         const FormularioLineaPantalla(numeroActa: 1),
       );
-      final cantidad = tester.getRect(
-        find.widgetWithText(TextField, 'Cantidad'),
-      );
-      final precio = tester.getRect(find.widgetWithText(TextField, 'Precio'));
+      final cantidad = tester.getRect(find.byKey(const Key('linea-cantidad')));
+      final precio = tester.getRect(find.byKey(const Key('linea-precio')));
       expect(precio.top, cantidad.top);
       expect(precio.left, greaterThan(cantidad.right));
     });
@@ -247,10 +241,10 @@ void main() {
           const FormularioLineaPantalla(numeroActa: 1),
         );
         final construccion = tester.getRect(
-          find.widgetWithText(DropdownButtonFormField<int>, 'Construcción'),
+          find.byKey(const Key('linea-construccion')),
         );
         final cantidad = tester.getRect(
-          find.widgetWithText(TextField, 'Cantidad'),
+          find.byKey(const Key('linea-cantidad')),
         );
         expect(cantidad.left, greaterThan(construccion.right));
         expect(tester.getSize(boton('Guardar')).width, 280);

@@ -117,13 +117,12 @@ void main() {
     );
 
     expect(find.text('Sin descripción'), findsOneWidget);
-    expect(
-      find.text('Arquitecto · Aprobado · Sin sincronizar'),
-      findsOneWidget,
-    );
+    expect(find.text('Arquitecto'), findsOneWidget);
+    expect(find.text('Aprobado'), findsOneWidget);
+    expect(find.text('Sin sincronizar'), findsOneWidget);
     expect(find.text('Agregar línea'), findsOneWidget);
-    final lista = tester.widget<ListView>(find.byType(ListView));
-    expect((lista.padding! as EdgeInsets).bottom, greaterThanOrEqualTo(88));
+    expect(find.text('Editar'), findsOneWidget);
+    expect(find.text('Eliminar'), findsOneWidget);
   });
 
   testWidgets('revisor: el interruptor se anuncia como «Aprobar»', (
@@ -166,6 +165,66 @@ void main() {
     manejador.dispose();
   });
 
+  for (final tamano in const [Size(320, 568), Size(1280, 800)]) {
+    testWidgets(
+      'detalle sin desbordes en ${tamano.width.toInt()}×${tamano.height.toInt()}',
+      (tester) async {
+        tester.view.physicalSize = tamano;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final rechazada = LineaDetalle(
+          localId: 'c2',
+          construccionId: 8,
+          construccion: 'Estructura en hormigón reforzado',
+          conceptoId: 1,
+          tipoUsuarioId: 3,
+          perfil: 'Contratista',
+          descripcion: 'Suministro e instalación de acero de refuerzo',
+          cantidad: '1200',
+          precio: '708333.33',
+          subtotal: '850000000',
+          aprobado: false,
+          estadoLocal: 'editado',
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: temaArquitectos(),
+            home: DetalleActaLayout(
+              numero: 1,
+              acciones: _RevisorEdita(),
+              enLinea: true,
+              onPdf: (_) async {},
+              detalle: DetalleActa(
+                numero: 1,
+                fechaInicial: '2026-11-01',
+                fechaFinal: '2026-11-30',
+                arquitecto: 'Carlos Méndez Rodríguez',
+                revisor: 'Laura Gómez',
+                contratista: 'Constructora Alfa y Asociados S. A. S.',
+                observacion: 'Obra norte',
+                cerrada: false,
+                totalAprobado: Decimal.parse('45400000'),
+                lineas: [_lineaEjemplo, rechazada],
+              ),
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.text('PDF'), findsOneWidget);
+        expect(find.text('ABIERTA'), findsOneWidget);
+        // La segunda línea puede quedar fuera de la pantalla: se baja hasta
+        // ella para que se construya y se mida.
+        await tester.scrollUntilVisible(
+          find.text('Rechazado'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.text('Rechazado'), findsOneWidget);
+      },
+    );
+  }
+
   testWidgets('el aviso de datos actualizados no se pinta como error', (
     tester,
   ) async {
@@ -200,6 +259,19 @@ void main() {
 class _Revisor extends _SinAcciones {
   @override
   bool esRevisor() => true;
+}
+
+/// Revisor que además puede editar todas las líneas: muestra a la vez el
+/// interruptor y los botones Editar/Eliminar, el caso más cargado.
+class _RevisorEdita extends _SinAcciones {
+  @override
+  bool esRevisor() => true;
+
+  @override
+  bool puedeAgregarLinea(bool actaCerrada) => !actaCerrada;
+
+  @override
+  bool puedeEditarLinea(LineaDetalle linea, bool actaCerrada) => !actaCerrada;
 }
 
 class _ArquitectoEdita extends _SinAcciones {

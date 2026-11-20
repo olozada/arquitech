@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/tema.dart';
 import '../../core/db/consultas.dart';
 import '../../core/decimal/dinero.dart';
 import 'grafico_acumulado_mensual.dart';
@@ -88,30 +89,22 @@ class _EstadoDetallePresupuesto
             ],
           ),
           actions: [
-            if (enLinea)
-              Semantics(
-                label: 'Descargar PDF del presupuesto',
-                button: true,
-                child: IconButton(
-                  tooltip: 'PDF',
-                  onPressed: controlador.ocupado
-                      ? null
-                      : () => controlador.abrirPdfPresupuesto(widget.id),
-                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                ),
+            if (enLinea) ...[
+              BotonBarra(
+                texto: 'PDF',
+                descripcion: 'Descargar PDF del presupuesto',
+                onPressed: controlador.ocupado
+                    ? null
+                    : () => controlador.abrirPdfPresupuesto(widget.id),
               ),
-            if (enLinea)
-              Semantics(
-                label: 'Descargar Excel del presupuesto',
-                button: true,
-                child: IconButton(
-                  tooltip: 'Excel',
-                  onPressed: controlador.ocupado
-                      ? null
-                      : () => controlador.abrirExcelPresupuesto(widget.id),
-                  icon: const Icon(Icons.table_chart_outlined),
-                ),
+              BotonBarra(
+                texto: 'XLS',
+                descripcion: 'Descargar Excel del presupuesto',
+                onPressed: controlador.ocupado
+                    ? null
+                    : () => controlador.abrirExcelPresupuesto(widget.id),
               ),
+            ],
           ],
         ),
         body: TabBarView(
@@ -184,7 +177,8 @@ class _ResumenCostos extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Total ${dineroPresupuesto(resumen.total)}',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             if (resumen.valorPorM2 != null)
               Text('Valor por m² ${dineroPresupuesto(resumen.valorPorM2!)}'),
@@ -231,7 +225,7 @@ class _PestanaValidacion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (aviso.isEmpty) {
-      return const Center(child: Text('Sin avisos de validación.'));
+      return const Center(child: Text('Sin avisos de validación'));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),

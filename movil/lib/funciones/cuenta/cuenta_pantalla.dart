@@ -13,15 +13,26 @@ class CuentaPantalla extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controlador = ref.watch(controladorProvider);
     final usuario = controlador.usuario;
+    final tema = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Cuenta')),
       body: CuerpoFormulario(
         anchoMaximo: 480,
         children: [
-          Text(usuario?.nombre ?? ''),
-          const SizedBox(height: 8),
-          Text(usuario == null ? '' : nombrePerfil(usuario.tipoUsuarioId)),
-          const SizedBox(height: 8),
+          Text(
+            usuario?.nombre ?? '',
+            style: tema.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            usuario == null ? '' : nombrePerfil(usuario.tipoUsuarioId),
+            style: tema.textTheme.bodyMedium?.copyWith(
+              color: tema.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
           Text('Dispositivo: ${controlador.dispositivoId ?? ''}'),
           const SizedBox(height: 8),
           Text(

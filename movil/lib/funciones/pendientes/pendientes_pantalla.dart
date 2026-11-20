@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/formulario_adaptable.dart';
 import '../../core/db/consultas.dart';
 import '../../core/db/pendientes_db.dart';
 import '../../sincronizacion/modelos.dart';
@@ -83,31 +84,36 @@ class _EstadoPendientes extends ConsumerState<PendientesPantalla> {
   @override
   Widget build(BuildContext context) {
     final controlador = ref.watch(controladorProvider);
+    final tema = Theme.of(context);
+    final titulo = tema.textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+    const negrita = TextStyle(fontWeight: FontWeight.w700);
     return Scaffold(
       appBar: AppBar(title: const Text('Pendientes')),
       body: _cargando
           ? const Center(child: Text('Cargando…'))
-          : ListView(
-              padding: const EdgeInsets.all(16),
+          : CuerpoFormulario(
+              anchoMaximo: 720,
               children: [
                 Text('En cola: ${controlador.pendientes}'),
                 const SizedBox(height: 8),
                 Text('Fallidas: ${controlador.fallidas}'),
                 const SizedBox(height: 16),
                 if (_cola.isNotEmpty) ...[
-                  Text(
-                    'Por sincronizar',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Semantics(
+                    header: true,
+                    child: Text('Por sincronizar', style: titulo),
                   ),
                   const SizedBox(height: 8),
                   for (final item in _cola)
                     Card(
                       child: ListTile(
-                        title: Text('Acta ${item.numeroActa} · ${item.tipo}'),
-                        subtitle: Text(
-                          'Secuencia ${item.secuencia}'
-                          '${item.localId != null ? ' · ${item.localId}' : ''}',
+                        title: Text(
+                          'Acta ${item.numeroActa} · ${item.tipo}',
+                          style: negrita,
                         ),
+                        subtitle: Text('Secuencia ${item.secuencia}'),
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -115,9 +121,9 @@ class _EstadoPendientes extends ConsumerState<PendientesPantalla> {
                 if (_fallidas.isEmpty)
                   const Text('No hay operaciones fallidas.')
                 else ...[
-                  Text(
-                    'Rechazadas o en conflicto',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Semantics(
+                    header: true,
+                    child: Text('Rechazadas o en conflicto', style: titulo),
                   ),
                   const SizedBox(height: 8),
                   for (final registro in _fallidas) ...[
@@ -127,14 +133,15 @@ class _EstadoPendientes extends ConsumerState<PendientesPantalla> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Acta ${registro.numeroActa} · ${registro.tipo} · ${registro.estado}',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
+                            Text('Acta ${registro.numeroActa}', style: negrita),
+                            Text('${registro.tipo} · ${registro.estado}'),
                             const SizedBox(height: 4),
-                            Text(registro.mensaje),
-                            if (registro.localId != null)
-                              Text('Línea: ${registro.localId}'),
+                            Text(
+                              registro.mensaje,
+                              style: tema.textTheme.bodyMedium?.copyWith(
+                                color: tema.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             ComparacionFallidaVista(
                               datos: ComparacionFallida.desde(registro),

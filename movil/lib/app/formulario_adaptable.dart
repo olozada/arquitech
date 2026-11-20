@@ -89,19 +89,19 @@ class CuerpoFormulario extends StatelessWidget {
   }
 }
 
-/// Grupo de campos con título. En ventanas compactas se dibuja plano para no
-/// gastar ancho; desde [anchoMediano] (ancho de la ventana) se dibuja como
-/// tarjeta con borde.
+/// Grupo de campos con título opcional. En ventanas compactas se dibuja plano
+/// para no gastar ancho; desde [anchoMediano] (ancho de la ventana) se dibuja
+/// como tarjeta con borde.
 class SeccionFormulario extends StatelessWidget {
   const SeccionFormulario({
-    required this.titulo,
     required this.children,
+    this.titulo,
     this.icono,
     this.espacio = 12,
     super.key,
   });
 
-  final String titulo;
+  final String? titulo;
   final IconData? icono;
   final List<Widget> children;
   final double espacio;
@@ -114,27 +114,29 @@ class SeccionFormulario extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Semantics(
-          header: true,
-          child: Row(
-            children: [
-              if (icono != null) ...[
-                Icon(icono, size: 20, color: esquema.primary),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  titulo,
-                  style: tema.textTheme.titleSmall?.copyWith(
-                    color: esquema.primary,
-                    fontWeight: FontWeight.w600,
+        if (titulo != null) ...[
+          Semantics(
+            header: true,
+            child: Row(
+              children: [
+                if (icono != null) ...[
+                  Icon(icono, size: 20, color: esquema.onSurface),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    titulo!,
+                    style: tema.textTheme.titleSmall?.copyWith(
+                      color: esquema.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        SizedBox(height: espacio),
+          SizedBox(height: espacio),
+        ],
         ..._separar(children, SizedBox(height: espacio)),
       ],
     );
@@ -149,7 +151,7 @@ class SeccionFormulario extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: esquema.surfaceContainerLow,
+          color: esquema.surface,
           border: Border.all(color: esquema.outlineVariant),
           borderRadius: BorderRadius.circular(16),
         ),
@@ -280,11 +282,56 @@ class AccionesFormulario extends StatelessWidget {
   }
 }
 
-/// Campo de contraseña con botón para mostrar u ocultar el texto.
+/// Campo con la etiqueta encima, como en las maquetas. El campo lleva solo el
+/// texto de ayuda ([InputDecoration.hintText]).
+///
+/// Con [fusionarSemantica] el lector de pantalla anuncia etiqueta y campo como
+/// un solo elemento. Desactivarlo cuando el campo tiene botones propios (por
+/// ejemplo, mostrar u ocultar la contraseña), que se perderían al fusionar.
+class CampoEtiquetado extends StatelessWidget {
+  const CampoEtiquetado({
+    required this.etiqueta,
+    required this.child,
+    this.fusionarSemantica = true,
+    super.key,
+  });
+
+  final String etiqueta;
+  final Widget child;
+  final bool fusionarSemantica;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final columna = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 16, bottom: 6),
+          child: Text(
+            etiqueta,
+            style: tema.textTheme.bodyMedium?.copyWith(
+              color: tema.colorScheme.onSurface,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+    return fusionarSemantica ? MergeSemantics(child: columna) : columna;
+  }
+}
+
+/// Campo de contraseña con botón para mostrar u ocultar el texto. Lleva
+/// [etiqueta] dentro del campo, o solo [pista] cuando la etiqueta va encima
+/// ([CampoEtiquetado]).
 class CampoContrasena extends StatefulWidget {
   const CampoContrasena({
     required this.controller,
-    required this.etiqueta,
+    this.etiqueta,
+    this.pista,
     this.autofillHints,
     this.textInputAction,
     this.onSubmitted,
@@ -293,7 +340,8 @@ class CampoContrasena extends StatefulWidget {
   });
 
   final TextEditingController controller;
-  final String etiqueta;
+  final String? etiqueta;
+  final String? pista;
   final Iterable<String>? autofillHints;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
@@ -319,11 +367,12 @@ class _EstadoCampoContrasena extends State<CampoContrasena> {
       onSubmitted: widget.onSubmitted,
       decoration: InputDecoration(
         labelText: widget.etiqueta,
-        prefixIcon: const Icon(Icons.lock_outline),
+        hintText: widget.pista,
         suffixIcon: IconButton(
           tooltip: _oculta ? 'Mostrar contraseña' : 'Ocultar contraseña',
           icon: Icon(
-            _oculta ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            // Como en la maqueta: ojo tachado mientras está oculta.
+            _oculta ? Icons.visibility_off_outlined : Icons.visibility_outlined,
           ),
           onPressed: () => setState(() => _oculta = !_oculta),
         ),

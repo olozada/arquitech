@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
 import '../../app/formulario_adaptable.dart';
+import '../../app/tema.dart';
 import '../../core/db/consultas.dart';
 import '../../core/decimal/dinero.dart';
+import 'estado_acta.dart';
 
 class ListaActasPantalla extends ConsumerStatefulWidget {
   const ListaActasPantalla({super.key});
@@ -24,6 +26,7 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
   List<ObraOpcion> _obras = const [];
   List<ActaResumen> _actas = const [];
   var _cargando = true;
+  var _verFiltros = true;
 
   @override
   void initState() {
@@ -78,33 +81,9 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
   }
 
   Widget _actaTile(ActaResumen acta) {
-    final esquema = Theme.of(context).colorScheme;
-    return ListTile(
+    return _TarjetaActa(
       key: Key('acta-${acta.numero}'),
-      minVerticalPadding: 12,
-      title: Text('Acta ${acta.numero}'),
-      subtitle: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text:
-                  '${fechaVisible(acta.fechaInicial)} – ${fechaVisible(acta.fechaFinal)}\n'
-                  '${acta.arquitecto} · ${acta.contratista} · ${acta.revisor}',
-            ),
-            if (acta.cerrada) const TextSpan(text: '\nCerrada'),
-            if (acta.cambiosSinSincronizar)
-              TextSpan(
-                text: '\nCambios sin sincronizar',
-                style: TextStyle(
-                  color: esquema.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-          ],
-        ),
-      ),
-      isThreeLine: true,
-      trailing: Text(dinero(acta.totalAprobado)),
+      acta: acta,
       onTap: () async {
         await context.push('/actas/${acta.numero}');
         // Al volver, el total y «Cambios sin sincronizar» pueden haber cambiado.
@@ -113,6 +92,21 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
         }
       },
     );
+  }
+
+  Future<void> _elegirFechas() async {
+    final rango = await showDialog<(String?, String?)>(
+      context: context,
+      builder: (context) => _DialogoFechas(desde: _desde, hasta: _hasta),
+    );
+    if (rango == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _desde = rango.$1;
+      _hasta = rango.$2;
+    });
+    await _cargar();
   }
 
   Widget? _estadoVacio() {
@@ -130,128 +124,138 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
     return null;
   }
 
-  List<Widget> _filtros({required bool panel}) {
+  List<Widget> _filtros() {
+    final obra = _obras.where((opcion) => opcion.id == _obraId).firstOrNull;
+    final fechas = _desde == null && _hasta == null
+        ? 'Desde - Hasta'
+        : '${_desde == null ? '…' : fechaVisible(_desde!)} - '
+              '${_hasta == null ? '…' : fechaVisible(_hasta!)}';
     return [
-      TextField(
-        key: const Key('buscar-acta'),
-        controller: _texto,
-        decoration: const InputDecoration(
-          labelText: 'Número o nombre',
-          prefixIcon: Icon(Icons.search),
-        ),
-        textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _cargar(),
-      ),
-      const SizedBox(height: 12),
-      SegmentedButton<EstadoActaFiltro>(
-        expandedInsets: EdgeInsets.zero,
-        showSelectedIcon: false,
-        segments: const [
-          ButtonSegment(value: EstadoActaFiltro.todas, label: Text('Todas')),
-          ButtonSegment(
-            value: EstadoActaFiltro.abiertas,
-            label: Text('Abiertas'),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              key: const Key('buscar-acta'),
+              controller: _texto,
+              decoration: const InputDecoration(
+                hintText: 'Número o nombre',
+                prefixIcon: Icon(Icons.search),
+              ),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _cargar(),
+            ),
           ),
-          ButtonSegment(
-            value: EstadoActaFiltro.cerradas,
-            label: Text('Cerradas'),
+          const SizedBox(width: 8),
+          IconButton.outlined(
+            tooltip: _verFiltros ? 'Ocultar filtros' : 'Mostrar filtros',
+            style: IconButton.styleFrom(
+              minimumSize: const Size.square(48),
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            onPressed: () => setState(() => _verFiltros = !_verFiltros),
+            icon: const Icon(Icons.tune),
           ),
         ],
-        selected: {_estado},
-        onSelectionChanged: (seleccion) {
-          setState(() => _estado = seleccion.first);
+      ),
+      const SizedBox(height: 12),
+      _SelectorEstado(
+        valor: _estado,
+        onChanged: (valor) {
+          setState(() => _estado = valor);
           _cargar();
         },
       ),
-      const SizedBox(height: 12),
-      FilaAdaptable(
-        anchoMinimoFila: panel ? double.infinity : 300,
-        children: [
-          DropdownButtonFormField<OrdenActas>(
-            initialValue: _orden,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Orden'),
-            items: const [
-              DropdownMenuItem(
-                value: OrdenActas.fechaInicial,
-                child: Text('Fecha inicial', overflow: TextOverflow.ellipsis),
-              ),
-              DropdownMenuItem(
-                value: OrdenActas.fechaFinal,
-                child: Text('Fecha final', overflow: TextOverflow.ellipsis),
-              ),
-              DropdownMenuItem(
-                value: OrdenActas.numero,
-                child: Text('Número', overflow: TextOverflow.ellipsis),
-              ),
-            ],
-            onChanged: (valor) {
-              if (valor == null) {
-                return;
-              }
-              setState(() => _orden = valor);
-              _cargar();
-            },
-          ),
-          DropdownButtonFormField<int?>(
-            initialValue: _obraId,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Obra'),
-            items: [
-              const DropdownMenuItem<int?>(
-                value: null,
-                child: Text('Todas', overflow: TextOverflow.ellipsis),
-              ),
-              for (final obra in _obras)
-                DropdownMenuItem(
-                  value: obra.id,
-                  child: Text(
-                    obra.descripcion,
-                    overflow: TextOverflow.ellipsis,
+      if (_verFiltros) ...[
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            PopupMenuButton<OrdenActas>(
+              tooltip: 'Ordenar actas',
+              onSelected: (valor) {
+                setState(() => _orden = valor);
+                _cargar();
+              },
+              itemBuilder: (context) => [
+                for (final (valor, texto) in const [
+                  (OrdenActas.fechaInicial, 'Fecha inicial'),
+                  (OrdenActas.fechaFinal, 'Fecha final'),
+                  (OrdenActas.numero, 'Número'),
+                ])
+                  CheckedPopupMenuItem(
+                    value: valor,
+                    checked: _orden == valor,
+                    child: Text(texto),
                   ),
+              ],
+              child: const _PastillaFiltro(
+                texto: 'Orden',
+                iconoFinal: Icons.expand_more,
+              ),
+            ),
+            PopupMenuButton<int>(
+              tooltip: 'Filtrar por obra',
+              onSelected: (valor) {
+                setState(() => _obraId = valor < 0 ? null : valor);
+                _cargar();
+              },
+              itemBuilder: (context) => [
+                CheckedPopupMenuItem(
+                  value: -1,
+                  checked: _obraId == null,
+                  child: const Text('Todas'),
                 ),
-            ],
-            onChanged: (valor) {
-              setState(() => _obraId = valor);
-              _cargar();
-            },
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _FechaCampo(
-              etiqueta: 'Desde',
-              onChanged: (valor) => _desde = valor,
+                for (final opcion in _obras)
+                  CheckedPopupMenuItem(
+                    value: opcion.id,
+                    checked: _obraId == opcion.id,
+                    child: Text(
+                      opcion.descripcion,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              child: _PastillaFiltro(
+                texto: obra?.descripcion ?? 'Obra',
+                iconoFinal: Icons.expand_more,
+                activa: obra != null,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _FechaCampo(
-              etiqueta: 'Hasta',
-              onChanged: (valor) => _hasta = valor,
+            Semantics(
+              button: true,
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: _elegirFechas,
+                child: _PastillaFiltro(
+                  texto: fechas,
+                  icono: Icons.calendar_today_outlined,
+                  activa: _desde != null || _hasta != null,
+                ),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: IconButton.filledTonal(
-              tooltip: 'Aplicar fechas',
-              onPressed: _cargar,
-              icon: const Icon(Icons.search),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     ];
   }
 
   @override
   Widget build(BuildContext context) {
+    final controlador = ref.watch(controladorProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Actas')),
+      appBar: AppBar(
+        title: const Text('Actas'),
+        actions: [
+          AvatarUsuario(
+            nombre: controlador.usuario?.nombre,
+            onPressed: () => context.push('/cuenta'),
+          ),
+        ],
+      ),
       body: LayoutBuilder(
         builder: (context, restricciones) {
           final ventana = TamanoVentana.desdeAncho(restricciones.maxWidth);
@@ -268,7 +272,7 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: _filtros(panel: true),
+                      children: _filtros(),
                     ),
                   ),
                 ),
@@ -277,6 +281,7 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
                   child:
                       vacio ??
                       ListView.builder(
+                        padding: const EdgeInsets.all(16),
                         itemCount: _actas.length,
                         itemBuilder: (context, indice) =>
                             _actaTile(_actas[indice]),
@@ -291,23 +296,31 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                   ventana.margen,
-                  8,
+                  16,
                   ventana.margen,
-                  8,
+                  12,
                 ),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _filtros(panel: false),
+                    children: _filtros(),
                   ),
                 ),
               ),
               if (vacio != null)
                 SliverFillRemaining(hasScrollBody: false, child: vacio)
               else
-                SliverList.builder(
-                  itemCount: _actas.length,
-                  itemBuilder: (context, indice) => _actaTile(_actas[indice]),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    ventana.margen,
+                    0,
+                    ventana.margen,
+                    ventana.margen,
+                  ),
+                  sliver: SliverList.builder(
+                    itemCount: _actas.length,
+                    itemBuilder: (context, indice) => _actaTile(_actas[indice]),
+                  ),
                 ),
             ],
           );
@@ -317,23 +330,301 @@ class _EstadoLista extends ConsumerState<ListaActasPantalla> {
   }
 }
 
-class _FechaCampo extends StatelessWidget {
-  const _FechaCampo({required this.etiqueta, required this.onChanged});
+/// Selector Todas / Abiertas / Cerradas: píldora con la opción elegida en
+/// amarillo.
+class _SelectorEstado extends StatelessWidget {
+  const _SelectorEstado({required this.valor, required this.onChanged});
 
-  final String etiqueta;
-  final ValueChanged<String?> onChanged;
+  final EstadoActaFiltro valor;
+  final ValueChanged<EstadoActaFiltro> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      decoration: InputDecoration(labelText: etiqueta, hintText: 'aaaa-mm-dd'),
-      keyboardType: TextInputType.datetime,
-      onChanged: (valor) {
-        final texto = valor.trim();
-        onChanged(
-          RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(texto) ? texto : null,
-        );
-      },
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    const opciones = [
+      (EstadoActaFiltro.todas, 'Todas'),
+      (EstadoActaFiltro.abiertas, 'Abiertas'),
+      (EstadoActaFiltro.cerradas, 'Cerradas'),
+    ];
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: esquema.surface,
+        shape: StadiumBorder(side: BorderSide(color: esquema.outlineVariant)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          children: [
+            for (final (opcion, texto) in opciones)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: opcion == valor,
+                  child: Material(
+                    color: opcion == valor
+                        ? esquema.primary
+                        : Colors.transparent,
+                    shape: const StadiumBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => onChanged(opcion),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 40),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              texto,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tema.textTheme.bodyMedium?.copyWith(
+                                color: opcion == valor
+                                    ? esquema.onPrimary
+                                    : esquema.onSurface,
+                                fontWeight: opcion == valor
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pastilla con borde para los filtros (Orden, Obra, fechas). Solo dibuja; el
+/// toque lo maneja quien la contiene.
+class _PastillaFiltro extends StatelessWidget {
+  const _PastillaFiltro({
+    required this.texto,
+    this.icono,
+    this.iconoFinal,
+    this.activa = false,
+  });
+
+  final String texto;
+  final IconData? icono;
+  final IconData? iconoFinal;
+  final bool activa;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: activa ? esquema.primaryContainer : esquema.surface,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: activa ? esquema.primary : esquema.outlineVariant,
+          ),
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40, maxWidth: 240),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icono != null) ...[
+                Icon(icono, size: 16, color: esquema.onSurface),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Text(
+                  texto,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tema.textTheme.bodyMedium,
+                ),
+              ),
+              if (iconoFinal != null) ...[
+                const SizedBox(width: 8),
+                Icon(iconoFinal, size: 18, color: esquema.onSurface),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TarjetaActa extends StatelessWidget {
+  const _TarjetaActa({required this.acta, required this.onTap, super.key});
+
+  final ActaResumen acta;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    final secundario = tema.textTheme.bodySmall?.copyWith(
+      color: esquema.onSurface,
+    );
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: esquema.primary,
+                foregroundColor: esquema.onPrimary,
+                child: const Icon(Icons.description_outlined, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'Acta ${numeroActaVisible(acta.numero)}',
+                          style: tema.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        EtiquetaEstadoActa(cerrada: acta.cerrada),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Periodo: ${fechaVisible(acta.fechaInicial)} – '
+                      '${fechaVisible(acta.fechaFinal)}',
+                      style: secundario,
+                    ),
+                    Text(
+                      'Contratista: ${acta.contratista}',
+                      style: secundario,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Total aprobado: ${dinero(acta.totalAprobado)}',
+                      style: secundario?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (acta.cambiosSinSincronizar) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.sync, size: 14, color: esquema.tertiary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Cambios sin sincronizar',
+                              style: tema.textTheme.bodySmall?.copyWith(
+                                color: esquema.tertiary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Diálogo con dos campos aaaa-mm-dd. La app no configura localizaciones, así
+/// que no se usa `showDatePicker`. Devuelve (desde, hasta); cada uno es nulo si
+/// quedó vacío o con formato inválido.
+class _DialogoFechas extends StatefulWidget {
+  const _DialogoFechas({required this.desde, required this.hasta});
+
+  final String? desde;
+  final String? hasta;
+
+  @override
+  State<_DialogoFechas> createState() => _EstadoDialogoFechas();
+}
+
+class _EstadoDialogoFechas extends State<_DialogoFechas> {
+  late final _desde = TextEditingController(text: widget.desde ?? '');
+  late final _hasta = TextEditingController(text: widget.hasta ?? '');
+
+  @override
+  void dispose() {
+    _desde.dispose();
+    _hasta.dispose();
+    super.dispose();
+  }
+
+  static String? _valida(String texto) {
+    final limpio = texto.trim();
+    return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(limpio) ? limpio : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Fechas'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CampoEtiquetado(
+              etiqueta: 'Desde',
+              child: TextField(
+                controller: _desde,
+                decoration: const InputDecoration(hintText: 'aaaa-mm-dd'),
+                keyboardType: TextInputType.datetime,
+                textInputAction: TextInputAction.next,
+              ),
+            ),
+            const SizedBox(height: 12),
+            CampoEtiquetado(
+              etiqueta: 'Hasta',
+              child: TextField(
+                controller: _hasta,
+                decoration: const InputDecoration(hintText: 'aaaa-mm-dd'),
+                keyboardType: TextInputType.datetime,
+                textInputAction: TextInputAction.done,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, (null, null)),
+          child: const Text('Limpiar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, (
+            _valida(_desde.text),
+            _valida(_hasta.text),
+          )),
+          child: const Text('Aplicar'),
+        ),
+      ],
     );
   }
 }

@@ -293,6 +293,7 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
       );
     }
     final concepto = _Desplegable<int>(
+      clave: const Key('linea-concepto'),
       etiqueta: 'Concepto',
       valor: _conceptoId,
       opciones: [
@@ -300,13 +301,14 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
       ],
       onChanged: (valor) => setState(() => _conceptoId = valor),
     );
+    // Orden de la maqueta: construcción, ítem (o concepto), unidad, insumo,
+    // descripción, cantidad, precio y subtotal.
     final obra = SeccionFormulario(
-      titulo: 'Obra y actividad',
-      icono: Icons.apartment_outlined,
       children: [
         FilaAdaptable(
           children: [
             _Desplegable<int>(
+              clave: const Key('linea-construccion'),
               etiqueta: 'Construcción',
               valor: _construccionId,
               opciones: [
@@ -319,7 +321,8 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
               concepto
             else
               _Desplegable<int>(
-                etiqueta: 'Ítem de presupuesto (opcional)',
+                clave: const Key('linea-item'),
+                etiqueta: 'Ítem de presupuesto',
                 valor: _presupuestoItemId,
                 vacio: 'Sin ítem de presupuesto',
                 opciones: [
@@ -330,11 +333,22 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
           ],
         ),
         if (_items.isNotEmpty && _presupuestoItemId == null) concepto,
+        if (_unidades.isNotEmpty)
+          _Desplegable<int>(
+            clave: const Key('linea-unidad'),
+            etiqueta: 'Unidad de medida',
+            valor: _unidadMedidaId,
+            vacio: 'Sin unidad',
+            opciones: [
+              for (final opcion in _unidades) (opcion.id, opcion.descripcion),
+            ],
+            onChanged: bloqueado
+                ? null
+                : (valor) => setState(() => _unidadMedidaId = valor),
+          ),
       ],
     );
-    final insumo = SeccionFormulario(
-      titulo: 'Insumo',
-      icono: Icons.inventory_2_outlined,
+    final insumoYDescripcion = SeccionFormulario(
       children: [
         Column(
           key: _bloqueInsumo,
@@ -346,15 +360,18 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
               encontrados: _insumosEncontrados,
               onElegir: bloqueado ? null : _elegirInsumo,
             ),
-            TextField(
-              controller: _insumoBusqueda,
-              decoration: const InputDecoration(
-                labelText: 'Buscar insumo (opcional)',
-                helperText: 'Escriba al menos 2 letras',
-                prefixIcon: Icon(Icons.search),
+            CampoEtiquetado(
+              etiqueta: 'Buscar insumo (opcional)',
+              child: TextField(
+                key: const Key('linea-insumo'),
+                controller: _insumoBusqueda,
+                decoration: const InputDecoration(
+                  hintText: 'Escriba al menos 2 letras',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                textInputAction: TextInputAction.search,
+                onChanged: bloqueado ? null : _buscarInsumo,
               ),
-              textInputAction: TextInputAction.search,
-              onChanged: bloqueado ? null : _buscarInsumo,
             ),
             if (_insumoId != null)
               Padding(
@@ -371,36 +388,41 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
               ),
           ],
         ),
+        CampoEtiquetado(
+          etiqueta: 'Descripción',
+          child: TextField(
+            key: const Key('linea-descripcion'),
+            controller: _descripcion,
+            decoration: const InputDecoration(
+              hintText: 'Suministro e instalación…',
+            ),
+            minLines: 1,
+            maxLines: 5,
+            maxLength: 500,
+            keyboardType: TextInputType.multiline,
+            textCapitalization: TextCapitalization.sentences,
+          ),
+        ),
       ],
     );
     final subtotal = _subtotalVisible;
     final valores = SeccionFormulario(
-      titulo: 'Cantidad y precio',
-      icono: Icons.calculate_outlined,
       children: [
-        if (_unidades.isNotEmpty)
-          _Desplegable<int>(
-            etiqueta: 'Unidad de medida',
-            valor: _unidadMedidaId,
-            vacio: 'Sin unidad',
-            opciones: [
-              for (final opcion in _unidades) (opcion.id, opcion.descripcion),
-            ],
-            onChanged: bloqueado
-                ? null
-                : (valor) => setState(() => _unidadMedidaId = valor),
-          ),
         FilaAdaptable(
           anchoMinimoFila: 320,
           children: [
             _CampoNumero(
+              clave: const Key('linea-cantidad'),
               controller: _cantidad,
               etiqueta: 'Cantidad',
+              pista: '0',
               onChanged: (_) => _actualizarSubtotal(),
             ),
             _CampoNumero(
+              clave: const Key('linea-precio'),
               controller: _precio,
               etiqueta: 'Precio',
+              pista: r'$0',
               onChanged: (_) => _actualizarSubtotal(),
             ),
           ],
@@ -408,26 +430,10 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
         if (subtotal != null) _Subtotal(subtotal),
       ],
     );
-    final descripcion = SeccionFormulario(
-      titulo: 'Descripción',
-      icono: Icons.notes,
-      children: [
-        TextField(
-          controller: _descripcion,
-          decoration: const InputDecoration(
-            labelText: 'Descripción',
-            alignLabelWithHint: true,
-          ),
-          minLines: 2,
-          maxLines: 5,
-          maxLength: 500,
-          keyboardType: TextInputType.multiline,
-          textCapitalization: TextCapitalization.sentences,
-        ),
-      ],
-    );
+    final blanco = Theme.of(context).colorScheme.surface;
     return Scaffold(
-      appBar: AppBar(title: titulo),
+      backgroundColor: blanco,
+      appBar: AppBar(title: titulo, centerTitle: true, backgroundColor: blanco),
       body: AbsorbPointer(
         absorbing: bloqueado,
         child: CuerpoFormulario(
@@ -436,15 +442,25 @@ class _EstadoFormulario extends ConsumerState<FormularioLineaPantalla> {
             if (bloqueado) const _AvisoSincronizando(),
             AvisoTexto(_aviso ?? controlador.aviso),
             ColumnasAdaptables(
-              izquierda: [obra, insumo],
-              derecha: [valores, descripcion],
+              izquierda: [obra, insumoYDescripcion],
+              derecha: [valores],
             ),
             const SizedBox(height: 8),
             AccionesFormulario(
-              child: FilledButton.icon(
-                onPressed: bloqueado ? null : _guardar,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Guardar'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton(
+                    onPressed: bloqueado ? null : _guardar,
+                    child: const Text('Guardar'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                ],
               ),
             ),
           ],
@@ -463,6 +479,7 @@ class _Desplegable<T> extends StatelessWidget {
     required this.opciones,
     required this.onChanged,
     this.vacio,
+    this.clave,
   });
 
   final String etiqueta;
@@ -470,26 +487,33 @@ class _Desplegable<T> extends StatelessWidget {
   final String? vacio;
   final List<(T, String)> opciones;
   final ValueChanged<T?>? onChanged;
+  final Key? clave;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: valor,
-      isExpanded: true,
-      decoration: InputDecoration(labelText: etiqueta),
-      items: [
-        if (vacio != null)
-          DropdownMenuItem<T>(
-            value: null,
-            child: Text(vacio!, overflow: TextOverflow.ellipsis),
-          ),
-        for (final (id, descripcion) in opciones)
-          DropdownMenuItem<T>(
-            value: id,
-            child: Text(descripcion, overflow: TextOverflow.ellipsis),
-          ),
-      ],
-      onChanged: onChanged,
+    // La clave va en el desplegable (la usan las pruebas), no en la etiqueta.
+    return CampoEtiquetado(
+      etiqueta: etiqueta,
+      child: DropdownButtonFormField<T>(
+        key: clave,
+        initialValue: valor,
+        isExpanded: true,
+        hint: const Text('Seleccione', overflow: TextOverflow.ellipsis),
+        decoration: const InputDecoration(),
+        items: [
+          if (vacio != null)
+            DropdownMenuItem<T>(
+              value: null,
+              child: Text(vacio!, overflow: TextOverflow.ellipsis),
+            ),
+          for (final (id, descripcion) in opciones)
+            DropdownMenuItem<T>(
+              value: id,
+              child: Text(descripcion, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -498,22 +522,30 @@ class _CampoNumero extends StatelessWidget {
   const _CampoNumero({
     required this.controller,
     required this.etiqueta,
+    required this.pista,
     required this.onChanged,
+    this.clave,
   });
 
   final TextEditingController controller;
   final String etiqueta;
+  final String pista;
   final ValueChanged<String> onChanged;
+  final Key? clave;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(labelText: etiqueta),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      textInputAction: TextInputAction.next,
-      textAlign: TextAlign.end,
-      onChanged: onChanged,
+    // La clave va en el campo (la usan las pruebas), no en la etiqueta.
+    return CampoEtiquetado(
+      etiqueta: etiqueta,
+      child: TextField(
+        key: clave,
+        controller: controller,
+        decoration: InputDecoration(hintText: pista),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textInputAction: TextInputAction.next,
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -562,10 +594,10 @@ class _ResultadosInsumo extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border.all(color: esquema.outlineVariant),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: radioTarjeta,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: radioTarjeta,
           child: SizedBox(
             height: alto,
             child: ListView.builder(
@@ -594,39 +626,28 @@ class _Subtotal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    final esquema = tema.colorScheme;
+    final estilo = Theme.of(context).textTheme.titleLarge;
     return Semantics(
-      label: 'Subtotal: $valor',
+      label: 'Subtotal: $valor COP',
       excludeSemantics: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: esquema.primaryContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Text(
-                'Subtotal',
-                style: tema.textTheme.titleSmall?.copyWith(
-                  color: esquema.onPrimaryContainer,
-                ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Subtotal:',
+              style: estilo?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$valor COP',
+                style: estilo,
+                textAlign: TextAlign.end,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  valor,
-                  textAlign: TextAlign.end,
-                  style: tema.textTheme.titleLarge?.copyWith(
-                    color: esquema.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -644,7 +665,7 @@ class _AvisoSincronizando extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: esquema.secondaryContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: radioTarjeta,
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

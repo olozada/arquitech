@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/aplicacion.dart';
+import '../../app/tema.dart';
 import '../../core/db/consultas.dart';
 import 'detalle_acta_acciones.dart';
+import 'estado_acta.dart';
 import '../../sincronizacion/modelos.dart';
 import '../../core/decimal/dinero.dart';
 import '../../core/errores/mensajes.dart';
@@ -53,7 +55,7 @@ class _EstadoDetalle extends ConsumerState<DetalleActaPantalla> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return Scaffold(
-        appBar: AppBar(title: Text('Acta ${widget.numero}')),
+        appBar: AppBar(title: const Text('Detalle del acta')),
         body: const Center(child: Text('Cargando acta…')),
       );
     }
@@ -128,94 +130,223 @@ class DetalleActaLayout extends StatelessWidget {
       );
     }
 
-    final grupos = <String, List<LineaDetalle>>{};
-    for (final linea in acta.lineas) {
-      grupos.putIfAbsent(linea.construccion, () => []).add(linea);
-    }
-
     final puedeAgregar =
         acciones.puedeAgregarLinea(acta.cerrada) && !edicionBloqueada;
     final esRevisor = acciones.esRevisor() && !acta.cerrada;
+    final tema = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Acta ${acta.numero}'),
+        title: const Text('Detalle del acta'),
         actions: [
-          if (enLinea && onPdf != null)
-            IconButton(
-              tooltip: 'PDF',
-              onPressed: edicionBloqueada ? null : () => onPdf!(numero),
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-            ),
           if (esRevisor)
-            TextButton(
-              onPressed: edicionBloqueada
-                  ? null
-                  : () async {
-                      await acciones.aprobarTodasLineas(numero);
-                      await onActualizado?.call();
-                    },
-              child: const Text('Aprobar todas'),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 8),
+              child: TextButton(
+                onPressed: edicionBloqueada
+                    ? null
+                    : () async {
+                        await acciones.aprobarTodasLineas(numero);
+                        await onActualizado?.call();
+                      },
+                child: const Text('Aprobar todas'),
+              ),
             ),
         ],
       ),
-      floatingActionButton: puedeAgregar
-          ? FloatingActionButton.extended(
-              onPressed: () async {
-                await context.push('/actas/$numero/linea/nueva');
-                await onActualizado?.call();
-              },
-              label: const Text('Agregar línea'),
-              icon: const Icon(Icons.add),
-            )
-          : null,
       body: AbsorbPointer(
         absorbing: edicionBloqueada,
         child: ListView(
-          // Con «Agregar línea» se deja espacio para que el botón flotante
-          // no tape la última línea.
-          padding: EdgeInsets.fromLTRB(16, 16, 16, puedeAgregar ? 96 : 16),
+          padding: const EdgeInsets.all(16),
           children: [
             if (edicionBloqueada) ...[
               const Text('Sincronizando…'),
               const SizedBox(height: 12),
             ],
-            Text(
-              '${fechaVisible(acta.fechaInicial)} – ${fechaVisible(acta.fechaFinal)}',
+            _EncabezadoActa(
+              acta: acta,
+              onPdf: enLinea && onPdf != null && !edicionBloqueada
+                  ? () => onPdf!(numero)
+                  : null,
+              mostrarPdf: enLinea && onPdf != null,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8),
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        'Perfiles',
+                        style: tema.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (puedeAgregar)
+                  FilledButton.icon(
+                    // El tema da ancho mínimo infinito; aquí va el del texto.
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(48, 44),
+                      textStyle: tema.textTheme.labelLarge?.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onPressed: () async {
+                      await context.push('/actas/$numero/linea/nueva');
+                      await onActualizado?.call();
+                    },
+                    icon: const Icon(Icons.add, size: 20),
+                    label: const Text('Agregar línea'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text('Arquitecto: ${acta.arquitecto}'),
-            Text('Revisor: ${acta.revisor}'),
-            Text('Contratista: ${acta.contratista}'),
-            if (acta.observacion != null) ...[
-              const SizedBox(height: 8),
-              Text('Observación: ${acta.observacion}'),
-            ],
-            if (acta.cerrada) ...[
-              const SizedBox(height: 12),
-              Text(
-                Mensajes.cerrada,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Text(
-              'Total aprobado: ${dinero(acta.totalAprobado)}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            for (final entrada in grupos.entries) ...[
-              const SizedBox(height: 16),
-              Text(entrada.key, style: Theme.of(context).textTheme.titleMedium),
-              for (final linea in entrada.value)
-                _Linea(
-                  linea: linea,
-                  actaCerrada: acta.cerrada,
-                  acciones: acciones,
-                  edicionBloqueada: edicionBloqueada,
-                  numeroActa: numero,
-                  onActualizado: onActualizado,
+            if (acta.lineas.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'El acta no tiene líneas.',
+                  textAlign: TextAlign.center,
+                  style: tema.textTheme.bodyMedium?.copyWith(
+                    color: tema.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-            ],
+              ),
+            for (final linea in acta.lineas)
+              _Linea(
+                linea: linea,
+                actaCerrada: acta.cerrada,
+                acciones: acciones,
+                edicionBloqueada: edicionBloqueada,
+                numeroActa: numero,
+                onActualizado: onActualizado,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tarjeta superior: número, estado, participantes y total aprobado.
+class _EncabezadoActa extends StatelessWidget {
+  const _EncabezadoActa({
+    required this.acta,
+    required this.onPdf,
+    required this.mostrarPdf,
+  });
+
+  final DetalleActa acta;
+  final VoidCallback? onPdf;
+  final bool mostrarPdf;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    final total = tema.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Acta ${numeroActaVisible(acta.numero)}',
+                    style: tema.textTheme.titleLarge,
+                  ),
+                ),
+                if (mostrarPdf)
+                  BotonBarra(
+                    texto: 'PDF',
+                    icono: Icons.description_outlined,
+                    descripcion: 'Descargar PDF del acta',
+                    onPressed: onPdf,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: EtiquetaEstadoActa(cerrada: acta.cerrada),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${fechaVisible(acta.fechaInicial)} – ${fechaVisible(acta.fechaFinal)}',
+                    style: tema.textTheme.bodySmall?.copyWith(
+                      color: esquema.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _Dato(etiqueta: 'Arquitecto:', valor: acta.arquitecto),
+                  _Dato(etiqueta: 'Revisor:', valor: acta.revisor),
+                  _Dato(etiqueta: 'Contratista:', valor: acta.contratista),
+                  if (acta.observacion != null)
+                    _Dato(etiqueta: 'Observación:', valor: acta.observacion!),
+                  if (acta.cerrada) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      Mensajes.cerrada,
+                      style: TextStyle(color: esquema.error),
+                    ),
+                  ],
+                  const Divider(height: 28),
+                  MergeSemantics(
+                    child: Row(
+                      children: [
+                        Expanded(child: Text('Total aprobado:', style: total)),
+                        const SizedBox(width: 12),
+                        Text(dinero(acta.totalAprobado), style: total),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dato extends StatelessWidget {
+  const _Dato({required this.etiqueta, required this.valor});
+
+  final String etiqueta;
+  final String valor;
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = Theme.of(context).textTheme.bodyMedium;
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(etiqueta, style: estilo),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(valor, style: estilo, textAlign: TextAlign.end),
+            ),
           ],
         ),
       ),
@@ -240,13 +371,28 @@ class _Linea extends StatelessWidget {
   final int numeroActa;
   final Future<void> Function()? onActualizado;
 
+  Future<void> _editar(BuildContext context) async {
+    await context.push(
+      '/actas/$numeroActa/linea/${linea.localId}',
+      extra: LineaSincronizacion(
+        construccionId: linea.construccionId,
+        conceptoId: linea.conceptoId,
+        unidadMedidaId: linea.unidadMedidaId,
+        insumoId: linea.insumoId,
+        presupuestoItemId: linea.presupuestoItemId,
+        cantidad: linea.cantidad,
+        precio: linea.precio,
+        descripcion: linea.descripcion,
+      ),
+    );
+    await onActualizado?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final estado = linea.aprobado ? 'Aprobado' : 'Rechazado';
-    final local = linea.estadoLocal == 'sincronizado'
-        ? ''
-        : ' · Sin sincronizar';
-    final esquema = Theme.of(context).colorScheme;
+    final tema = Theme.of(context);
+    final esquema = tema.colorScheme;
+    final sinSincronizar = linea.estadoLocal != 'sincronizado';
     final sinDescripcion = linea.descripcion.trim().isEmpty;
     final puedeEditar =
         acciones.puedeEditarLinea(linea, actaCerrada) && !edicionBloqueada;
@@ -254,10 +400,55 @@ class _Linea extends StatelessWidget {
 
     final tarjeta = Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              linea.construccion,
+              style: tema.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(linea.perfil, style: tema.textTheme.bodyLarge),
+                      EtiquetaAprobacion(aprobado: linea.aprobado),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  dinero(Decimal.parse(linea.subtotal)),
+                  style: tema.textTheme.bodyLarge,
+                ),
+              ],
+            ),
+            if (sinSincronizar) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.sync, size: 14, color: esquema.tertiary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Sin sincronizar',
+                    style: tema.textTheme.bodySmall?.copyWith(
+                      color: esquema.tertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
             Text(
               sinDescripcion ? 'Sin descripción' : linea.descripcion,
               style: sinDescripcion
@@ -265,13 +456,14 @@ class _Linea extends StatelessWidget {
                       color: esquema.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
                     )
-                  : null,
+                  : tema.textTheme.bodyMedium,
             ),
             const SizedBox(height: 4),
-            Text('${linea.perfil} · $estado$local'),
-            const SizedBox(height: 4),
             Text(
-              '${cantidadVisible(linea.cantidad)} × ${dinero(Decimal.parse(linea.precio))} · ${dinero(Decimal.parse(linea.subtotal))}',
+              '${cantidadVisible(linea.cantidad)} × ${dinero(Decimal.parse(linea.precio))}',
+              style: tema.textTheme.bodySmall?.copyWith(
+                color: esquema.onSurfaceVariant,
+              ),
             ),
             if (esRevisor) ...[
               const SizedBox(height: 8),
@@ -280,7 +472,8 @@ class _Linea extends StatelessWidget {
               MergeSemantics(
                 child: Row(
                   children: [
-                    const Text('Aprobar'),
+                    Text('Aprobar', style: tema.textTheme.bodyLarge),
+                    const SizedBox(width: 8),
                     Switch(
                       value: linea.aprobado,
                       onChanged: edicionBloqueada
@@ -299,39 +492,26 @@ class _Linea extends StatelessWidget {
               ),
             ],
             if (puedeEditar) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Deslice a la derecha para editar o a la izquierda para eliminar.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  TextButton(
-                    onPressed: () async {
-                      await context.push(
-                        '/actas/$numeroActa/linea/${linea.localId}',
-                        extra: LineaSincronizacion(
-                          construccionId: linea.construccionId,
-                          conceptoId: linea.conceptoId,
-                          unidadMedidaId: linea.unidadMedidaId,
-                          insumoId: linea.insumoId,
-                          presupuestoItemId: linea.presupuestoItemId,
-                          cantidad: linea.cantidad,
-                          precio: linea.precio,
-                          descripcion: linea.descripcion,
-                        ),
-                      );
-                      await onActualizado?.call();
-                    },
-                    child: const Text('Editar'),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _editar(context),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Editar'),
+                    ),
                   ),
-                  TextButton(
-                    onPressed: () async {
-                      await acciones.eliminarLinea(numeroActa, linea.localId);
-                      await onActualizado?.call();
-                    },
-                    child: const Text('Eliminar'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await acciones.eliminarLinea(numeroActa, linea.localId);
+                        await onActualizado?.call();
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Eliminar'),
+                    ),
                   ),
                 ],
               ),
@@ -348,33 +528,28 @@ class _Linea extends StatelessWidget {
       key: Key('linea-${linea.localId}'),
       direction: DismissDirection.horizontal,
       background: Container(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: radioTarjeta,
+        ),
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 16),
         child: const Text('Editar'),
       ),
       secondaryBackground: Container(
-        color: Theme.of(context).colorScheme.errorContainer,
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.errorContainer,
+          borderRadius: radioTarjeta,
+        ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 16),
         child: const Text('Eliminar'),
       ),
       confirmDismiss: (direccion) async {
         if (direccion == DismissDirection.startToEnd) {
-          await context.push(
-            '/actas/$numeroActa/linea/${linea.localId}',
-            extra: LineaSincronizacion(
-              construccionId: linea.construccionId,
-              conceptoId: linea.conceptoId,
-              unidadMedidaId: linea.unidadMedidaId,
-              insumoId: linea.insumoId,
-              presupuestoItemId: linea.presupuestoItemId,
-              cantidad: linea.cantidad,
-              precio: linea.precio,
-              descripcion: linea.descripcion,
-            ),
-          );
-          await onActualizado?.call();
+          await _editar(context);
           return false;
         }
         if (direccion == DismissDirection.endToStart) {

@@ -43,3 +43,22 @@ flutter:
     - assets/esquema_movil_v1.sql
     - assets/esquema_pendientes_v1.sql
     - assets/contrasenas-comunes.txt
+    - assets/imagenes/logo_arquitech.png
+    - assets/imagenes/cabecera_obra.jpg
+    - assets/fuentes/OFL.txt
+  # Poppins (SIL Open Font License 1.1), la tipografía del diseño Arquitech.
+  # Va empaquetada: la app es offline y no descarga fuentes en tiempo de
+  # ejecución.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fuentes/Poppins-Light.ttf
+          weight: 300
+        - asset: assets/fuentes/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fuentes/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fuentes/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fuentes/Poppins-Bold.ttf
+          weight: 700
