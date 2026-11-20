@@ -1,6 +1,7 @@
 part of 'controlador.dart';
 
 mixin ControladorNucleo on ControladorBase {
+  @override
   Future<void> _guardarYAbrir(
     Future<List<int>> Function() descargar,
     String nombre,
@@ -11,6 +12,7 @@ mixin ControladorNucleo on ControladorBase {
     });
   }
 
+  @override
   void _fijarRuta(RutaAplicacion nueva) {
     final cambio = ruta != nueva;
     ruta = nueva;
@@ -20,6 +22,7 @@ mixin ControladorNucleo on ControladorBase {
     notifyListeners();
   }
 
+  @override
   Future<void> _ocupar(Future<void> Function() accion) async {
     ocupado = true;
     aviso = null;
@@ -42,6 +45,7 @@ mixin ControladorNucleo on ControladorBase {
     }
   }
 
+  @override
   Future<T> _conToken<T>(Future<T> Function(String token) accion) async {
     try {
       return await accion(await _tokenVigente());
@@ -55,6 +59,7 @@ mixin ControladorNucleo on ControladorBase {
     }
   }
 
+  @override
   Future<String> _tokenVigente() async {
     final token = _token;
     final expira = _expira;
@@ -72,6 +77,7 @@ mixin ControladorNucleo on ControladorBase {
     return renovado;
   }
 
+  @override
   Future<String?> _renovarSiHay() async {
     final refresh = await dependencias.almacen.leer(Claves.refresh);
     if (refresh == null || refresh.isEmpty) {
@@ -87,6 +93,7 @@ mixin ControladorNucleo on ControladorBase {
     return par.accessToken;
   }
 
+  @override
   Future<void> _aplicarCredenciales(
     Credenciales credenciales,
     String login,
@@ -156,6 +163,7 @@ mixin ControladorNucleo on ControladorBase {
     );
   }
 
+  @override
   Future<String> _dispositivo() async {
     final guardado = await dependencias.almacen.leer(Claves.dispositivo);
     if (guardado != null && guardado.isNotEmpty) {
@@ -168,6 +176,7 @@ mixin ControladorNucleo on ControladorBase {
     return nuevo;
   }
 
+  @override
   Future<String> _claveSql() async {
     final guardada = await dependencias.almacen.leer(Claves.sql);
     if (guardada != null && RegExp(r'^[0-9a-f]{64}$').hasMatch(guardada)) {
@@ -184,6 +193,7 @@ mixin ControladorNucleo on ControladorBase {
     return clave;
   }
 
+  @override
   Future<int> _contarPendientes() async {
     if (!await dependencias.repositorio.existe()) {
       return 0;
@@ -200,6 +210,7 @@ mixin ControladorNucleo on ControladorBase {
     }
   }
 
+  @override
   Future<BaseLocal?> _base() async {
     if (!tieneBase && !await dependencias.repositorio.existe()) {
       return null;
@@ -208,6 +219,7 @@ mixin ControladorNucleo on ControladorBase {
     return dependencias.repositorio.obtener(clave);
   }
 
+  @override
   Future<void> _borrarDatos() async {
     await dependencias.pendientes.cerrar();
     await dependencias.repositorio.cerrar();
@@ -248,6 +260,7 @@ mixin ControladorNucleo on ControladorBase {
     await dependencias.almacen.borrarTodo();
   }
 
+  @override
   Future<void> _excluirRespaldo() async {
     if (!Platform.isIOS) {
       return;
@@ -266,12 +279,14 @@ mixin ControladorNucleo on ControladorBase {
     }
   }
 
+  @override
   String _nombreDispositivo(String id) {
     final corto = id.replaceAll('-', '');
     final sufijo = corto.length >= 8 ? corto.substring(0, 8) : corto;
     return 'Arquitectos ${_plataforma()} $sufijo';
   }
 
+  @override
   String _plataforma() {
     if (Platform.isAndroid) {
       return 'android';

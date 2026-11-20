@@ -1,8 +1,8 @@
 import 'package:arquitectos_movil/core/decimal/dinero.dart';
 import 'package:arquitectos_movil/funciones/presupuestos/grafico_acumulado_mensual.dart';
 import 'package:arquitectos_movil/funciones/presupuestos/presupuesto_modelos.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   const puntos = [

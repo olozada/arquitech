@@ -99,9 +99,6 @@ void main() {
     expect(clave, isNotNull);
 
     final base = await repositorio.obtener(clave);
-    if (base == null) {
-      fail('No hay base local tras sincronizar.');
-    }
     final filas = await base.consultar(
       'SELECT id, descripcion FROM acta_detalles WHERE descripcion = ?',
       [descripcionNueva],

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:arquitectos_movil/app/controlador.dart';
 import 'package:arquitectos_movil/core/seguridad/claves.dart';
-import 'package:arquitectos_movil/sincronizacion/cola_movil.dart';
 import 'package:arquitectos_movil/sincronizacion/modelos.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';

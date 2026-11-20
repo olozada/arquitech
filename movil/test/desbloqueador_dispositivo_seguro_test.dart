@@ -1,6 +1,5 @@
 import 'package:arquitectos_movil/core/seguridad/desbloqueador.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

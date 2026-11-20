@@ -1,6 +1,6 @@
 part of 'controlador.dart';
 
-mixin ControladorActas on ControladorBase {
+mixin ControladorActas on ControladorBase implements DetalleActaAcciones {
   @override
   bool puedeAgregarLinea(bool actaCerrada) {
     return !actaCerrada && usuario != null && !esRevisor();

@@ -31,7 +31,7 @@ void main() {
 
   tearDown(() => borrarCarpeta(carpeta));
 
-  Future<File> _archivoGz(PaqueteListo paquete) async {
+  Future<File> crearArchivoGz(PaqueteListo paquete) async {
     final gz = File(
       '${carpeta.path}${Platform.pathSeparator}paquete-test.sqlite.gz',
     );
@@ -46,7 +46,7 @@ void main() {
     final paquete = await paqueteDePrueba(origen);
     final destino =
         '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite';
-    final archivoGz = await _archivoGz(paquete);
+    final archivoGz = await crearArchivoGz(paquete);
 
     await importador.importar(
       archivoGz: archivoGz,
@@ -74,7 +74,7 @@ void main() {
     final destino =
         '${carpeta.path}${Platform.pathSeparator}arquitectos.sqlite';
     await File(destino).writeAsString('vieja');
-    final archivoGz = await _archivoGz(paquete);
+    final archivoGz = await crearArchivoGz(paquete);
 
     await expectLater(
       importador.importar(
@@ -102,7 +102,7 @@ void main() {
       '${carpeta.path}${Platform.pathSeparator}origen',
     ).create();
     final paquete = await paqueteDePrueba(origen);
-    final archivoGz = await _archivoGz(paquete);
+    final archivoGz = await crearArchivoGz(paquete);
 
     expect(
       () => importador.importar(

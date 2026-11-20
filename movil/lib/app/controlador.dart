@@ -108,11 +108,7 @@ class ControladorAplicacion extends ControladorBase
         ControladorConsultas,
         ControladorActas
     implements DetalleActaAcciones {
-  ControladorAplicacion(
-    super.dependencias, {
-    Logger? registro,
-    RutaNotificador? rutas,
-  }) : super(registro: registro, rutas: rutas);
+  ControladorAplicacion(super.dependencias, {super.registro, super.rutas});
 
   Future<void> iniciar() async {
     _red ??= dependencias.red.cambios.listen((valor) {

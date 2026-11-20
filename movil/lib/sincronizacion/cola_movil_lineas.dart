@@ -265,8 +265,8 @@ WHERE local_id = ?
       [localId],
     );
     final payload = {
-      if (lineaId != null) 'lineaId': lineaId,
-      if (idCliente != null) 'idCliente': idCliente,
+      'lineaId': ?lineaId,
+      'idCliente': ?idCliente,
       'rowVersionLinea': rowVersionLinea,
       'linea': linea.aJson(),
     };
@@ -308,7 +308,7 @@ WHERE local_id = ?
       [localId],
     );
     final payload = {
-      if (lineaId != null) 'lineaId': lineaId,
+      'lineaId': ?lineaId,
       'rowVersionLinea': rowVersionLinea,
       'aprobado': aprobado,
     };

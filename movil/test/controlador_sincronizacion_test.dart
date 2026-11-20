@@ -229,9 +229,6 @@ void main() {
 
     final clave = await dependencias.almacen.leer(Claves.sql);
     final base = await dependencias.repositorio.obtener(clave);
-    if (base == null) {
-      fail('Se esperaba base local tras sincronizar.');
-    }
     final filas = await base.consultar(
       'SELECT descripcion FROM acta_detalles WHERE descripcion = ?',
       [descripcionRemota],

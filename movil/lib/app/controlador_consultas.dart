@@ -3,12 +3,14 @@ part of 'controlador.dart';
 mixin ControladorConsultas on ControladorBase {
   RepositorioConsultasMovil get _consultas => RepositorioConsultasMovil(_base);
 
+  @override
   RepositorioArchivosMovil get _archivos =>
       RepositorioArchivosMovil(dependencias.directorio);
 
   Future<List<ActaResumen>> listarActas(FiltroActas filtro) =>
       _consultas.listarActas(filtro);
 
+  @override
   Future<DetalleActa?> detalleActa(int numero) =>
       _consultas.detalleActa(numero);
 

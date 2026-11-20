@@ -65,6 +65,5 @@ class Version implements Comparable<Version> {
     return revision.compareTo(otra.revision);
   }
 
-  @override
   bool operator <(Version otra) => compareTo(otra) < 0;
 }

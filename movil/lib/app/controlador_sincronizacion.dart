@@ -1,6 +1,7 @@
 part of 'controlador.dart';
 
 mixin ControladorSincronizacion on ControladorBase {
+  @override
   Future<void> sincronizar() async {
     if (sincronizando || ocupado) {
       return;
@@ -74,6 +75,7 @@ mixin ControladorSincronizacion on ControladorBase {
     }
   }
 
+  @override
   Future<void> _sincronizarSiConviene() async {
     if (ruta != RutaAplicacion.inicio ||
         !tieneBase ||
@@ -98,6 +100,7 @@ mixin ControladorSincronizacion on ControladorBase {
     }
   }
 
+  @override
   Future<void> refrescarConteos() async {
     if (!tieneBase) {
       pendientes = 0;
@@ -115,6 +118,7 @@ mixin ControladorSincronizacion on ControladorBase {
     notifyListeners();
   }
 
+  @override
   Future<void> _traerPaquete() async {
     final carpeta = await dependencias.directorio();
     final rutaGz = '${carpeta.path}${Platform.pathSeparator}paquete.sqlite.gz';
