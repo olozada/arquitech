@@ -26,36 +26,18 @@ public sealed partial class AutenticacionServicio
         }
 
         var dispositivo = solicitud.Dispositivo!;
-        var guardado = await _context.Dispositivos
-            .SingleOrDefaultAsync(item => item.Id == dispositivo.Id, cancellationToken);
-        if (guardado is not null && guardado.UsuarioId != usuario.Id)
+        if (!await VincularDispositivoAsync(
+                usuario,
+                dispositivo.Id,
+                dispositivo.Nombre,
+                dispositivo.Plataforma,
+                dispositivo.VersionApp,
+                cancellationToken))
         {
             return ResultadoMovil<LoginMovilRespuesta>.Prohibido("El dispositivo está registrado a otro usuario.");
         }
 
-        var ahora = _reloj.GetUtcNow().UtcDateTime;
-        if (guardado is null)
-        {
-            guardado = new Dispositivo
-            {
-                Id = dispositivo.Id,
-                UsuarioId = usuario.Id,
-                Nombre = dispositivo.Nombre.Trim(),
-                Plataforma = dispositivo.Plataforma.Trim(),
-                VersionApp = dispositivo.VersionApp.Trim(),
-                RegistradoEn = ahora
-            };
-            _context.Dispositivos.Add(guardado);
-        }
-        else
-        {
-            guardado.Nombre = dispositivo.Nombre.Trim();
-            guardado.Plataforma = dispositivo.Plataforma.Trim();
-            guardado.VersionApp = dispositivo.VersionApp.Trim();
-            guardado.RevocadoEn = null;
-        }
-
-        var credenciales = await AbrirAsync(usuario, ip, agente, cancellationToken, guardado.Id);
+        var credenciales = await AbrirAsync(usuario, ip, agente, cancellationToken, dispositivo.Id);
         return ResultadoMovil<LoginMovilRespuesta>.Ok(new LoginMovilRespuesta(
             credenciales.TokenAcceso,
             _reloj.GetUtcNow().UtcDateTime.AddMinutes(_emisor.Minutos),
@@ -102,5 +84,53 @@ public sealed partial class AutenticacionServicio
             credenciales.TokenAcceso,
             _reloj.GetUtcNow().UtcDateTime.AddMinutes(_emisor.Minutos),
             credenciales.TokenRenovacion));
+    }
+
+    private async Task<bool> VincularDispositivoAsync(
+        Usuario usuario,
+        Guid dispositivoId,
+        string? nombre,
+        string? plataforma,
+        string? versionApp,
+        CancellationToken cancellationToken)
+    {
+        if (!PerfilesUsuario.EsOperativo(usuario.TipoUsuarioId))
+        {
+            return true;
+        }
+
+        var guardado = await _context.Dispositivos
+            .SingleOrDefaultAsync(item => item.Id == dispositivoId, cancellationToken);
+        if (guardado is not null && guardado.UsuarioId != usuario.Id)
+        {
+            return false;
+        }
+
+        var ahora = _reloj.GetUtcNow().UtcDateTime;
+        var etiqueta = string.IsNullOrWhiteSpace(nombre) ? "Cliente móvil" : nombre.Trim();
+        var sistema = string.IsNullOrWhiteSpace(plataforma) ? "desconocida" : plataforma.Trim();
+        var version = string.IsNullOrWhiteSpace(versionApp) ? "0" : versionApp.Trim();
+        if (guardado is null)
+        {
+            _context.Dispositivos.Add(new Dispositivo
+            {
+                Id = dispositivoId,
+                UsuarioId = usuario.Id,
+                Nombre = etiqueta,
+                Plataforma = sistema,
+                VersionApp = version,
+                RegistradoEn = ahora
+            });
+        }
+        else
+        {
+            guardado.Nombre = etiqueta;
+            guardado.Plataforma = sistema;
+            guardado.VersionApp = version;
+            guardado.RevocadoEn = null;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

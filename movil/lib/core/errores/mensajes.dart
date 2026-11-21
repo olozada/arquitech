@@ -51,6 +51,8 @@ abstract final class Mensajes {
   static const paqueteCorrupto = 'El paquete no coincide con su huella.';
   static const cambioUsuario =
       'Hay operaciones pendientes del usuario anterior. Si continúa, se perderán.';
+  static const dispositivoReingreso =
+      'Cierre sesión y vuelva a ingresar con usuario y contraseña para registrar el teléfono.';
 }
 
 String? errorContrasena(

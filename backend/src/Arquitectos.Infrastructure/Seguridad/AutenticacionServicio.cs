@@ -39,10 +39,22 @@ public sealed partial class AutenticacionServicio : IAutenticacionServicio, IRev
         LoginSolicitud solicitud,
         string? ip,
         string? agente,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? dispositivoId = null)
     {
         var usuario = await ComprobarAsync(solicitud.Usuario, solicitud.Password, cancellationToken);
-        return usuario is null ? null : await AbrirAsync(usuario, ip, agente, cancellationToken);
+        if (usuario is null)
+        {
+            return null;
+        }
+
+        if (dispositivoId is Guid id &&
+            !await VincularDispositivoAsync(usuario, id, null, null, null, cancellationToken))
+        {
+            return null;
+        }
+
+        return await AbrirAsync(usuario, ip, agente, cancellationToken, dispositivoId);
     }
 
     public async Task<CredencialesSesion?> RenovarAsync(

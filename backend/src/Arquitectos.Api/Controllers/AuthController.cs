@@ -50,7 +50,16 @@ public sealed class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var credenciales = await _autenticacion.IniciarSesion(solicitud, Ip(), Agente(), cancellationToken);
+        var dispositivoId = Request.Headers.TryGetValue("X-Dispositivo-Id", out var valor) &&
+            Guid.TryParse(valor.ToString(), out var id)
+            ? id
+            : (Guid?)null;
+        var credenciales = await _autenticacion.IniciarSesion(
+            solicitud,
+            Ip(),
+            Agente(),
+            cancellationToken,
+            dispositivoId);
         if (credenciales is null)
         {
             return Problem(

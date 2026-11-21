@@ -2,7 +2,12 @@ namespace Arquitectos.Application.Auth;
 
 public interface IAutenticacionServicio
 {
-    Task<CredencialesSesion?> IniciarSesion(LoginSolicitud solicitud, string? ip, string? agente, CancellationToken cancellationToken);
+    Task<CredencialesSesion?> IniciarSesion(
+        LoginSolicitud solicitud,
+        string? ip,
+        string? agente,
+        CancellationToken cancellationToken,
+        Guid? dispositivoId = null);
 
     Task<CredencialesSesion?> RenovarAsync(string tokenRenovacion, string? ip, string? agente, CancellationToken cancellationToken);
 

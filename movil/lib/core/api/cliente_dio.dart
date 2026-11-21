@@ -296,6 +296,12 @@ class ClienteDio implements ClienteMovil {
         _detalle(mapa) ?? 'Este dispositivo fue revocado.',
       );
     }
+    if (estado == 403) {
+      final detalle = _detalle(mapa) ?? '';
+      if (detalle.toLowerCase().contains('registrado')) {
+        return ErrorServidor(Mensajes.dispositivoReingreso, estado: estado);
+      }
+    }
     if (estado == 426) {
       return const ActualizacionRequerida(Mensajes.actualice);
     }
