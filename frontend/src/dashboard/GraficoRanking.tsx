@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { dinero } from '../actas/formato'
 import type { Ranking } from '../api/dashboard'
+import { colorRejilla, colorValor } from './colores'
 
 type Propiedades = {
   titulo: string
@@ -20,7 +21,7 @@ export function GraficoRanking({ titulo, filas, alElegir }: Propiedades) {
         <div className="grafico-alto">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={datos} layout="vertical" margin={{ left: 16, right: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid stroke={colorRejilla} strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={(valor: number) => dinero(valor)} />
               <YAxis type="category" dataKey="nombre" width={130} tick={{ fontSize: 12 }} />
               <Tooltip
@@ -29,7 +30,7 @@ export function GraficoRanking({ titulo, filas, alElegir }: Propiedades) {
               <Bar
                 dataKey="valor"
                 name="Valor"
-                fill="#1abb9c"
+                fill={colorValor}
                 onClick={(dato: { payload?: Ranking }) => {
                   if (alElegir && dato.payload && dato.payload.id > 0) {
                     alElegir(dato.payload.id)

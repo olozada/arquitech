@@ -6,6 +6,7 @@ import { cliente } from '../api/cliente'
 import { listarTodo } from '../api/pagina'
 import { dinero } from '../actas/formato'
 import { usePrecioUnitario } from '../api/dashboard'
+import { colorLinea, colorRejilla, colorValorSuave } from './colores'
 
 export function GraficoPrecio({ desde, hasta, estado }: { desde: string; hasta: string; estado: '' | 'abierta' | 'cerrada' }) {
   const [conceptoId, setConceptoId] = useState(0)
@@ -61,14 +62,14 @@ export function GraficoPrecio({ desde, hasta, estado }: { desde: string; hasta: 
         <div className="grafico-alto">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={datos}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid stroke={colorRejilla} strokeDasharray="3 3" />
               <XAxis dataKey="etiqueta" />
               <YAxis tickFormatter={(valor: number) => dinero(valor)} width={80} />
               <Tooltip formatter={(valor, nombre) => [dinero(Number(valor)), nombre]} />
               <Legend />
-              <Area dataKey="maximo" name="Máximo" stroke="none" fill="#1abb9c33" />
+              <Area dataKey="maximo" name="Máximo" stroke="none" fill={colorValorSuave} />
               <Area dataKey="minimo" name="Mínimo" stroke="none" fill="#ffffff" />
-              <Line dataKey="promedio" name="Promedio" stroke="#1abb9c" strokeWidth={2} dot={false} />
+              <Line dataKey="promedio" name="Promedio" stroke={colorLinea} strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
