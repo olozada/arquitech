@@ -29,7 +29,6 @@ export function ReporteMateriales({ conceptos = false }: { conceptos?: boolean }
   const [filtro, setFiltro] = useState<Filtro | null>(null)
   const [exportando, setExportando] = useState(false)
   const [imprimiendo, setImprimiendo] = useState(false)
-  const informeDisponible = construccionId > 0 || contratistaId > 0 || arquitectoId > 0 || revisorId > 0 || (!conceptos && proveedorId > 0)
   const recurso = conceptos ? 'conceptos' : 'materiales'
 
   const construcciones = useCatalogo('construcciones')
@@ -115,8 +114,11 @@ export function ReporteMateriales({ conceptos = false }: { conceptos?: boolean }
         params: { ...parametros(criterioActual()), orden: campo, direccion },
       })
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
-      window.open(url, '_blank', 'noopener')
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = conceptos ? 'ReporteConceptos.pdf' : 'ReporteMateriales.pdf'
+      enlace.click()
+      URL.revokeObjectURL(url)
     } catch (error) {
       await avisar(await mensajeDeError(error))
     } finally {
@@ -274,11 +276,9 @@ export function ReporteMateriales({ conceptos = false }: { conceptos?: boolean }
           <Button type="button" variant="outline-primary" disabled={exportando} onClick={() => void exportar()}>
             Exportar Excel
           </Button>
-          {informeDisponible && (
-            <Button type="button" variant="outline-primary" disabled={imprimiendo} onClick={() => void imprimir()}>
-              {imprimiendo ? 'Imprimiendo…' : 'Imprimir'}
-            </Button>
-          )}
+          <Button type="button" variant="outline-primary" disabled={imprimiendo} onClick={() => void imprimir()}>
+            {imprimiendo ? 'Generando…' : 'PDF'}
+          </Button>
         </div>
       </Form>
 

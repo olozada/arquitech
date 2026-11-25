@@ -4,9 +4,17 @@ namespace Arquitectos.Infrastructure.Actas;
 
 internal static class CortesMaterial
 {
-    public readonly record struct Corte(ItemMaterialInformeDto? Linea, decimal Cantidad, decimal Valor, string Material);
+    public readonly record struct Corte(
+        ItemMaterialInformeDto? Linea,
+        decimal Cantidad,
+        decimal Valor,
+        string Material,
+        bool Encabezado = false,
+        bool OcultarIdentidad = false,
+        string Codigo = "",
+        string Unidad = "");
 
-    public static List<Corte> Armar(IReadOnlyList<ItemMaterialInformeDto> items, bool subtotales)
+    public static List<Corte> Armar(IReadOnlyList<ItemMaterialInformeDto> items, bool subtotales, bool incluirUnicos = false)
     {
         if (!subtotales)
         {
@@ -17,7 +25,7 @@ internal static class CortesMaterial
         var indice = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in items)
         {
-            var clave = $"{item.Material.Trim()}\u001f{item.Unidad.Trim()}";
+            var clave = $"{item.Codigo.Trim()}\u001f{item.Material.Trim()}\u001f{item.Unidad.Trim()}";
             if (!indice.TryGetValue(clave, out var posicion))
             {
                 posicion = grupos.Count;
@@ -31,12 +39,25 @@ internal static class CortesMaterial
         var resultado = new List<Corte>();
         foreach (var grupo in grupos)
         {
-            foreach (var linea in grupo)
+            var agrupar = grupo.Count > 1 || incluirUnicos;
+            if (agrupar)
             {
-                resultado.Add(new Corte(linea, 0, 0, ""));
+                resultado.Add(new Corte(
+                    null,
+                    0,
+                    0,
+                    grupo[0].Material,
+                    Encabezado: true,
+                    Codigo: grupo[0].Codigo,
+                    Unidad: grupo[0].Unidad));
             }
 
-            if (grupo.Count > 1)
+            foreach (var linea in grupo)
+            {
+                resultado.Add(new Corte(linea, 0, 0, "", OcultarIdentidad: agrupar));
+            }
+
+            if (agrupar)
             {
                 resultado.Add(new Corte(
                     null,

@@ -88,8 +88,11 @@ export function ReporteFacturas() {
         params: parametros(criterioActual(), 1),
       })
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
-      window.open(url, '_blank', 'noopener')
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = 'ReporteFacturas.pdf'
+      enlace.click()
+      URL.revokeObjectURL(url)
     } catch (error) {
       await avisar(await mensajeDeError(error))
     } finally {
@@ -166,7 +169,7 @@ export function ReporteFacturas() {
             {exportando ? 'Exportando…' : 'Excel'}
           </Button>
           <Button type="button" variant="outline-primary" disabled={imprimiendo} onClick={() => void imprimir()}>
-            {imprimiendo ? 'Generando…' : 'Imprimir'}
+            {imprimiendo ? 'Generando…' : 'PDF'}
           </Button>
         </div>
       </Form>

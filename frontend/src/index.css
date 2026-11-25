@@ -586,12 +586,44 @@ a {
   white-space: nowrap;
 }
 
-.catalogo-tabla .reporte-corte th {
-  background: #f3faf8;
-  color: #115e59;
+.catalogo-tabla .reporte-grupo th {
+  background: #f3f3f1;
+  color: #1c1c1c;
   font-size: 0.85rem;
   font-weight: 700;
   white-space: normal;
+}
+
+.catalogo-tabla .reporte-construccion th {
+  background: #eceae4;
+  color: #1c1c1c;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.catalogo-tabla .reporte-corte th {
+  background: #f6f1e4;
+  color: #1c1c1c;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.catalogo-tabla tr.reporte-total-casa th {
+  border-bottom: 2px solid #d9d3c7;
+}
+
+.catalogo-tabla.reporte-items tr.reporte-separador td {
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  line-height: 0;
+}
+
+.catalogo-tabla.reporte-items tr.reporte-separador:hover td {
+  background: #fff;
 }
 
 .catalogo-tabla .reporte-corte th.reporte-total-valor {
@@ -1037,6 +1069,43 @@ table.catalogo-tabla.reporte-items.reporte-ancho {
 
 .nota-a2 {
   margin-bottom: 0.75rem;
+}
+
+.tabla-alertas th,
+.tabla-alertas td {
+  vertical-align: top;
+}
+
+.tabla-alertas .alerta-tipo,
+.tabla-alertas .alerta-severidad,
+.tabla-alertas .alerta-impacto,
+.tabla-alertas .alerta-acta {
+  white-space: nowrap;
+}
+
+.tabla-alertas .alerta-impacto,
+.tabla-alertas .alerta-acta {
+  text-align: right;
+}
+
+.tabla-alertas .alerta-construccion,
+.tabla-alertas .alerta-construccion .btn-link {
+  text-align: left;
+}
+
+.tabla-alertas .btn-link {
+  display: inline;
+  padding: 0;
+  border-radius: 0;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.tabla-alertas .alerta-construccion .btn-link {
+  display: block;
+  width: 100%;
 }
 
 .severidad {

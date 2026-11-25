@@ -20,7 +20,7 @@ export type Filtro = {
   subtotales: boolean
 }
 
-export type Campo = 'acta' | 'codigo' | 'material' | 'unidad' | 'cantidad' | 'precio' | 'estado' | 'subtotal'
+export type Campo = 'acta' | 'codigo' | 'material' | 'unidad' | 'cantidad' | 'precio' | 'subtotal'
 export type Direccion = 'asc' | 'desc'
 
 export const TAMANO_PAGINA = 20
@@ -72,18 +72,19 @@ export function parametros(filtro: Filtro) {
 }
 
 export type FilaMaterial =
-  | { tipo: 'linea'; item: ItemMaterial; indice: number }
-  | { tipo: 'subtotal'; clave: string; material: string; cantidad: number; subtotal: number }
+  | { tipo: 'encabezado'; clave: string; codigo: string; material: string; unidad: string }
+  | { tipo: 'linea'; item: ItemMaterial; indice: number; ocultarIdentidad: boolean }
+  | { tipo: 'subtotal'; clave: string; cantidad: number; subtotal: number }
 
 export function filasMateriales(items: ItemMaterial[], subtotales: boolean): FilaMaterial[] {
   if (!subtotales) {
-    return items.map((item, indice) => ({ tipo: 'linea', item, indice }))
+    return items.map((item, indice) => ({ tipo: 'linea', item, indice, ocultarIdentidad: false }))
   }
 
   const grupos = new Map<string, ItemMaterial[]>()
   const orden: string[] = []
   for (const item of items) {
-    const clave = normalizar(item.material) + '\u0000' + normalizar(item.unidad)
+    const clave = normalizar(item.codigo) + '\u0000' + normalizar(item.material) + '\u0000' + normalizar(item.unidad)
     const actual = grupos.get(clave)
     if (actual) {
       actual.push(item)
@@ -97,18 +98,28 @@ export function filasMateriales(items: ItemMaterial[], subtotales: boolean): Fil
   let indice = 0
   for (const clave of orden) {
     const grupo = grupos.get(clave) ?? []
+    const agrupar = grupo.length > 1
+    if (agrupar) {
+      filas.push({
+        tipo: 'encabezado',
+        clave,
+        codigo: grupo[0].codigo,
+        material: grupo[0].material,
+        unidad: grupo[0].unidad,
+      })
+    }
+
     for (const item of grupo) {
-      filas.push({ tipo: 'linea', item, indice })
+      filas.push({ tipo: 'linea', item, indice, ocultarIdentidad: agrupar })
       indice += 1
     }
 
-    if (grupo.length > 1) {
+    if (agrupar) {
       const cantidad = grupo.reduce((suma, item) => suma + item.cantidad, 0)
       const subtotal = grupo.reduce((suma, item) => suma + item.subtotal, 0)
       filas.push({
         tipo: 'subtotal',
         clave,
-        material: grupo[0].material,
         cantidad: Math.round(cantidad * 10000) / 10000,
         subtotal: Math.round(subtotal * 100) / 100,
       })

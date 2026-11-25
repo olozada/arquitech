@@ -222,6 +222,7 @@ public sealed partial class ActaServicio : IActaServicio
             detalles = detalles.Where(detalle => detalle.ConstruccionId == construccionId);
         }
 
+        detalles = detalles.Where(detalle => detalle.Aprobado);
         detalles = porConcepto
             ? detalles
             : detalles.Where(detalle => detalle.InsumoId != null);
@@ -558,7 +559,7 @@ public sealed partial class ActaServicio : IActaServicio
         bool porConstruccion = false)
     {
         var campo = orden?.Trim().ToLowerInvariant();
-        if (campo is not ("acta" or "codigo" or "material" or "unidad" or "cantidad" or "precio" or "estado" or "subtotal"))
+        if (campo is not ("acta" or "codigo" or "material" or "unidad" or "cantidad" or "precio" or "subtotal"))
         {
             return items;
         }
@@ -584,10 +585,6 @@ public sealed partial class ActaServicio : IActaServicio
                 "cantidad" => izquierda.item.Cantidad.CompareTo(derecha.item.Cantidad),
                 "precio" => izquierda.item.Precio.CompareTo(derecha.item.Precio),
                 "subtotal" => izquierda.item.Subtotal.CompareTo(derecha.item.Subtotal),
-                "estado" => string.Compare(
-                    izquierda.item.Aprobado ? "aprobado" : "rechazado",
-                    derecha.item.Aprobado ? "aprobado" : "rechazado",
-                    StringComparison.CurrentCultureIgnoreCase),
                 "codigo" => Comparacion.Compare(izquierda.item.Codigo, derecha.item.Codigo, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace),
                 "unidad" => Comparacion.Compare(izquierda.item.Unidad, derecha.item.Unidad, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace),
                 _ => Comparacion.Compare(izquierda.item.Material, derecha.item.Material, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace)

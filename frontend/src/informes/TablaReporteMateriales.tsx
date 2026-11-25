@@ -35,7 +35,7 @@ export function TablaMateriales({
   const filasBase = items
   const porConstruccion = filasBase.some((item) => (item.construccion ?? '').trim().length > 0)
   const secciones = porConstruccion ? seccionesPorConstruccion(filasBase) : [{ nombre: '', items: filasBase }]
-  const columnas = (detallado ? 1 : 0) + 7
+  const columnas = (detallado ? 1 : 0) + 6
   const tamanoPagina = tamano > 0 ? tamano : TAMANO_PAGINA
   const totalPaginas = Math.max(1, Math.ceil((cantidad || items.length) / tamanoPagina))
   const paginaVisible = Math.min(pagina, totalPaginas)
@@ -52,26 +52,24 @@ export function TablaMateriales({
       <div className="table-responsive">
         <Table hover className="catalogo-tabla reporte-items reporte-ancho mb-0">
           <colgroup>
-            {detallado && <col className="reporte-col-acta" />}
             <col className="reporte-col-codigo" />
             <col className="reporte-col-material" />
             <col className="reporte-col-um" />
+            {detallado && <col className="reporte-col-acta" />}
             <col className="reporte-col-cantidad" />
             <col className="reporte-col-precio" />
-            <col className="reporte-col-estado" />
             <col className="reporte-col-subtotal" />
           </colgroup>
           <thead>
             <tr>
-              {detallado && (
-                <Encabezado campo="acta" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Acta</Encabezado>
-              )}
               <Encabezado campo="codigo" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Código</Encabezado>
               <Encabezado campo="material" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>{columna}</Encabezado>
               <Encabezado campo="unidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>UM</Encabezado>
+              {detallado && (
+                <Encabezado campo="acta" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Acta</Encabezado>
+              )}
               <Encabezado campo="cantidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Cantidad</Encabezado>
               <Encabezado campo="precio" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Precio</Encabezado>
-              <Encabezado campo="estado" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Estado</Encabezado>
               <Encabezado campo="subtotal" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Subtotal</Encabezado>
             </tr>
           </thead>
@@ -82,44 +80,65 @@ export function TablaMateriales({
               return (
                 <Fragment key={seccion.nombre || 'sin-construccion'}>
                   {porConstruccion && (
-                    <tr className="reporte-corte">
+                    <tr className="reporte-construccion">
                       <th colSpan={columnas}>Construcción: {seccion.nombre}</th>
                     </tr>
                   )}
-                  {filas.map((fila) => fila.tipo === 'linea' ? (
-                    <tr key={`${seccion.nombre}-${fila.item.numeroActa ?? ''}-${fila.item.codigo}-${fila.item.material}-${fila.item.unidad}-${fila.item.aprobado}-${fila.indice}`}>
-                      {detallado && <td>{fila.item.numeroActa}</td>}
-                      <td>{fila.item.codigo}</td>
-                      <td title={fila.item.material}>{fila.item.material}</td>
-                      <td>{fila.item.unidad}</td>
-                      <td className="reporte-num">{fila.item.cantidad}</td>
-                      <td className="reporte-num">{dinero(fila.item.precio)}</td>
-                      <td>{fila.item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
-                      <td className="reporte-num">{dinero(fila.item.subtotal)}</td>
-                    </tr>
-                  ) : (
-                    <tr key={`${seccion.nombre}-subtotal-${fila.clave}`} className="reporte-corte">
-                      {detallado && <th />}
-                      <th />
-                      <th title={`Subtotal ${fila.material}`}>Subtotal {fila.material}</th>
-                      <th />
-                      <th className="reporte-num">{fila.cantidad}</th>
-                      <th />
-                      <th />
-                      <th className="reporte-total-valor">{dinero(fila.subtotal)}</th>
-                    </tr>
-                  ))}
+                  {filas.map((fila) => {
+                    if (fila.tipo === 'encabezado') {
+                      return (
+                        <tr key={`${seccion.nombre}-grupo-${fila.clave}`} className="reporte-grupo">
+                          <th>{fila.codigo}</th>
+                          <th title={fila.material}>{fila.material}</th>
+                          <th>{fila.unidad}</th>
+                          {detallado && <th />}
+                          <th colSpan={3} />
+                        </tr>
+                      )
+                    }
+
+                    if (fila.tipo === 'linea') {
+                      return (
+                        <tr key={`${seccion.nombre}-${fila.item.numeroActa ?? ''}-${fila.item.codigo}-${fila.item.material}-${fila.item.unidad}-${fila.item.aprobado}-${fila.indice}`}>
+                          <td>{fila.ocultarIdentidad ? '' : fila.item.codigo}</td>
+                          <td title={fila.ocultarIdentidad ? undefined : fila.item.material}>{fila.ocultarIdentidad ? '' : fila.item.material}</td>
+                          <td>{fila.ocultarIdentidad ? '' : fila.item.unidad}</td>
+                          {detallado && <td className="reporte-num">{fila.item.numeroActa}</td>}
+                          <td className="reporte-num">{fila.item.cantidad}</td>
+                          <td className="reporte-num">{dinero(fila.item.precio)}</td>
+                          <td className="reporte-num">{dinero(fila.item.subtotal)}</td>
+                        </tr>
+                      )
+                    }
+
+                    return (
+                      <tr key={`${seccion.nombre}-subtotal-${fila.clave}`} className="reporte-corte">
+                        <th />
+                        <th>Subtotal</th>
+                        <th />
+                        {detallado && <th />}
+                        <th className="reporte-num">{fila.cantidad}</th>
+                        <th />
+                        <th className="reporte-total-valor">{dinero(fila.subtotal)}</th>
+                      </tr>
+                    )
+                  })}
                   {porConstruccion && (
-                    <tr className="reporte-corte">
-                      <th colSpan={columnas - 1}>Total {seccion.nombre}</th>
-                      <th className="reporte-total-valor">{dinero(totalSeccion)}</th>
-                    </tr>
+                    <>
+                      <tr className="reporte-corte reporte-total-casa">
+                        <th colSpan={columnas - 1}>Total {seccion.nombre}</th>
+                        <th className="reporte-total-valor">{dinero(totalSeccion)}</th>
+                      </tr>
+                      <tr className="reporte-separador" aria-hidden="true">
+                        <td colSpan={columnas} />
+                      </tr>
+                    </>
                   )}
                 </Fragment>
               )
             })}
             <tr className="reporte-total">
-              <th colSpan={detallado ? 7 : 6}>TOTAL</th>
+              <th colSpan={detallado ? 6 : 5}>TOTAL</th>
               <th className="reporte-total-valor">{dinero(total)}</th>
             </tr>
           </tbody>

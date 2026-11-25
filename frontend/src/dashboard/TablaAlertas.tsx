@@ -72,26 +72,26 @@ export function TablaAlertas({ filtro, alFiltrarConstruccion }: Propiedades) {
       <p className="nota-a2">{notaA2}</p>
       {consulta.isLoading ? <p>Cargando alertas…</p> : null}
       <div className="table-responsive">
-        <Table hover className="catalogo-tabla">
+        <Table hover className="catalogo-tabla tabla-alertas">
           <thead>
             <tr>
-              <th>Tipo</th>
-              <th>Severidad</th>
+              <th className="alerta-tipo">Tipo</th>
+              <th className="alerta-severidad">Severidad</th>
               <th>Alerta</th>
-              <th>Construcción</th>
-              <th className="text-end">Impacto</th>
-              <th>Acta</th>
+              <th className="alerta-construccion">Construcción</th>
+              <th className="alerta-impacto">Impacto</th>
+              <th className="alerta-acta">Acta</th>
             </tr>
           </thead>
           <tbody>
             {(datos?.alertas ?? []).map((alerta) => (
               <tr key={`${alerta.tipo}-${alerta.numeroActa ?? 'obra'}-${alerta.construccionId}-${alerta.titulo}`}>
-                <td>{alerta.tipo}</td>
-                <td>
+                <td className="alerta-tipo">{alerta.tipo}</td>
+                <td className="alerta-severidad">
                   <span className={`severidad severidad-${alerta.severidad.toLowerCase()}`}>{alerta.severidad}</span>
                 </td>
                 <td title={alerta.tipo === 'A2' ? notaA2 : alerta.detalle}>{alerta.titulo}</td>
-                <td>
+                <td className="alerta-construccion">
                   {alerta.construccionId ? (
                     <button type="button" className="btn btn-link p-0" onClick={() => alFiltrarConstruccion(alerta.construccionId!)}>
                       {alerta.construccion}
@@ -100,8 +100,8 @@ export function TablaAlertas({ filtro, alFiltrarConstruccion }: Propiedades) {
                     (alerta.construccion ?? '—')
                   )}
                 </td>
-                <td className="text-end">{alerta.impacto === null ? '—' : dinero(alerta.impacto)}</td>
-                <td>
+                <td className="alerta-impacto">{alerta.impacto === null ? '—' : dinero(alerta.impacto)}</td>
+                <td className="alerta-acta">
                   {alerta.numeroActa ? (
                     <button type="button" className="btn btn-link p-0" onClick={() => void abrir(alerta.numeroActa!)}>
                       N° {alerta.numeroActa}

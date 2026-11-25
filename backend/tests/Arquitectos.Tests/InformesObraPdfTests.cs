@@ -52,8 +52,13 @@ public sealed class InformesObraPdfTests
         using var lector = new StreamReader(paquete.GetEntry("xl/sharedStrings.xml")!.Open());
         var texto = lector.ReadToEnd();
 
-        Assert.Contains("Subtotal Cemento", texto, StringComparison.Ordinal);
+        Assert.Contains("Cemento", texto, StringComparison.Ordinal);
+        Assert.Contains("Subtotal", texto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Subtotal Cemento", texto, StringComparison.Ordinal);
         Assert.DoesNotContain("Subtotal Arena", texto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Estado", texto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Aprobado", texto, StringComparison.Ordinal);
+        Assert.DoesNotContain("Rechazado", texto, StringComparison.Ordinal);
     }
 
     private static void EsPdf(byte[] archivo)

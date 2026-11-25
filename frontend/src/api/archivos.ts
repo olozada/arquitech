@@ -59,9 +59,7 @@ export async function abrirInformeItems(
       romperPorActa: filtro.romperPorActa || undefined,
     },
   })
-  const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
-  window.open(url, '_blank', 'noopener')
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  guardarBlob(data, 'application/pdf', 'ReporteActas.pdf')
 }
 
 export async function descargarExcel(filtro: FiltroReporte) {
@@ -77,10 +75,14 @@ export async function descargarExcel(filtro: FiltroReporte) {
       estado: filtro.estado || undefined,
     },
   })
-  const url = URL.createObjectURL(data)
+  guardarBlob(data, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'ReporteActas.xlsx')
+}
+
+function guardarBlob(data: BlobPart, tipo: string, nombre: string) {
+  const url = URL.createObjectURL(new Blob([data], { type: tipo }))
   const enlace = document.createElement('a')
   enlace.href = url
-  enlace.download = 'ReporteActas.xlsx'
+  enlace.download = nombre
   enlace.click()
   URL.revokeObjectURL(url)
 }

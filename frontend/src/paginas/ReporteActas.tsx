@@ -30,7 +30,6 @@ export function ReporteActas() {
   const [filtro, setFiltro] = useState<Filtro | null>(null)
   const [exportando, setExportando] = useState(false)
   const [imprimiendo, setImprimiendo] = useState(false)
-  const informeDisponible = construccionId > 0 || contratistaId > 0 || arquitectoId > 0 || revisorId > 0
 
   const construcciones = useCatalogo('construcciones')
   const contratistas = useCatalogo('contratistas')
@@ -233,11 +232,9 @@ export function ReporteActas() {
           <Button type="button" variant="outline-primary" disabled={exportando} onClick={() => void exportar()}>
             Exportar Excel
           </Button>
-          {informeDisponible && (
-            <Button type="button" variant="outline-primary" disabled={imprimiendo} onClick={() => void imprimir()}>
-              {imprimiendo ? 'Imprimiendo…' : 'Imprimir'}
-            </Button>
-          )}
+          <Button type="button" variant="outline-primary" disabled={imprimiendo} onClick={() => void imprimir()}>
+            {imprimiendo ? 'Generando…' : 'PDF'}
+          </Button>
         </div>
       </Form>
 
