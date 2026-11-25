@@ -156,6 +156,11 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
     <section className="catalogo">
       <h1>{configuracion.titulo}</h1>
       <Form className="catalogo-panel" onSubmit={handleSubmit((valores) => guardar.mutate(valores))} noValidate>
+        <div className="catalogo-alta-encabezado">
+          <h2>{seleccionId == null ? 'Nuevo registro' : 'Editar registro'}</h2>
+          <span>Los campos con * son obligatorios</span>
+        </div>
+        <div className="catalogo-campos">
         {configuracion.campos.map((campo) => (
           <Form.Group className="mb-3" controlId={`${configuracion.recurso}-${campo.nombre}`} key={campo.nombre}>
             <Form.Label>
@@ -171,7 +176,11 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
             <Form.Control.Feedback type="invalid">{errors[campo.nombre]?.message}</Form.Control.Feedback>
           </Form.Group>
         ))}
+        </div>
         <div className="catalogo-acciones">
+          <Button type="button" variant="outline-secondary" disabled={ocupado} onClick={cancelar}>
+            Cancelar
+          </Button>
           {seleccionId == null ? (
             <Button type="submit" disabled={ocupado}>
               Crear
@@ -186,9 +195,6 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
               </Button>
             </>
           )}
-          <Button type="button" variant="outline-secondary" disabled={ocupado} onClick={cancelar}>
-            Cancelar
-          </Button>
         </div>
       </Form>
 
@@ -198,18 +204,21 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
         {lista.isSuccess && registros.length === 0 && <p>No hay registros.</p>}
         {lista.isSuccess && registros.length > 0 && (
           <>
-            {registros.length > TAMANO_PAGINA && (
+            <div className="catalogo-lista-encabezado">
+              <p className="catalogo-conteo mb-0">
+                {visibles.length} {visibles.length === 1 ? 'registro' : 'registros'}
+              </p>
               <Form.Control
-                className="mb-3"
                 type="search"
-                placeholder={`Buscar por ${configuracion.columnas.map((columna) => columna.titulo.toLocaleLowerCase('es')).join(', ')}`}
+                placeholder="Buscar"
+                aria-label="Buscar"
                 value={busqueda}
                 onChange={(evento) => {
                   setBusqueda(evento.target.value)
                   setPagina(1)
                 }}
               />
-            )}
+            </div>
             {visibles.length === 0 && <p className="mb-0">No hay registros.</p>}
             {visibles.length > 0 && (
               <>

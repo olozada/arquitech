@@ -17,6 +17,8 @@ public sealed class CreacionPresupuestoTests : IDisposable
     private readonly ArquitectosDbContext _context;
     private readonly PresupuestoServicio _servicio;
     private readonly int _admin = SemillaInicial.UsuarioAdminId;
+    private readonly int _unidadM2;
+    private readonly int _unidadMl;
 
     public CreacionPresupuestoTests()
     {
@@ -25,6 +27,12 @@ public sealed class CreacionPresupuestoTests : IDisposable
         var opciones = new DbContextOptionsBuilder<ArquitectosDbContext>().UseSqlite(_conexion).Options;
         _context = new ArquitectosDbContext(opciones);
         _context.Database.EnsureCreated();
+        _context.UnidadesMedida.AddRange(
+            new UnidadMedida { Nombre = "m2", Descripcion = "Metro cuadrado" },
+            new UnidadMedida { Nombre = "ml", Descripcion = "Metro lineal" });
+        _context.SaveChanges();
+        _unidadM2 = _context.UnidadesMedida.Single(unidad => unidad.Nombre == "m2").Id;
+        _unidadMl = _context.UnidadesMedida.Single(unidad => unidad.Nombre == "ml").Id;
         _servicio = new PresupuestoServicio(_context, new MotorCostos(_context));
     }
 
@@ -228,12 +236,12 @@ public sealed class CreacionPresupuestoTests : IDisposable
     public async Task La_validacion_cubre_los_cuatro_tipos_y_bloquea_la_aprobacion()
     {
         var obra = await ObraAsync();
-        var apu = new Apu { Descripcion = "Losa", Unidad = "M2", DivisorGeneral = 1 };
+        var apu = new Apu { Descripcion = "Losa", Unidad = "m2", UnidadMedidaId = _unidadM2, DivisorGeneral = 1 };
         _context.Apus.Add(apu);
         await _context.SaveChangesAsync();
         var creado = await _servicio.CrearAsync(Presupuesto(obra.Id,
-            new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Losa", Unidad = "ML", ApuId = apu.Id, Cantidad = 0, ValorMaterialUnitario = 8 },
-            new ItemPresupuestoSolicitud { Codigo = "1.02", Descripcion = "Vacío", Cantidad = 0 }), _admin, CancellationToken.None);
+            new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Losa", Unidad = "ml", UnidadMedidaId = _unidadMl, ApuId = apu.Id, Cantidad = 0, ValorMaterialUnitario = 8 },
+            new ItemPresupuestoSolicitud { Codigo = "1.02", Descripcion = "Vacío", Unidad = "m2", UnidadMedidaId = _unidadM2, Cantidad = 0 }), _admin, CancellationToken.None);
         var vacio = await _context.Set<PresupuestoItem>().SingleAsync(item => item.Codigo == "1.02");
         vacio.Codigo = "1.01";
         await _context.SaveChangesAsync();
@@ -249,6 +257,8 @@ public sealed class CreacionPresupuestoTests : IDisposable
         {
             Codigo = "2.01",
             Descripcion = "Pendiente",
+            Unidad = "m2",
+            UnidadMedidaId = _unidadM2,
             Cantidad = 0,
             ValorMaterialUnitario = 5
         }), _admin, CancellationToken.None);
@@ -322,10 +332,12 @@ public sealed class CreacionPresupuestoTests : IDisposable
         return obra;
     }
 
-    private static ItemPresupuestoSolicitud ItemValido(string codigo = "1.01") => new()
+    private ItemPresupuestoSolicitud ItemValido(string codigo = "1.01") => new()
     {
         Codigo = codigo,
         Descripcion = "Ítem",
+        Unidad = "m2",
+        UnidadMedidaId = _unidadM2,
         Cantidad = 2,
         ValorMaterialUnitario = 10
     };

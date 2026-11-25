@@ -35,7 +35,7 @@ export function TablaItemsActa({
           <Table hover className="catalogo-tabla mb-0">
             <thead>
               <tr>
-                <th>{revisor ? 'Revisión' : 'Seleccionar'}</th>
+                {!cerrada && <th>{revisor ? 'Revisión' : 'Seleccionar'}</th>}
                 <th>Perfil</th>
                 <th>Estado</th>
                 <th>Construcción</th>
@@ -51,24 +51,26 @@ export function TablaItemsActa({
             <tbody>
               {detalles.map((item) => (
                 <tr key={item.clave}>
-                  <td>
-                    {cerrada ? null : revisor ? (
-                      <div className="d-flex gap-1">
-                        <Button type="button" size="sm" variant={item.aprobado ? 'success' : 'outline-success'} onClick={() => alRevisar(item.clave, true)}>
-                          Aprobar
-                        </Button>
-                        <Button type="button" size="sm" variant={!item.aprobado ? 'danger' : 'outline-danger'} onClick={() => alRevisar(item.clave, false)}>
-                          Rechazar
-                        </Button>
-                      </div>
-                    ) : (
-                      (administrador || item.tipoUsuarioId === perfilDeNuevoItem(tipoUsuario).id) && (
-                        <Button type="button" size="sm" variant="outline-primary" onClick={() => alAbrir(item)}>
-                          Seleccionar
-                        </Button>
-                      )
-                    )}
-                  </td>
+                  {!cerrada && (
+                    <td>
+                      {revisor ? (
+                        <div className="d-flex gap-1">
+                          <Button type="button" size="sm" variant={item.aprobado ? 'success' : 'outline-success'} onClick={() => alRevisar(item.clave, true)}>
+                            Aprobar
+                          </Button>
+                          <Button type="button" size="sm" variant={!item.aprobado ? 'danger' : 'outline-danger'} onClick={() => alRevisar(item.clave, false)}>
+                            Rechazar
+                          </Button>
+                        </div>
+                      ) : (
+                        (administrador || item.tipoUsuarioId === perfilDeNuevoItem(tipoUsuario).id) && (
+                          <Button type="button" size="sm" variant="outline-primary" onClick={() => alAbrir(item)}>
+                            Seleccionar
+                          </Button>
+                        )
+                      )}
+                    </td>
+                  )}
                   <td>{item.tipoUsuario}</td>
                   <td>{item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
                   <td>{item.construccion}</td>

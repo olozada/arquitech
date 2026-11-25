@@ -251,12 +251,27 @@ public sealed class DescripcionUnidadServicio<TEntity>
             cancellationToken);
 
     protected override DescripcionUnidadDto Mapear(TEntity entidad) =>
-        new(entidad.Id, entidad.Descripcion, entidad.Unidad, entidad.Activo);
+        new(entidad.Id, entidad.Descripcion, entidad.Unidad, entidad.UnidadMedidaId, entidad.Activo);
 
     protected override void Aplicar(TEntity entidad, DescripcionUnidadSolicitud solicitud, bool esNuevo)
     {
         entidad.Descripcion = solicitud.Descripcion.Trim();
-        entidad.Unidad = TextoOpcional(solicitud.Unidad);
+        if (solicitud.UnidadMedidaId is > 0)
+        {
+            var unidad = Context.UnidadesMedida.Find(solicitud.UnidadMedidaId);
+            if (unidad is null)
+            {
+                throw new InvalidOperationException("La unidad de medida no existe.");
+            }
+
+            entidad.UnidadMedidaId = unidad.Id;
+            entidad.Unidad = unidad.Nombre;
+        }
+        else
+        {
+            entidad.UnidadMedidaId = null;
+            entidad.Unidad = TextoOpcional(solicitud.Unidad);
+        }
         if (esNuevo)
         {
             entidad.Activo = true;

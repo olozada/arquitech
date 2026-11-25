@@ -132,7 +132,16 @@ public sealed class CuadrillaSolicitud
     public List<IntegranteSolicitud> Integrantes { get; set; } = [];
 }
 
-public sealed record ApuResumenDto(int Id, string? Codigo, string Descripcion, string Unidad, bool EsSubanalisis, decimal CostoTotal, bool Activo, int Usos = 0);
+public sealed record ApuResumenDto(
+    int Id,
+    string? Codigo,
+    string Descripcion,
+    string Unidad,
+    bool EsSubanalisis,
+    decimal CostoTotal,
+    bool Activo,
+    int Usos = 0,
+    int? UnidadMedidaId = null);
 
 public sealed record LineaApuDto(
     int Id,
@@ -244,6 +253,7 @@ public sealed record ItemPresupuestoDto(
     bool AvisoUnidad,
     int? ConceptoId,
     decimal Cantidad,
+    string? FormulaCantidad,
     int? CantidadOrigenItemId,
     decimal CantidadOrigenFactor,
     decimal ValorMaterialUnitario,
@@ -327,6 +337,8 @@ public sealed class ItemPresupuestoSolicitud
 
     public decimal Cantidad { get; set; }
 
+    public string? FormulaCantidad { get; set; }
+
     public int? CantidadOrigenItemId { get; set; }
 
     public decimal CantidadOrigenFactor { get; set; } = 1;
@@ -386,6 +398,37 @@ public sealed record DiferenciaItemDto(
     decimal Diferencia);
 
 public sealed record RecalculoDto(CostoPresupuestoDto Actual, CostoPresupuestoDto Propuesto, IReadOnlyList<DiferenciaItemDto> Diferencias, bool Aplicado);
+
+public sealed record ParchePresupuestoDto(string RowVersion, CostoPresupuestoDto Resumen, IReadOnlyList<ItemPresupuestoDto> Items);
+
+public sealed class ItemParcheSolicitud
+{
+    public string RowVersion { get; set; } = "";
+
+    public string? Codigo { get; set; }
+
+    public string? Descripcion { get; set; }
+
+    public string? Unidad { get; set; }
+
+    public int? UnidadMedidaId { get; set; }
+
+    public int? ApuId { get; set; }
+
+    public decimal? FactorConversionApu { get; set; }
+
+    public int? ConceptoId { get; set; }
+
+    public decimal? Cantidad { get; set; }
+
+    public string? FormulaCantidad { get; set; }
+
+    public decimal? ValorMaterialUnitario { get; set; }
+
+    public decimal? ValorManoObraUnitario { get; set; }
+
+    public bool? DesdeApu { get; set; }
+}
 
 public sealed record SeguimientoFilaDto(
     int? ItemId,
@@ -608,6 +651,12 @@ public interface IPresupuestoServicio
     Task<ResultadoOperacion<PresupuestoDetalleDto>> DuplicarItemAsync(int id, int itemId, string? rowVersion, int usuarioId, CancellationToken cancellationToken);
 
     Task<ResultadoOperacion<PresupuestoDetalleDto>> MoverItemAsync(int id, int itemId, MoverItemSolicitud solicitud, int usuarioId, CancellationToken cancellationToken);
+
+    Task<ResultadoOperacion<ParchePresupuestoDto>> ParchearItemAsync(int id, int itemId, ItemParcheSolicitud solicitud, int usuarioId, CancellationToken cancellationToken);
+
+    Task<ResultadoOperacion<ParchePresupuestoDto>> CrearItemAsync(int id, int capituloId, ItemParcheSolicitud solicitud, int usuarioId, CancellationToken cancellationToken);
+
+    Task<ResultadoOperacion<ParchePresupuestoDto>> EliminarItemAsync(int id, int itemId, int usuarioId, CancellationToken cancellationToken, string? rowVersion = null);
 
     Task<ResultadoOperacion<IReadOnlyList<ValidacionPresupuestoDto>>> ValidarAsync(int id, int usuarioId, CancellationToken cancellationToken);
 

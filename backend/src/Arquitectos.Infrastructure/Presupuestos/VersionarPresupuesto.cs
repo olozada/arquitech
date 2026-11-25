@@ -62,6 +62,7 @@ public sealed partial class PresupuestoServicio
                     FactorConversionApu = item.FactorConversionApu,
                     ConceptoId = item.ConceptoId,
                     Cantidad = item.Cantidad,
+                    FormulaCantidad = item.FormulaCantidad,
                     CantidadOrigenFactor = item.CantidadOrigenFactor,
                     ValorMaterialUnitario = item.ValorMaterialUnitario,
                     ValorManoObraUnitario = item.ValorManoObraUnitario,

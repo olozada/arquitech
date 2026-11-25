@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { descartarBorradorActa } from '../actas/useBorradorActa'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Col, Form, Row, Table } from 'react-bootstrap'
@@ -22,7 +22,9 @@ const ordenInicial: CampoOrden = 'numero'
 export function ListadoActas() {
   const { sesion } = useSesion()
   const navegar = useNavigate()
-  const [numero, setNumero] = useState('')
+  const [parametros] = useSearchParams()
+  const numeroUrl = parametros.get('numero') ?? ''
+  const [numero, setNumero] = useState(numeroUrl)
   const [arquitecto, setArquitecto] = useState('')
   const [revisor, setRevisor] = useState('')
   const [contratista, setContratista] = useState('')
@@ -32,6 +34,12 @@ export function ListadoActas() {
   const [campo, setCampo] = useState<CampoOrden>(ordenInicial)
   const [direccion, setDireccion] = useState<Direccion>('asc')
   const [pagina, setPagina] = useState(1)
+
+  useEffect(() => {
+    setNumero(numeroUrl)
+    setPagina(1)
+  }, [numeroUrl])
+
   const fechasInvalidas = Boolean(desde && hasta && hasta < desde)
   const listado = useQuery({
     queryKey: ['actas', numero, arquitecto, revisor, contratista, desde, hasta, estado, campo, direccion, pagina],

@@ -307,6 +307,24 @@ public sealed class PresupuestosController : ControllerBase
         ResultadoHttp.Traducir(this, await _servicio.ValidarAsync(id, Usuario(), cancellationToken));
 
     [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpPatch("{id:int}/items/{itemId:int}")]
+  [ProducesResponseType(typeof(ParchePresupuestoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ParchearItem(int id, int itemId, ItemParcheSolicitud solicitud, CancellationToken cancellationToken) =>
+        ResultadoHttp.Traducir(this, await _servicio.ParchearItemAsync(id, itemId, solicitud, Usuario(), cancellationToken));
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpPost("{id:int}/capitulos/{capituloId:int}/items")]
+    [ProducesResponseType(typeof(ParchePresupuestoDto), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CrearItem(int id, int capituloId, ItemParcheSolicitud solicitud, CancellationToken cancellationToken) =>
+        ResultadoHttp.Traducir(this, await _servicio.CrearItemAsync(id, capituloId, solicitud, Usuario(), cancellationToken), true);
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpDelete("{id:int}/items/{itemId:int}")]
+    [ProducesResponseType(typeof(ParchePresupuestoDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> EliminarItem(int id, int itemId, [FromQuery] string? rowVersion, CancellationToken cancellationToken) =>
+        ResultadoHttp.Traducir(this, await _servicio.EliminarItemAsync(id, itemId, Usuario(), cancellationToken, rowVersion));
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpPut("{id:int}")]
     [ProducesResponseType(typeof(PresupuestoDetalleDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Actualizar(int id, PresupuestoSolicitud solicitud, CancellationToken cancellationToken) =>

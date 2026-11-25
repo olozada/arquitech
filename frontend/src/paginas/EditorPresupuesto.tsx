@@ -6,7 +6,7 @@ import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
 import { listarTodo } from '../api/pagina'
 import { HistorialAuditoria } from '../componentes/HistorialAuditoria'
-import type { ItemPresupuesto, PresupuestoDetalle, Recalculo } from '../api/presupuesto'
+import type { PresupuestoDetalle, Recalculo } from '../api/presupuesto'
 import { esAdministrador } from '../auth/perfiles'
 import { useSesion } from '../auth/contextoSesion'
 import { BarraEditor } from '../presupuesto/BarraEditor'
@@ -31,6 +31,7 @@ export function EditorPresupuesto() {
     consulta,
     borrador,
     setBorrador,
+    sustituirBorrador,
     sucio,
     setSucio,
     guardando,
@@ -39,6 +40,8 @@ export function EditorPresupuesto() {
     conflicto,
     resumen,
     guardar,
+    cambiarItem,
+    pegarFilas,
   } = useEditorPresupuesto(presupuestoId, administrador)
   const [medicionItem, setMedicionItem] = useState<{ capitulo: number; item: number } | null>(null)
   const [buscarApu, setBuscarApu] = useState<number | null>(null)
@@ -57,7 +60,20 @@ export function EditorPresupuesto() {
   const apus = useQuery({
     queryKey: ['apus'],
     enabled: administrador,
-    queryFn: async () => listarTodo<{ id: number; codigo: string | null; descripcion: string; unidad: string }>('/api/apu'),
+    queryFn: async () =>
+      listarTodo<{
+        id: number
+        codigo: string | null
+        descripcion: string
+        unidad: string
+        costoTotal: number
+        unidadMedidaId: number | null
+      }>('/api/apu'),
+  })
+  const unidades = useQuery({
+    queryKey: ['unidades-medida'],
+    enabled: administrador,
+    queryFn: async () => (await cliente.get<Array<{ id: number; nombre: string }>>('/api/unidades-medida')).data,
   })
 
   useEffect(() => {
@@ -103,7 +119,7 @@ export function EditorPresupuesto() {
     }
     try {
       const { data } = await cliente.post<PresupuestoDetalle>(`/api/presupuestos/${borrador.id}/${ruta}`, cuerpoAccion)
-      setBorrador(data)
+      sustituirBorrador(data)
       setSucio(false)
     } catch (error) {
       await Swal.fire({ icon: 'error', text: mensajeError(error) })
@@ -137,7 +153,7 @@ export function EditorPresupuesto() {
         window.location.assign(`/presupuestos/${data.id}`)
         return
       }
-      setBorrador(data)
+      sustituirBorrador(data)
       await consultas.invalidateQueries({ queryKey: ['presupuestos'] })
       await Swal.fire({ icon: 'success', title: titulo, confirmButtonColor: '#1abb9c' })
     } catch (error) {
@@ -209,8 +225,10 @@ export function EditorPresupuesto() {
           filtroAvisos={filtroAvisos}
           avisos={validacion.data ?? []}
           apus={apus.data ?? []}
-          alActualizar={(data) => setBorrador(data)}
-          alCambiar={(item, cambios) => cambiar(indiceCapitulo, item, cambios)}
+          unidades={unidades.data ?? []}
+          alActualizar={(data) => sustituirBorrador(data)}
+          alCambiar={(item, cambios) => cambiarItem(indiceCapitulo, item, cambios)}
+          alPegar={(desde, filas) => pegarFilas(indiceCapitulo, desde, filas)}
           alAgregarItem={() => agregarItem(indiceCapitulo)}
           alBuscarApu={() => { setBuscarApu(indiceCapitulo); setElegidos([]) }}
           alCrearApu={() => setPanelApu({ modo: 'crear', capitulo: indiceCapitulo, unidad: capitulo.items.at(-1)?.unidad ?? '' })}
@@ -226,12 +244,13 @@ export function EditorPresupuesto() {
           type="button"
           variant="outline-secondary"
           className="mb-3"
-          onClick={() =>
+          onClick={() => {
             setBorrador({
               ...borrador,
               capitulos: [...borrador.capitulos, { id: nuevoId(), numero: borrador.capitulos.length + 1, nombre: 'Nuevo capítulo', total: 0, incidencia: 0, items: [] }],
             })
-          }
+            setSucio(true)
+          }}
         >
           Agregar capítulo
         </Button>
@@ -243,7 +262,7 @@ export function EditorPresupuesto() {
         administrador={administrador}
         medicionItem={medicionItem}
         setMedicionItem={setMedicionItem}
-        cambiar={cambiar}
+        cambiar={cambiarItem}
         buscarApu={buscarApu}
         setBuscarApu={setBuscarApu}
         textoApu={textoApu}
@@ -280,7 +299,7 @@ export function EditorPresupuesto() {
       capituloDestinoId: destinoCapitulo,
       rowVersion: borrador.rowVersion,
     })
-    setBorrador(data)
+    sustituirBorrador(data)
     setMover(null)
     setResaltado(mover.itemId)
   }
@@ -310,24 +329,13 @@ export function EditorPresupuesto() {
     }
   }
 
-  function cambiar(capitulo: number, item: number, cambios: Partial<ItemPresupuesto>) {
-    setBorrador((actual) => {
-      if (!actual) {
-        return actual
-      }
-      const copia = structuredClone(actual)
-      copia.capitulos[capitulo].items[item] = { ...copia.capitulos[capitulo].items[item], ...cambios }
-      setSucio(true)
-      return copia
-    })
-  }
-
   function agregarItem(capitulo: number) {
     setBorrador((actual) => {
       if (!actual) {
         return actual
       }
       const copia = structuredClone(actual)
+      setSucio(true)
       copia.capitulos[capitulo].items.push({
         id: nuevoId(),
         codigo: '',
@@ -341,6 +349,7 @@ export function EditorPresupuesto() {
         avisoUnidad: false,
         conceptoId: null,
         cantidad: 0,
+        formulaCantidad: null,
         cantidadOrigenItemId: null,
         cantidadOrigenFactor: 1,
         valorMaterialUnitario: 0,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Col, Row } from 'react-bootstrap'
+import { Button, Col, Row } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { descargarDashboard } from '../api/archivos'
 import { mensajeDeError, mensajeError } from '../api/cliente'
@@ -69,8 +69,17 @@ export function Dashboard() {
 
   return (
     <div className="dashboard">
-      <h1>Tablero</h1>
-      <FiltrosDashboard filtro={filtro} alCambiar={actualizar} exportando={exportando} alExportar={() => void exportar()} />
+      <h1>Inicio</h1>
+      <div className="tablero-encabezado">
+        <div>
+          <h2>Tablero</h2>
+          <p>Resumen de las actas del período, comparado con el período anterior equivalente.</p>
+        </div>
+        <Button type="button" className="btn-exportar" onClick={() => void exportar()} disabled={exportando}>
+          {exportando ? 'Exportando…' : 'Exportar'}
+        </Button>
+      </div>
+      <FiltrosDashboard filtro={filtro} alCambiar={actualizar} />
       {consulta.isLoading ? <Esqueleto /> : null}
       {consulta.isError ? <p className="dashboard-vacio">{mensajeError(consulta.error)}</p> : null}
       {datos && actas === 0 ? (

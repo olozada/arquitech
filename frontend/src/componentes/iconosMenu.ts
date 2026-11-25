@@ -17,6 +17,7 @@ import {
   Menu,
   Package,
   PencilRuler,
+  Receipt,
   Ruler,
   Settings,
   Table,
@@ -48,6 +49,7 @@ const iconos: Record<string, LucideIcon> = {
   'file-spreadsheet': FileSpreadsheet,
   hammer: Hammer,
   calculator: Calculator,
+  receipt: Receipt,
 }
 
 const clasesAnteriores: Record<string, string> = {

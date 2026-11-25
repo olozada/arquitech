@@ -26,7 +26,7 @@ public sealed partial class PresupuestoServicio
 
         foreach (var item in presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items).Where(item => item.ConceptoId is not > 0 && !string.IsNullOrWhiteSpace(item.Descripcion)))
         {
-            var concepto = ImportadorPresupuesto.AsegurarConcepto(_context, indice, item.Descripcion, item.Unidad);
+            var concepto = ImportadorPresupuesto.AsegurarConcepto(_context, indice, item.Descripcion, item.Unidad, item.UnidadMedidaId);
             item.Concepto = concepto;
             if (concepto.Id > 0)
             {

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Eye, EyeOff, Shield } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
@@ -15,9 +17,12 @@ const esquema = z.object({
 
 type FormularioLogin = z.infer<typeof esquema>
 
+const marca = `${import.meta.env.BASE_URL}marca`
+
 export function Login() {
   const { sesion, iniciarSesion } = useSesion()
   const navegar = useNavigate()
+  const [visible, setVisible] = useState(false)
   const {
     register,
     handleSubmit,
@@ -47,32 +52,70 @@ export function Login() {
 
   return (
     <main className="login-pagina">
-      <Form className="login-tarjeta" onSubmit={handleSubmit(enviar)} noValidate>
-        <h1>Arquitectos</h1>
-        <p className="login-ayuda">Ingrese con su usuario.</p>
+      <section className="login-panel" style={{ backgroundImage: `url(${marca}/obra.png)` }}>
+        <div className="login-marca">
+          <img src={`${marca}/logo.svg`} alt="" />
+          <h1>Arquitech</h1>
+          <p>Construcción inteligente.</p>
+        </div>
+        <div className="login-chips">
+          <span>Bitácoras y actas en obra</span>
+          <span>Presupuestos y seguimiento</span>
+          <span>Funciona sin conexión</span>
+        </div>
+      </section>
+      <Form className="login-formulario" onSubmit={handleSubmit(enviar)} noValidate>
+        <h2>Iniciar sesión</h2>
+        <p className="login-ayuda">Accede a tu cuenta y descubre todo lo que tenemos para ti.</p>
         <Form.Group className="mb-3" controlId="usuario">
           <Form.Label>Usuario</Form.Label>
           <Form.Control
+            className="login-campo"
             type="text"
             autoComplete="username"
+            placeholder="Ingresa tu usuario"
             isInvalid={Boolean(errors.usuario)}
             {...register('usuario')}
           />
           <Form.Control.Feedback type="invalid">{errors.usuario?.message}</Form.Control.Feedback>
         </Form.Group>
-        <Form.Group className="mb-4" controlId="password">
+        <Form.Group className="mb-1" controlId="password">
           <Form.Label>Contraseña</Form.Label>
-          <Form.Control
-            type="password"
-            autoComplete="current-password"
-            isInvalid={Boolean(errors.password)}
-            {...register('password')}
-          />
+          <div className="login-clave">
+            <Form.Control
+              className="login-campo"
+              type={visible ? 'text' : 'password'}
+              autoComplete="current-password"
+              placeholder="Introduce tu contraseña"
+              isInvalid={Boolean(errors.password)}
+              {...register('password')}
+            />
+            <button type="button" className="login-ver" aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setVisible((valor) => !valor)}>
+              {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <Form.Control.Feedback type="invalid">{errors.password?.message}</Form.Control.Feedback>
         </Form.Group>
-        <Button type="submit" className="w-100" disabled={isSubmitting}>
+        <button
+          type="button"
+          className="login-olvido"
+          onClick={() =>
+            void Swal.fire({
+              icon: 'info',
+              title: 'Recuperar contraseña',
+              text: 'Pide al administrador que restablezca tu contraseña desde Usuarios.',
+            })
+          }
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+        <Button type="submit" className="login-ingresar w-100" disabled={isSubmitting}>
           {isSubmitting ? 'Ingresando…' : 'Ingresar'}
         </Button>
+        <p className="login-aviso">
+          <Shield size={20} aria-hidden="true" />
+          <span>Tus datos se guardan en el dispositivo y se sincronizan cuando hay conexión.</span>
+        </p>
       </Form>
     </main>
   )

@@ -628,6 +628,23 @@ public sealed class ActaServicioTests : IDisposable
         Assert.Contains(detallado.Valor.Items, item => !item.Aprobado && item.Cantidad == 10 && item.Subtotal == 0);
         Assert.Equal(800m, detallado.Valor.Total);
 
+        var conceptos = await _servicio.ConsultarConceptosAsync(
+            solicitud.FechaInicial,
+            solicitud.FechaFinal,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SemillaInicial.UsuarioAdminId,
+            CancellationToken.None,
+            agrupado: false);
+        Assert.Equal(EstadoActa.Ok, conceptos.Estado);
+        Assert.Equal(3, conceptos.Valor!.Items.Count);
+        Assert.All(conceptos.Valor.Items, item => Assert.Equal("Concepto prueba", item.Material));
+        Assert.All(conceptos.Valor.Items, item => Assert.Equal("Obra prueba", item.Construccion));
+        Assert.Equal(800m, conceptos.Valor.Total);
+
         var excel = await _servicio.ExportarMaterialesAsync(
             solicitud.FechaInicial,
             solicitud.FechaFinal,

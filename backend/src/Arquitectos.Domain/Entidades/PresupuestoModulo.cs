@@ -303,6 +303,8 @@ public class PresupuestoItem
 
     public decimal Cantidad { get; set; }
 
+    public string? FormulaCantidad { get; set; }
+
     public int? CantidadOrigenItemId { get; set; }
 
     public decimal CantidadOrigenFactor { get; set; } = 1;

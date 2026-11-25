@@ -4973,6 +4973,7 @@ export interface components {
             aprobado: boolean;
             /** Format: int32 */
             numeroActa?: number | null;
+            construccion?: string | null;
         };
         ItemPresupuestoDto: {
             /** Format: int32 */
@@ -4993,6 +4994,7 @@ export interface components {
             conceptoId?: number | null;
             /** Format: double */
             cantidad: number;
+            formulaCantidad?: string | null;
             /** Format: int32 */
             cantidadOrigenItemId?: number | null;
             /** Format: double */
@@ -5024,6 +5026,7 @@ export interface components {
             conceptoId?: number | null;
             /** Format: double */
             cantidad: number;
+            formulaCantidad?: string | null;
             /** Format: int32 */
             cantidadOrigenItemId?: number | null;
             /** Format: double */

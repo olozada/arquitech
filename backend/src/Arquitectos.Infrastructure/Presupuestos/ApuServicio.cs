@@ -63,7 +63,7 @@ public sealed class ApuServicio : IApuServicio
         var items = apus.Select(apu =>
         {
             var costo = MotorCostos.Calcular(apu.Id, contexto)?.Total ?? 0;
-            return new ApuResumenDto(apu.Id, apu.Codigo, apu.Descripcion, apu.Unidad, apu.EsSubanalisis, costo, apu.Activo, usos.GetValueOrDefault(apu.Id));
+            return new ApuResumenDto(apu.Id, apu.Codigo, apu.Descripcion, apu.Unidad, apu.EsSubanalisis, costo, apu.Activo, usos.GetValueOrDefault(apu.Id), apu.UnidadMedidaId);
         }).ToList();
         return new PaginaDto<ApuResumenDto>(items, total, paginaOk, tamanoOk);
     }
@@ -90,7 +90,7 @@ public sealed class ApuServicio : IApuServicio
             .OrderBy(apu => apu.Codigo)
             .ThenBy(apu => apu.Descripcion)
             .Take(limite)
-            .Select(apu => new ApuResumenDto(apu.Id, apu.Codigo, apu.Descripcion, apu.Unidad, apu.EsSubanalisis, MotorCostos.Calcular(apu.Id, contexto)?.Total ?? 0, apu.Activo))
+            .Select(apu => new ApuResumenDto(apu.Id, apu.Codigo, apu.Descripcion, apu.Unidad, apu.EsSubanalisis, MotorCostos.Calcular(apu.Id, contexto)?.Total ?? 0, apu.Activo, 0, apu.UnidadMedidaId))
             .ToList();
     }
 

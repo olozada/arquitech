@@ -86,7 +86,8 @@ public sealed record ItemMaterialInformeDto(
     decimal Precio,
     decimal Subtotal,
     bool Aprobado,
-    int? NumeroActa = null);
+    int? NumeroActa = null,
+    string Construccion = "");
 
 public sealed record InformeMaterialesDto(
     DateOnly? Desde,

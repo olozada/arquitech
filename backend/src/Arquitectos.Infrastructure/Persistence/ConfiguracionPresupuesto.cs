@@ -168,6 +168,7 @@ public sealed class PresupuestoItemConfiguracion : IEntityTypeConfiguration<Pres
         builder.Property(i => i.Descripcion).HasMaxLength(500).IsRequired();
         builder.Property(i => i.Unidad).HasMaxLength(20);
         builder.Property(i => i.Cantidad).HasPrecision(19, 4);
+        builder.Property(i => i.FormulaCantidad).HasMaxLength(200);
         builder.Property(i => i.FactorConversionApu).HasPrecision(19, 6);
         builder.Property(i => i.CantidadOrigenFactor).HasPrecision(19, 6);
         builder.Property(i => i.ValorMaterialUnitario).HasPrecision(19, 6);

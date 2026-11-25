@@ -1,6 +1,7 @@
+import { Fragment } from 'react'
 import { Pagination, Table } from 'react-bootstrap'
 import { dinero } from '../actas/formato'
-import { TAMANO_PAGINA, type Campo, type Direccion, type ItemMaterial } from './reporteMateriales'
+import { filasMateriales, TAMANO_PAGINA, type Campo, type Direccion, type ItemMaterial } from './reporteMateriales'
 
 export function TablaMateriales({
   items,
@@ -8,6 +9,8 @@ export function TablaMateriales({
   cantidad,
   tamano,
   detallado,
+  columna = 'Material',
+  subtotales,
   pagina,
   campo,
   direccion,
@@ -20,6 +23,8 @@ export function TablaMateriales({
   cantidad: number
   tamano: number
   detallado: boolean
+  columna?: string
+  subtotales: boolean
   pagina: number
   campo: Campo
   direccion: Direccion
@@ -27,9 +32,12 @@ export function TablaMateriales({
   alCambiarPagina: (pagina: number) => void
   alOrdenar: (campo: Campo) => void
 }) {
-  const filas = items
+  const filasBase = items
+  const porConstruccion = filasBase.some((item) => (item.construccion ?? '').trim().length > 0)
+  const secciones = porConstruccion ? seccionesPorConstruccion(filasBase) : [{ nombre: '', items: filasBase }]
+  const columnas = (detallado ? 1 : 0) + 7
   const tamanoPagina = tamano > 0 ? tamano : TAMANO_PAGINA
-  const totalPaginas = Math.max(1, Math.ceil((cantidad || filas.length) / tamanoPagina))
+  const totalPaginas = Math.max(1, Math.ceil((cantidad || items.length) / tamanoPagina))
   const paginaVisible = Math.min(pagina, totalPaginas)
 
   return (
@@ -42,10 +50,10 @@ export function TablaMateriales({
         </div>
       )}
       <div className="table-responsive">
-        <Table hover className="catalogo-tabla reporte-items mb-0" style={{ width: detallado ? '62.5rem' : '58rem' }}>
+        <Table hover className="catalogo-tabla reporte-items reporte-ancho mb-0">
           <colgroup>
             {detallado && <col className="reporte-col-acta" />}
-            <col className="reporte-col-um" />
+            <col className="reporte-col-codigo" />
             <col className="reporte-col-material" />
             <col className="reporte-col-um" />
             <col className="reporte-col-cantidad" />
@@ -59,7 +67,7 @@ export function TablaMateriales({
                 <Encabezado campo="acta" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Acta</Encabezado>
               )}
               <Encabezado campo="codigo" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Código</Encabezado>
-              <Encabezado campo="material" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>Material</Encabezado>
+              <Encabezado campo="material" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>{columna}</Encabezado>
               <Encabezado campo="unidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar}>UM</Encabezado>
               <Encabezado campo="cantidad" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Cantidad</Encabezado>
               <Encabezado campo="precio" activo={campo} direccion={direccion} alOrdenar={alOrdenar} numerico>Precio</Encabezado>
@@ -68,18 +76,48 @@ export function TablaMateriales({
             </tr>
           </thead>
           <tbody>
-            {filas.map((item, indice) => (
-              <tr key={`${item.numeroActa ?? ''}-${item.codigo}-${item.material}-${item.unidad}-${item.aprobado}-${indice}`}>
-                {detallado && <td>{item.numeroActa}</td>}
-                <td>{item.codigo}</td>
-                <td title={item.material}>{item.material}</td>
-                <td>{item.unidad}</td>
-                <td className="reporte-num">{item.cantidad}</td>
-                <td className="reporte-num">{dinero(item.precio)}</td>
-                <td>{item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
-                <td className="reporte-num">{dinero(item.subtotal)}</td>
-              </tr>
-            ))}
+            {secciones.map((seccion) => {
+              const filas = filasMateriales(seccion.items, detallado && subtotales)
+              const totalSeccion = seccion.items.reduce((suma, item) => suma + item.subtotal, 0)
+              return (
+                <Fragment key={seccion.nombre || 'sin-construccion'}>
+                  {porConstruccion && (
+                    <tr className="reporte-corte">
+                      <th colSpan={columnas}>Construcción: {seccion.nombre}</th>
+                    </tr>
+                  )}
+                  {filas.map((fila) => fila.tipo === 'linea' ? (
+                    <tr key={`${seccion.nombre}-${fila.item.numeroActa ?? ''}-${fila.item.codigo}-${fila.item.material}-${fila.item.unidad}-${fila.item.aprobado}-${fila.indice}`}>
+                      {detallado && <td>{fila.item.numeroActa}</td>}
+                      <td>{fila.item.codigo}</td>
+                      <td title={fila.item.material}>{fila.item.material}</td>
+                      <td>{fila.item.unidad}</td>
+                      <td className="reporte-num">{fila.item.cantidad}</td>
+                      <td className="reporte-num">{dinero(fila.item.precio)}</td>
+                      <td>{fila.item.aprobado ? 'Aprobado' : 'Rechazado'}</td>
+                      <td className="reporte-num">{dinero(fila.item.subtotal)}</td>
+                    </tr>
+                  ) : (
+                    <tr key={`${seccion.nombre}-subtotal-${fila.clave}`} className="reporte-corte">
+                      {detallado && <th />}
+                      <th />
+                      <th title={`Subtotal ${fila.material}`}>Subtotal {fila.material}</th>
+                      <th />
+                      <th className="reporte-num">{fila.cantidad}</th>
+                      <th />
+                      <th />
+                      <th className="reporte-total-valor">{dinero(fila.subtotal)}</th>
+                    </tr>
+                  ))}
+                  {porConstruccion && (
+                    <tr className="reporte-corte">
+                      <th colSpan={columnas - 1}>Total {seccion.nombre}</th>
+                      <th className="reporte-total-valor">{dinero(totalSeccion)}</th>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
             <tr className="reporte-total">
               <th colSpan={detallado ? 7 : 6}>TOTAL</th>
               <th className="reporte-total-valor">{dinero(total)}</th>
@@ -98,6 +136,23 @@ export function TablaMateriales({
       )}
     </div>
   )
+}
+
+function seccionesPorConstruccion(items: ItemMaterial[]) {
+  const grupos = new Map<string, ItemMaterial[]>()
+  const orden: string[] = []
+  for (const item of items) {
+    const nombre = item.construccion?.trim() || 'Sin construcción'
+    const actual = grupos.get(nombre)
+    if (actual) {
+      actual.push(item)
+    } else {
+      grupos.set(nombre, [item])
+      orden.push(nombre)
+    }
+  }
+
+  return orden.map((nombre) => ({ nombre, items: grupos.get(nombre) ?? [] }))
 }
 
 function Encabezado({

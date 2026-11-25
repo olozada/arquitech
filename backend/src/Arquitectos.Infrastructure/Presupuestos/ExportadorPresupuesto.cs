@@ -3,8 +3,8 @@ using Arquitectos.Domain.Entidades;
 using Arquitectos.Infrastructure.Persistence;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Arquitectos.Infrastructure.Informes;
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace Arquitectos.Infrastructure.Presupuestos;
@@ -46,62 +46,75 @@ public sealed class ExportadorPresupuesto
     public byte[] Pdf(Presupuesto presupuesto)
     {
         var costo = Totales(presupuesto);
+        var casa = presupuesto.Construccion?.Descripcion ?? "Plantilla";
         return Document.Create(documento =>
         {
             documento.Page(pagina =>
             {
-                pagina.Size(PageSizes.Letter.Landscape());
-                pagina.Margin(28);
-                pagina.DefaultTextStyle(estilo => estilo.FontSize(9));
+                FormatoDocumentoObra.Preparar(pagina);
                 pagina.Content().Column(columna =>
                 {
-                    columna.Item().Text(presupuesto.Nombre).FontSize(16).SemiBold().FontColor("#0f766e");
-                    columna.Item().Text($"{presupuesto.Construccion?.Descripcion ?? "Plantilla"} · versión {presupuesto.Version} · {presupuesto.Estado}").FontSize(10);
-                    columna.Item().PaddingTop(8).Table(tabla =>
+                    columna.Spacing(4);
+                    FormatoDocumentoObra.MembreteYTitulo(columna, "Valor estimado de obra");
+                    columna.Item().Text($"Casa: {casa}");
+                    columna.Item().Text($"{presupuesto.Nombre} · versión {presupuesto.Version} · {presupuesto.Estado}");
+
+                    foreach (var capitulo in presupuesto.Capitulos.OrderBy(item => item.Orden))
                     {
-                        tabla.ColumnsDefinition(columnas =>
+                        columna.Item().PaddingTop(8).Text(capitulo.Nombre).SemiBold();
+                        columna.Item().Table(tabla =>
                         {
-                            columnas.ConstantColumn(46);
-                            columnas.RelativeColumn();
-                            columnas.ConstantColumn(110);
-                            columnas.ConstantColumn(70);
-                        });
-                        tabla.Header(encabezado =>
-                        {
-                            foreach (var titulo in new[] { "Cap.", "Capítulo", "Total", "%" })
+                            tabla.ColumnsDefinition(columnas =>
                             {
-                                encabezado.Cell().Background("#0f766e").Padding(4).Text(titulo).FontColor(Colors.White).SemiBold();
+                                columnas.RelativeColumn(3.2f);
+                                columnas.RelativeColumn(1.1f);
+                                columnas.RelativeColumn(1.4f);
+                                columnas.RelativeColumn(1.4f);
+                            });
+                            tabla.Header(encabezado =>
+                            {
+                                FormatoDocumentoObra.Encabezado(encabezado.Cell(), "Concepto");
+                                FormatoDocumentoObra.Encabezado(encabezado.Cell(), "Cantidad");
+                                FormatoDocumentoObra.Encabezado(encabezado.Cell(), "Precio");
+                                FormatoDocumentoObra.Encabezado(encabezado.Cell(), "Total");
+                            });
+                            foreach (var item in capitulo.Items.OrderBy(linea => linea.Descripcion, StringComparer.Create(Cultura, true)))
+                            {
+                                var precio = item.ValorMaterialUnitario + item.ValorManoObraUnitario;
+                                var cantidad = FormatoDocumentoObra.Cantidad(item.Cantidad);
+                                FormatoDocumentoObra.Celda(tabla.Cell()).Text(item.Descripcion);
+                                FormatoDocumentoObra.Celda(tabla.Cell()).AlignRight()
+                                    .Text(string.IsNullOrWhiteSpace(item.Unidad) ? cantidad : $"{cantidad}\n{item.Unidad}");
+                                FormatoDocumentoObra.Celda(tabla.Cell()).AlignRight().Text(FormatoDocumentoObra.MonedaConCentavos(precio));
+                                FormatoDocumentoObra.Celda(tabla.Cell()).AlignRight().Text(FormatoDocumentoObra.MonedaConCentavos(item.Cantidad * precio));
                             }
                         });
-                        foreach (var capitulo in presupuesto.Capitulos.OrderBy(item => item.Orden))
-                        {
-                            var total = capitulo.Items.Sum(item => item.Cantidad * (item.ValorMaterialUnitario + item.ValorManoObraUnitario));
-                            tabla.Cell().Padding(3).Text(capitulo.Numero.ToString(Cultura));
-                            tabla.Cell().Padding(3).Text(capitulo.Nombre);
-                            tabla.Cell().Padding(3).AlignRight().Text(Dinero(total));
-                            tabla.Cell().Padding(3).AlignRight().Text(costo.Subtotal == 0 ? "" : (total / costo.Subtotal).ToString("P1", Cultura));
-                        }
-                    });
-                    columna.Item().PaddingTop(10).Table(tabla =>
+                    }
+
+                    columna.Item().PaddingTop(8).AlignRight().Text($"Valor total: {Dinero(costo.Subtotal)}").SemiBold();
+                    if (costo.Total != costo.Subtotal || costo.ValorPorM2 is not null)
                     {
-                        tabla.ColumnsDefinition(columnas =>
+                        columna.Item().PaddingTop(6).Table(tabla =>
                         {
-                            columnas.RelativeColumn();
-                            columnas.ConstantColumn(140);
+                            tabla.ColumnsDefinition(columnas =>
+                            {
+                                columnas.RelativeColumn();
+                                columnas.ConstantColumn(140);
+                            });
+                            Fila(tabla, "Imprevistos", costo.Imprevistos, false);
+                            Fila(tabla, "Incremento", costo.Incremento, false);
+                            Fila(tabla, "Administración", costo.Administracion, false);
+                            Fila(tabla, "Utilidad", costo.Utilidad, false);
+                            Fila(tabla, "IVA utilidad", costo.IvaUtilidad, false);
+                            Fila(tabla, "Total presupuesto", costo.Total, true);
+                            if (costo.ValorPorM2 is decimal metro)
+                            {
+                                Fila(tabla, "Valor por m²", metro, true);
+                            }
                         });
-                        Fila(tabla, "Subtotal costo directo", costo.Subtotal, false);
-                        Fila(tabla, "Imprevistos", costo.Imprevistos, false);
-                        Fila(tabla, "Incremento", costo.Incremento, false);
-                        Fila(tabla, "Administración", costo.Administracion, false);
-                        Fila(tabla, "Utilidad", costo.Utilidad, false);
-                        Fila(tabla, "IVA utilidad", costo.IvaUtilidad, false);
-                        Fila(tabla, "TOTAL", costo.Total, true);
-                        if (costo.ValorPorM2 is decimal metro)
-                        {
-                            Fila(tabla, "Valor por m²", metro, true);
-                        }
-                    });
+                    }
                 });
+                FormatoDocumentoObra.Pie(pagina);
             });
         }).GeneratePdf();
     }

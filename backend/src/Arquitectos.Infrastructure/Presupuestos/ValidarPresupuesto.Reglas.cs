@@ -35,7 +35,17 @@ public sealed partial class PresupuestoServicio
             .Where(grupo => grupo.Count() > 1)
             .Select(grupo => grupo.Key)
             .ToHashSet();
-        foreach (var item in presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items))
+        var filas = presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items).ToList();
+        var formulas = filas
+            .Where(item => !string.IsNullOrWhiteSpace(item.FormulaCantidad))
+            .Select(item => new ItemCantidadFormula(item.Id, item.Codigo, item.FormulaCantidad, item.Cantidad))
+            .ToList();
+        foreach (var aviso in EvaluadorFormulaCantidad.Evaluar(formulas).Avisos)
+        {
+            avisos.Add(new ValidacionPresupuestoDto(aviso.ItemId, aviso.Codigo, aviso.Tipo, aviso.Mensaje));
+        }
+
+        foreach (var item in filas)
         {
             if (codigos.Contains(item.Codigo.Trim()))
             {
@@ -60,6 +70,15 @@ public sealed partial class PresupuestoServicio
             if (item.ConceptoId is not > 0)
             {
                 avisos.Add(new ValidacionPresupuestoDto(item.Id, item.Codigo, "SinConcepto", $"El ítem {item.Codigo} no tiene concepto."));
+            }
+
+            if (item.UnidadMedidaId is not > 0)
+            {
+                avisos.Add(new ValidacionPresupuestoDto(item.Id, item.Codigo, "SinUnidadMedida", $"El ítem {item.Codigo} debe tener una unidad del catálogo."));
+            }
+            else if (!string.IsNullOrWhiteSpace(item.Unidad) && CatalogoUnidadesObra.ResolverNombre(item.Unidad) is null)
+            {
+                avisos.Add(new ValidacionPresupuestoDto(item.Id, item.Codigo, "UnidadNoCatalogada", $"La unidad “{item.Unidad}” de {item.Codigo} no está en el catálogo."));
             }
         }
 

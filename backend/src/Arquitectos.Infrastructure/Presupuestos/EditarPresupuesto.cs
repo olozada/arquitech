@@ -109,6 +109,9 @@ public sealed partial class PresupuestoServicio
             return error;
         }
 
+        var unidades = await _context.UnidadesMedida.AsNoTracking()
+            .Where(unidad => unidad.Activo)
+            .ToDictionaryAsync(unidad => unidad.Id, cancellationToken);
         var idsConservados = solicitud.Capitulos.SelectMany(capitulo => capitulo.Items).Where(item => item.Id is not null).Select(item => item.Id!.Value).ToHashSet();
         var actuales = presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items).ToList();
         var eliminados = actuales.Where(item => !idsConservados.Contains(item.Id)).Select(item => item.Id).ToList();
@@ -142,6 +145,12 @@ public sealed partial class PresupuestoServicio
             var orden = 1;
             foreach (var item in capitulo.Items)
             {
+                var unidadError = AplicarUnidadCatalogo(item, unidades);
+                if (unidadError is not null)
+                {
+                    return unidadError;
+                }
+
                 var fila = item.Id is int idItem ? actuales.FirstOrDefault(actual => actual.Id == idItem) : null;
                 if (fila is null)
                 {
@@ -194,6 +203,26 @@ public sealed partial class PresupuestoServicio
         return item;
     }
 
+    private static string? AplicarUnidadCatalogo(ItemPresupuestoSolicitud solicitud, IReadOnlyDictionary<int, UnidadMedida> unidades)
+    {
+        if (solicitud.UnidadMedidaId is not int id || id <= 0)
+        {
+            return string.IsNullOrWhiteSpace(solicitud.Unidad)
+                ? null
+                : CatalogoUnidadesObra.ResolverNombre(solicitud.Unidad) is null
+                    ? $"La unidad “{solicitud.Unidad}” del ítem {solicitud.Codigo} no está en el catálogo. Elija una unidad válida."
+                    : "Debe elegir la unidad del catálogo, no escribirla a mano.";
+        }
+
+        if (!unidades.TryGetValue(id, out var unidad))
+        {
+            return $"La unidad del ítem {solicitud.Codigo} no existe o está inactiva.";
+        }
+
+        solicitud.Unidad = unidad.Nombre;
+        return null;
+    }
+
     private static void CopiarItem(PresupuestoItem item, ItemPresupuestoSolicitud solicitud, int orden)
     {
         item.Codigo = TextoPresupuesto.Recortar(solicitud.Codigo, 20);
@@ -204,8 +233,17 @@ public sealed partial class PresupuestoServicio
         item.FactorConversionApu = solicitud.FactorConversionApu == 0 ? 1 : solicitud.FactorConversionApu;
         item.ConceptoId = solicitud.ConceptoId is > 0 ? solicitud.ConceptoId : null;
         item.Cantidad = solicitud.Cantidad;
-        item.CantidadOrigenItemId = solicitud.CantidadOrigenItemId is > 0 ? solicitud.CantidadOrigenItemId : null;
-        item.CantidadOrigenFactor = solicitud.CantidadOrigenFactor == 0 ? 1 : solicitud.CantidadOrigenFactor;
+        item.FormulaCantidad = string.IsNullOrWhiteSpace(solicitud.FormulaCantidad) ? null : TextoPresupuesto.Recortar(solicitud.FormulaCantidad.Trim(), 200);
+        if (!string.IsNullOrWhiteSpace(item.FormulaCantidad))
+        {
+            item.CantidadOrigenItemId = null;
+            item.CantidadOrigenFactor = 1;
+        }
+        else
+        {
+            item.CantidadOrigenItemId = solicitud.CantidadOrigenItemId is > 0 ? solicitud.CantidadOrigenItemId : null;
+            item.CantidadOrigenFactor = solicitud.CantidadOrigenFactor == 0 ? 1 : solicitud.CantidadOrigenFactor;
+        }
         item.ValorMaterialUnitario = solicitud.ValorMaterialUnitario;
         item.ValorManoObraUnitario = solicitud.ValorManoObraUnitario;
         item.Orden = orden;

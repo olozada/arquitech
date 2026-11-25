@@ -75,7 +75,8 @@ public interface IActaServicio
         bool descendente = false,
         bool agrupado = true,
         int pagina = 0,
-        int tamano = 0);
+        int tamano = 0,
+        bool porConcepto = false);
 
     Task<ResultadoActa<byte[]>> ExportarMaterialesAsync(
         DateOnly? desde,
@@ -88,7 +89,8 @@ public interface IActaServicio
         int? proveedorId,
         int usuarioId,
         CancellationToken cancellationToken,
-        bool agrupado = true);
+        bool agrupado = true,
+        bool subtotales = false);
 
     Task<ResultadoActa<byte[]>> ImprimirMaterialesAsync(
         DateOnly? desde,
@@ -103,7 +105,52 @@ public interface IActaServicio
         string? orden,
         bool descendente,
         CancellationToken cancellationToken,
-        bool agrupado = true);
+        bool agrupado = true,
+        bool subtotales = false);
+
+    Task<ResultadoActa<InformeMaterialesDto>> ConsultarConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken,
+        string? orden = null,
+        bool descendente = false,
+        bool agrupado = true,
+        int pagina = 0,
+        int tamano = 0);
+
+    Task<ResultadoActa<byte[]>> ExportarConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken,
+        bool agrupado = true,
+        bool subtotales = false);
+
+    Task<ResultadoActa<byte[]>> ImprimirConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        string? orden,
+        bool descendente,
+        CancellationToken cancellationToken,
+        bool agrupado = true,
+        bool subtotales = false);
 
     Task<ResultadoActa<byte[]>> ImprimirItemsAsync(
         DateOnly? desde,

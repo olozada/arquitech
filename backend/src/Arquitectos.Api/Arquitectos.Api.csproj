@@ -37,6 +37,13 @@
   </Target>
 
   <ItemGroup>
+    <Watch Remove="logs\**\*" />
+    <Content Remove="logs\**\*" />
+    <None Remove="logs\**\*" />
+    <Compile Remove="logs\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="appsettings.Production.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" Condition="Exists('appsettings.Production.json')" />
     <Content Update="appsettings.Production.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>

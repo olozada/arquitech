@@ -12,6 +12,8 @@ public sealed class PresupuestoServicioTests : IDisposable
     private readonly SqliteConnection _conexion;
     private readonly ArquitectosDbContext _context;
     private readonly PresupuestoServicio _servicio;
+    private readonly int _unidadM2;
+    private readonly int _unidadMl;
 
     public PresupuestoServicioTests()
     {
@@ -22,6 +24,12 @@ public sealed class PresupuestoServicioTests : IDisposable
             .Options;
         _context = new ArquitectosDbContext(opciones);
         _context.Database.EnsureCreated();
+        _context.UnidadesMedida.AddRange(
+            new UnidadMedida { Nombre = "m2", Descripcion = "Metro cuadrado" },
+            new UnidadMedida { Nombre = "ml", Descripcion = "Metro lineal" });
+        _context.SaveChanges();
+        _unidadM2 = _context.UnidadesMedida.Single(unidad => unidad.Nombre == "m2").Id;
+        _unidadMl = _context.UnidadesMedida.Single(unidad => unidad.Nombre == "ml").Id;
         _servicio = new PresupuestoServicio(_context, new MotorCostos(_context));
     }
 
@@ -47,6 +55,8 @@ public sealed class PresupuestoServicioTests : IDisposable
             {
                 Codigo = "1.02",
                 Descripcion = "Igual al anterior",
+                Unidad = "m2",
+                UnidadMedidaId = _unidadM2,
                 CantidadOrigenItemId = item.Id,
                 CantidadOrigenFactor = 2,
                 ValorMaterialUnitario = 10
@@ -68,6 +78,8 @@ public sealed class PresupuestoServicioTests : IDisposable
             {
                 Codigo = "1.02",
                 Descripcion = "Igual al anterior",
+                Unidad = "m2",
+                UnidadMedidaId = _unidadM2,
                 CantidadOrigenItemId = item.Id,
                 CantidadOrigenFactor = 2,
                 ValorMaterialUnitario = 10
@@ -94,7 +106,8 @@ public sealed class PresupuestoServicioTests : IDisposable
         var apu = new Apu
         {
             Descripcion = "Muro",
-            Unidad = "M2",
+            Unidad = "m2",
+            UnidadMedidaId = _unidadM2,
             Grupos =
             [
                 new ApuGrupo
@@ -121,7 +134,7 @@ public sealed class PresupuestoServicioTests : IDisposable
                 {
                     Numero = 1,
                     Nombre = "Obra",
-                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Muro", Unidad = "M2", ApuId = apu.Id, Cantidad = 2 }]
+                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Muro", Unidad = "m2", UnidadMedidaId = _unidadM2, ApuId = apu.Id, Cantidad = 2 }]
                 }
             ]
         }, SemillaInicial.UsuarioAdminId, CancellationToken.None);
@@ -174,14 +187,14 @@ public sealed class PresupuestoServicioTests : IDisposable
                 {
                     Numero = 1,
                     Nombre = "Capítulo",
-                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Muro de prueba", Unidad = "ML", Cantidad = 2, ValorMaterialUnitario = 10 }]
+                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "Muro de prueba", Unidad = "ml", UnidadMedidaId = _unidadMl, Cantidad = 2, ValorMaterialUnitario = 10 }]
                 }
             ]
         }, SemillaInicial.UsuarioAdminId, CancellationToken.None);
         Assert.Null(creado.Valor!.Resumen.ValorPorM2);
         Assert.NotNull(creado.Valor.Capitulos[0].Items[0].ConceptoId);
 
-        var apu = new Apu { Descripcion = "Análisis", Unidad = "M2", Grupos = [new ApuGrupo { Grupo = GrupoApu.Material, Divisor = 1 }] };
+        var apu = new Apu { Descripcion = "Análisis", Unidad = "m2", UnidadMedidaId = _unidadM2, Grupos = [new ApuGrupo { Grupo = GrupoApu.Material, Divisor = 1 }] };
         _context.Apus.Add(apu);
         await _context.SaveChangesAsync();
         var conFactor = await _servicio.ActualizarAsync(creado.Valor.Id, new PresupuestoSolicitud
@@ -204,7 +217,8 @@ public sealed class PresupuestoServicioTests : IDisposable
                             Id = creado.Valor.Capitulos[0].Items[0].Id,
                             Codigo = "1.01",
                             Descripcion = "Muro de prueba",
-                            Unidad = "ML",
+                            Unidad = "ml",
+                            UnidadMedidaId = _unidadMl,
                             ApuId = apu.Id,
                             FactorConversionApu = 2,
                             Cantidad = 2,
@@ -243,7 +257,7 @@ public sealed class PresupuestoServicioTests : IDisposable
                     Id = creado.Valor.Capitulos[0].Id,
                     Numero = 1,
                     Nombre = "Capítulo",
-                    Items = [new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", Cantidad = 3, ValorMaterialUnitario = 10 }]
+                    Items = [new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", Unidad = "m2", UnidadMedidaId = _unidadM2, Cantidad = 3, ValorMaterialUnitario = 10 }]
                 }
             ]
         }, SemillaInicial.UsuarioAdminId, CancellationToken.None);
@@ -264,8 +278,8 @@ public sealed class PresupuestoServicioTests : IDisposable
                     Nombre = "Capítulo",
                     Items =
                     [
-                        new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", CantidadOrigenItemId = item.Id + 1, CantidadOrigenFactor = 2 },
-                        new ItemPresupuestoSolicitud { Codigo = "1.02", Descripcion = "Destino", CantidadOrigenItemId = item.Id, CantidadOrigenFactor = 2 }
+                        new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", Unidad = "m2", UnidadMedidaId = _unidadM2, CantidadOrigenItemId = item.Id + 1, CantidadOrigenFactor = 2 },
+                        new ItemPresupuestoSolicitud { Codigo = "1.02", Descripcion = "Destino", Unidad = "m2", UnidadMedidaId = _unidadM2, CantidadOrigenItemId = item.Id, CantidadOrigenFactor = 2 }
                     ]
                 }
             ]
@@ -287,8 +301,8 @@ public sealed class PresupuestoServicioTests : IDisposable
                     Nombre = "Capítulo",
                     Items =
                     [
-                        new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", CantidadOrigenItemId = destino.Id, CantidadOrigenFactor = 2 },
-                        new ItemPresupuestoSolicitud { Id = destino.Id, Codigo = "1.02", Descripcion = "Destino", CantidadOrigenItemId = item.Id, CantidadOrigenFactor = 2 }
+                        new ItemPresupuestoSolicitud { Id = item.Id, Codigo = "1.01", Descripcion = "Muro", Unidad = "m2", UnidadMedidaId = _unidadM2, CantidadOrigenItemId = destino.Id, CantidadOrigenFactor = 2 },
+                        new ItemPresupuestoSolicitud { Id = destino.Id, Codigo = "1.02", Descripcion = "Destino", Unidad = "m2", UnidadMedidaId = _unidadM2, CantidadOrigenItemId = item.Id, CantidadOrigenFactor = 2 }
                     ]
                 }
             ]
@@ -313,7 +327,7 @@ public sealed class PresupuestoServicioTests : IDisposable
                 {
                     Numero = 1,
                     Nombre = "Capítulo",
-                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "", Cantidad = 1, ValorMaterialUnitario = 5 }]
+                    Items = [new ItemPresupuestoSolicitud { Codigo = "1.01", Descripcion = "", Unidad = "m2", UnidadMedidaId = _unidadM2, Cantidad = 1, ValorMaterialUnitario = 5 }]
                 }
             ]
         }, SemillaInicial.UsuarioAdminId, CancellationToken.None);
@@ -326,7 +340,7 @@ public sealed class PresupuestoServicioTests : IDisposable
         Assert.Equal(EstadoOperacion.Validacion, aprobado.Estado);
     }
 
-    private static PresupuestoSolicitud Solicitud(
+    private PresupuestoSolicitud Solicitud(
         int obraId,
         decimal administracion,
         decimal utilidad,
@@ -340,6 +354,8 @@ public sealed class PresupuestoServicioTests : IDisposable
             Id = primerId,
             Codigo = "1.01",
             Descripcion = "Muro",
+            Unidad = "m2",
+            UnidadMedidaId = _unidadM2,
             ValorMaterialUnitario = 10,
             Mediciones = [medicion]
         };

@@ -11,7 +11,7 @@ import { SelectorInforme } from '../informes/SelectorInforme'
 import { TAMANO_PAGINA, lineasEncabezado, parametros, type Campo, type Direccion, type Filtro, type InformeMateriales, type VistaInforme } from '../informes/reporteMateriales'
 import { TablaMateriales } from '../informes/TablaReporteMateriales'
 
-export function ReporteMateriales() {
+export function ReporteMateriales({ conceptos = false }: { conceptos?: boolean }) {
   const [usarFechas, setUsarFechas] = useState(false)
   const [desde, setDesde] = useState(inicioDeMesIso)
   const [hasta, setHasta] = useState(hoyIso)
@@ -22,13 +22,15 @@ export function ReporteMateriales() {
   const [proveedorId, setProveedorId] = useState(0)
   const [estado, setEstado] = useState<EstadoActa>('')
   const [vista, setVista] = useState<VistaInforme>('agrupado')
+  const [subtotales, setSubtotales] = useState(false)
   const [campo, setCampo] = useState<Campo>('subtotal')
   const [direccion, setDireccion] = useState<Direccion>('desc')
   const [pagina, setPagina] = useState(1)
   const [filtro, setFiltro] = useState<Filtro | null>(null)
   const [exportando, setExportando] = useState(false)
   const [imprimiendo, setImprimiendo] = useState(false)
-  const informeDisponible = construccionId > 0 || contratistaId > 0 || arquitectoId > 0 || revisorId > 0 || proveedorId > 0
+  const informeDisponible = construccionId > 0 || contratistaId > 0 || arquitectoId > 0 || revisorId > 0 || (!conceptos && proveedorId > 0)
+  const recurso = conceptos ? 'conceptos' : 'materiales'
 
   const construcciones = useCatalogo('construcciones')
   const contratistas = useCatalogo('contratistas')
@@ -36,18 +38,32 @@ export function ReporteMateriales() {
   const revisores = useCatalogo('revisores')
   const proveedores = useCatalogo('proveedores')
   const reporte = useQuery({
-    queryKey: ['reporte-materiales', filtro, pagina, campo, direccion],
+    queryKey: ['reporte-materiales', recurso, filtro, pagina, campo, direccion],
     enabled: filtro != null,
     queryFn: async () => {
-      const { data } = await cliente.get<InformeMateriales>('/api/actas/materiales', {
-        params: { ...parametros(filtro!), orden: campo, direccion, pagina, tamano: TAMANO_PAGINA },
+      const { data } = await cliente.get<InformeMateriales>(`/api/actas/${recurso}`, {
+        params: {
+          ...parametros(filtro!),
+          orden: campo,
+          direccion,
+          pagina: sinPaginar(filtro!) ? undefined : pagina,
+          tamano: sinPaginar(filtro!) ? undefined : TAMANO_PAGINA,
+        },
       })
       return data
     },
   })
 
   function criterioActual(): Filtro {
-    return { usarFechas, desde, hasta, construccionId, contratistaId, arquitectoId, revisorId, proveedorId, estado, vista }
+    return { usarFechas, desde, hasta, construccionId, contratistaId, arquitectoId, revisorId, proveedorId, estado, vista, subtotales }
+  }
+
+  function conSubtotales(actual: Filtro) {
+    return actual.vista === 'detallado' && actual.subtotales
+  }
+
+  function sinPaginar(actual: Filtro) {
+    return actual.construccionId === 0 || conSubtotales(actual)
   }
 
   async function consultar(evento: FormEvent) {
@@ -69,14 +85,14 @@ export function ReporteMateriales() {
 
     setExportando(true)
     try {
-      const { data } = await cliente.get<Blob>('/api/actas/materiales/excel', {
+      const { data } = await cliente.get<Blob>(`/api/actas/${recurso}/excel`, {
         responseType: 'blob',
         params: parametros(criterioActual()),
       })
       const url = URL.createObjectURL(data)
       const enlace = document.createElement('a')
       enlace.href = url
-      enlace.download = 'ReporteMateriales.xlsx'
+      enlace.download = conceptos ? 'ReporteConceptos.xlsx' : 'ReporteMateriales.xlsx'
       enlace.click()
       URL.revokeObjectURL(url)
     } catch (error) {
@@ -94,7 +110,7 @@ export function ReporteMateriales() {
 
     setImprimiendo(true)
     try {
-      const { data } = await cliente.get<Blob>('/api/actas/materiales/informe', {
+      const { data } = await cliente.get<Blob>(`/api/actas/${recurso}/informe`, {
         responseType: 'blob',
         params: { ...parametros(criterioActual()), orden: campo, direccion },
       })
@@ -114,8 +130,14 @@ export function ReporteMateriales() {
 
   return (
     <section>
-      <h1>Reporte por materiales</h1>
-      <p><Link to="/informes/actas">Ver por actas</Link></p>
+      <h1>{conceptos ? 'Reporte por conceptos' : 'Reporte por materiales'}</h1>
+      <p>
+        <Link to="/informes/actas">Ver por actas</Link>
+        {' · '}
+        <Link to={conceptos ? '/informes/materiales' : '/informes/conceptos'}>
+          {conceptos ? 'Ver por materiales' : 'Ver por conceptos'}
+        </Link>
+      </p>
       <Form className="catalogo-panel reporte-filtros" onSubmit={(evento) => void consultar(evento)}>
         <Row className="g-3 align-items-end">
           <Col xs={12} sm="auto">
@@ -131,6 +153,23 @@ export function ReporteMateriales() {
                 if (activo && fechasInvalidas(true, desde, hasta)) return
                 setPagina(1)
                 setFiltro((actual) => (actual ? { ...actual, usarFechas: activo, desde, hasta } : actual))
+              }}
+            />
+          </Col>
+          <Col xs={12} sm="auto">
+            <Form.Check
+              id={conceptos ? 'conceptos-subtotales' : 'materiales-subtotales'}
+              className="reporte-filtro-check"
+              type="checkbox"
+              label={conceptos ? 'Subtotales por concepto' : 'Subtotales por material'}
+              checked={subtotales}
+              onChange={(evento) => {
+                const activo = evento.target.checked
+                const vistaInforme: VistaInforme = activo ? 'detallado' : vista
+                setSubtotales(activo)
+                if (activo) setVista('detallado')
+                setPagina(1)
+                setFiltro((actual) => (actual ? { ...actual, subtotales: activo, vista: vistaInforme } : actual))
               }}
             />
           </Col>
@@ -188,12 +227,14 @@ export function ReporteMateriales() {
               <SelectorInforme valor={contratistaId} opciones={contratistas.data ?? []} alCambiar={setContratistaId} />
             </Form.Group>
           </Col>
+          {!conceptos && (
           <Col xs={12} sm={6} lg>
             <Form.Group controlId="materiales-proveedor">
               <Form.Label>Proveedor</Form.Label>
               <SelectorInforme valor={proveedorId} opciones={proveedores.data ?? []} alCambiar={setProveedorId} />
             </Form.Group>
           </Col>
+          )}
           <Col xs={6} sm="auto" className="reporte-campo-corto">
             <Form.Group controlId="materiales-vista">
               <Form.Label>Vista</Form.Label>
@@ -250,6 +291,8 @@ export function ReporteMateriales() {
           cantidad={reporte.data.cantidad}
           tamano={reporte.data.tamano}
           detallado={!reporte.data.agrupado}
+          columna={conceptos ? 'Concepto' : 'Material'}
+          subtotales={Boolean(filtro?.subtotales) && filtro?.vista === 'detallado'}
           pagina={pagina}
           campo={campo}
           direccion={direccion}
@@ -269,4 +312,8 @@ export function ReporteMateriales() {
       )}
     </section>
   )
+}
+
+export function ReporteConceptos() {
+  return <ReporteMateriales conceptos />
 }

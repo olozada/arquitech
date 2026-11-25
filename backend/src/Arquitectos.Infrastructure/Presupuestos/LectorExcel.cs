@@ -39,7 +39,7 @@ public static class LectorExcel
             }
         }
 
-        var presupuesto = Hoja(libro, "Presupuesto");
+        var presupuesto = HojaPresupuesto(libro);
         var modelo = new ModeloImportado
         {
             Proyecto = Texto(presupuesto.Cell("B1")),
@@ -324,7 +324,8 @@ public static class LectorExcel
             AreaM2 = Numero(hoja.Cell("E199")) ?? 0
         };
         CapituloImportado? capitulo = null;
-        for (var fila = 9; fila <= 188; fila++)
+        var ultima = Math.Min(Ultima(hoja), 500);
+        for (var fila = 9; fila <= ultima; fila++)
         {
             if (Entero(hoja.Cell(fila, 1), out var numero))
             {
@@ -333,15 +334,28 @@ public static class LectorExcel
                 continue;
             }
 
+            if (capitulo is null)
+            {
+                continue;
+            }
+
+            var codigo = Texto(hoja.Cell(fila, 1));
+            var descripcion = Texto(hoja.Cell(fila, 2));
+            if (codigo.Length == 0 || descripcion.Length == 0)
+            {
+                continue;
+            }
+
             var formula = Formula(hoja.Cell(fila, 7));
-            if (capitulo is null || !formula.StartsWith("=E", StringComparison.Ordinal))
+            if (!formula.StartsWith("=E", StringComparison.Ordinal)
+                && (Entero(hoja.Cell(fila, 1), out _) || !codigo.Contains('.', StringComparison.Ordinal)))
             {
                 continue;
             }
 
             capitulo.Items.Add(new ItemImportado
             {
-                Codigo = Texto(hoja.Cell(fila, 1)),
+                Codigo = codigo,
                 Fila = fila,
                 Descripcion = Texto(hoja.Cell(fila, 2)),
                 Unidad = TextoValor(hoja.Cell(fila, 3)),
@@ -363,6 +377,25 @@ public static class LectorExcel
 
         var digitos = Regex.Replace(formula.Split('!')[1], @"\D", "");
         return int.TryParse(digitos, out var fila) ? fila : null;
+    }
+
+    private static IXLWorksheet HojaPresupuesto(XLWorkbook libro)
+    {
+        if (libro.Worksheets.TryGetWorksheet("Presupuesto", out var presupuesto))
+        {
+            return presupuesto;
+        }
+
+        foreach (var hoja in libro.Worksheets)
+        {
+            if (hoja.Name.Contains("edificio", StringComparison.OrdinalIgnoreCase)
+                || hoja.Name.Contains("presupuesto", StringComparison.OrdinalIgnoreCase))
+            {
+                return hoja;
+            }
+        }
+
+        throw new InvalidOperationException("El libro no tiene la hoja Presupuesto.");
     }
 
     private static IXLWorksheet Hoja(XLWorkbook libro, string nombre) =>

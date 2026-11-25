@@ -2,6 +2,7 @@ import { fecha, fechaConsulta } from '../actas/formato'
 export type { ItemMaterial, InformeMateriales } from '../api/actas'
 import type { RegistroCatalogo } from '../catalogos/definiciones'
 import type { EstadoActa } from '../dashboard/filtroUrl'
+import type { ItemMaterial } from '../api/actas'
 
 export type VistaInforme = 'detallado' | 'agrupado'
 
@@ -16,6 +17,7 @@ export type Filtro = {
   proveedorId: number
   estado: EstadoActa
   vista: VistaInforme
+  subtotales: boolean
 }
 
 export type Campo = 'acta' | 'codigo' | 'material' | 'unidad' | 'cantidad' | 'precio' | 'estado' | 'subtotal'
@@ -65,5 +67,57 @@ export function parametros(filtro: Filtro) {
     proveedorId: filtro.proveedorId > 0 ? filtro.proveedorId : undefined,
     estado: filtro.estado || undefined,
     vista: filtro.vista,
+    subtotales: filtro.vista === 'detallado' && filtro.subtotales ? true : undefined,
   }
+}
+
+export type FilaMaterial =
+  | { tipo: 'linea'; item: ItemMaterial; indice: number }
+  | { tipo: 'subtotal'; clave: string; material: string; cantidad: number; subtotal: number }
+
+export function filasMateriales(items: ItemMaterial[], subtotales: boolean): FilaMaterial[] {
+  if (!subtotales) {
+    return items.map((item, indice) => ({ tipo: 'linea', item, indice }))
+  }
+
+  const grupos = new Map<string, ItemMaterial[]>()
+  const orden: string[] = []
+  for (const item of items) {
+    const clave = normalizar(item.material) + '\u0000' + normalizar(item.unidad)
+    const actual = grupos.get(clave)
+    if (actual) {
+      actual.push(item)
+    } else {
+      grupos.set(clave, [item])
+      orden.push(clave)
+    }
+  }
+
+  const filas: FilaMaterial[] = []
+  let indice = 0
+  for (const clave of orden) {
+    const grupo = grupos.get(clave) ?? []
+    for (const item of grupo) {
+      filas.push({ tipo: 'linea', item, indice })
+      indice += 1
+    }
+
+    if (grupo.length > 1) {
+      const cantidad = grupo.reduce((suma, item) => suma + item.cantidad, 0)
+      const subtotal = grupo.reduce((suma, item) => suma + item.subtotal, 0)
+      filas.push({
+        tipo: 'subtotal',
+        clave,
+        material: grupo[0].material,
+        cantidad: Math.round(cantidad * 10000) / 10000,
+        subtotal: Math.round(subtotal * 100) / 100,
+      })
+    }
+  }
+
+  return filas
+}
+
+function normalizar(texto: string) {
+  return texto.trim().toLocaleLowerCase('es-CO')
 }

@@ -47,13 +47,15 @@ public sealed class ConstruccionSolicitud
     public bool? Activo { get; set; }
 }
 
-public sealed record DescripcionUnidadDto(int Id, string Descripcion, string? Unidad, bool Activo) : IConId;
+public sealed record DescripcionUnidadDto(int Id, string Descripcion, string? Unidad, int? UnidadMedidaId, bool Activo) : IConId;
 
 public sealed class DescripcionUnidadSolicitud
 {
     public string Descripcion { get; set; } = "";
 
     public string? Unidad { get; set; }
+
+    public int? UnidadMedidaId { get; set; }
 
     public bool? Activo { get; set; }
 }

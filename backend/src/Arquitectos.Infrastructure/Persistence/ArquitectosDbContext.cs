@@ -115,6 +115,49 @@ public class ArquitectosDbContext : DbContext
             }
         }
 
+        var facturas = new HashSet<Factura>();
+        foreach (var entrada in ChangeTracker.Entries<Factura>())
+        {
+            if (entrada.State is EntityState.Added or EntityState.Modified)
+            {
+                facturas.Add(entrada.Entity);
+            }
+        }
+
+        foreach (var detalle in ChangeTracker.Entries<FacturaDetalle>())
+        {
+            if (detalle.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            {
+                continue;
+            }
+
+            var factura = detalle.Entity.Factura ?? ChangeTracker.Entries<Factura>()
+                .Select(item => item.Entity)
+                .FirstOrDefault(item => item.Id == detalle.Entity.FacturaId && item.Id != 0);
+            if (factura is not null)
+            {
+                facturas.Add(factura);
+            }
+        }
+
+        foreach (var factura in facturas)
+        {
+            var entrada = Entry(factura);
+            if (entrada.State == EntityState.Detached)
+            {
+                continue;
+            }
+
+            if (sqlite)
+            {
+                factura.RowVersion = Guid.NewGuid().ToByteArray();
+            }
+            else if (entrada.State != EntityState.Added)
+            {
+                entrada.Property(item => item.Observacion).IsModified = true;
+            }
+        }
+
         foreach (var presupuesto in tocados)
         {
             var entrada = Entry(presupuesto);
@@ -165,6 +208,10 @@ public class ArquitectosDbContext : DbContext
     public DbSet<Acta> Actas => Set<Acta>();
 
     public DbSet<ActaDetalle> ActaDetalles => Set<ActaDetalle>();
+
+    public DbSet<Factura> Facturas => Set<Factura>();
+
+    public DbSet<FacturaDetalle> FacturaDetalles => Set<FacturaDetalle>();
 
     public DbSet<Dispositivo> Dispositivos => Set<Dispositivo>();
 

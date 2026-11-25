@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Arquitectos.Application.Auditoria;
 using Arquitectos.Application.Presupuestos;
@@ -57,7 +58,7 @@ public sealed partial class PresupuestoServicio
         var items = presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items).ToList();
         foreach (var item in items)
         {
-            if (item.Mediciones.Count > 0 && item.CantidadOrigenItemId is null)
+            if (item.Mediciones.Count > 0 && string.IsNullOrWhiteSpace(item.FormulaCantidad) && item.CantidadOrigenItemId is null)
             {
                 item.Cantidad = item.Mediciones.Sum(medicion => medicion.Parcial);
             }
@@ -66,7 +67,7 @@ public sealed partial class PresupuestoServicio
         for (var paso = 0; paso < items.Count; paso++)
         {
             var cambio = false;
-            foreach (var item in items)
+            foreach (var item in items.Where(fila => string.IsNullOrWhiteSpace(fila.FormulaCantidad)))
             {
                 if (item.CantidadOrigenItemId is not int origenId)
                 {
@@ -90,6 +91,23 @@ public sealed partial class PresupuestoServicio
             if (!cambio)
             {
                 break;
+            }
+        }
+
+        var formulas = items
+            .Where(fila => !string.IsNullOrWhiteSpace(fila.FormulaCantidad) && fila.Mediciones.Count == 0)
+            .Select(fila => new ItemCantidadFormula(fila.Id, fila.Codigo, fila.FormulaCantidad, fila.Cantidad))
+            .ToList();
+        if (formulas.Count > 0)
+        {
+            var calculo = EvaluadorFormulaCantidad.Evaluar(formulas);
+            foreach (var (itemId, cantidad) in calculo.Cantidades)
+            {
+                var item = items.First(fila => fila.Id == itemId);
+                if (item.Mediciones.Count == 0 && !string.IsNullOrWhiteSpace(item.FormulaCantidad))
+                {
+                    item.Cantidad = cantidad;
+                }
             }
         }
 

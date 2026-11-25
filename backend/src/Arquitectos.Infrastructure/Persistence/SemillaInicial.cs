@@ -52,6 +52,7 @@ public static class SemillaInicial
         {
             permisos.Add(new MenuOpcionTipoUsuario { MenuOpcionId = 11, TipoUsuarioId = tipo });
             permisos.Add(new MenuOpcionTipoUsuario { MenuOpcionId = 16, TipoUsuarioId = tipo });
+            permisos.Add(new MenuOpcionTipoUsuario { MenuOpcionId = 24, TipoUsuarioId = tipo });
         }
 
         permisos.Add(new MenuOpcionTipoUsuario { MenuOpcionId = 18, TipoUsuarioId = TipoArquitectoId });
@@ -76,10 +77,13 @@ public static class SemillaInicial
         new() { Id = 15, PadreId = 1, Descripcion = "Usuarios", Url = "/admin/usuarios", Icono = "users", Orden = 10 },
         new() { Id = 16, PadreId = 1, Descripcion = "Cambiar contraseña", Url = "/cuenta/contrasena", Icono = "key-round", Orden = 11 },
         new() { Id = 11, Descripcion = "Actas", Url = "/actas", Icono = "file-pen-line", Orden = 2 },
-        new() { Id = 13, Descripcion = "Informes", Icono = "chart-column", Orden = 3 },
+        new() { Id = 24, Descripcion = "Facturas", Url = "/facturas", Icono = "receipt", Orden = 3 },
+        new() { Id = 13, Descripcion = "Informes", Icono = "chart-column", Orden = 4 },
         new() { Id = 14, PadreId = 13, Descripcion = "Reporte de actas", Url = "/informes/actas", Icono = "table", Orden = 1 },
         new() { Id = 23, PadreId = 13, Descripcion = "Reporte por materiales", Url = "/informes/materiales", Icono = "brick-wall", Orden = 2 },
-        new() { Id = 18, Descripcion = "Presupuestos", Icono = "wallet", Orden = 4 },
+        new() { Id = 26, PadreId = 13, Descripcion = "Reporte por conceptos", Url = "/informes/conceptos", Icono = "list-tree", Orden = 3 },
+        new() { Id = 25, PadreId = 13, Descripcion = "Reporte de facturas", Url = "/informes/facturas", Icono = "receipt", Orden = 4 },
+        new() { Id = 18, Descripcion = "Presupuestos", Icono = "wallet", Orden = 5 },
         new() { Id = 19, PadreId = 18, Descripcion = "Presupuestos de obra", Url = "/presupuestos", Icono = "file-spreadsheet", Orden = 1 },
         new() { Id = 20, PadreId = 18, Descripcion = "Insumos", Url = "/presupuesto/insumos", Icono = "package", Orden = 2 },
         new() { Id = 21, PadreId = 18, Descripcion = "Mano de obra", Url = "/presupuesto/mano-obra", Icono = "hammer", Orden = 3 },

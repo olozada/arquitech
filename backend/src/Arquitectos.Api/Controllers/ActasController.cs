@@ -205,7 +205,8 @@ public sealed class ActasController : ControllerBase
         [FromQuery] int? proveedorId,
         [FromQuery] string? estado,
         [FromQuery] string? vista,
-        CancellationToken cancellationToken)
+        [FromQuery] bool subtotales = false,
+        CancellationToken cancellationToken = default)
     {
         if (LeerUsuarioId() is not int usuarioId)
         {
@@ -223,7 +224,8 @@ public sealed class ActasController : ControllerBase
             proveedorId,
             usuarioId,
             cancellationToken,
-            VistaAgrupada(vista));
+            VistaAgrupada(vista),
+            subtotales);
         if (resultado.Estado != EstadoActa.Ok)
         {
             return Traducir(resultado);
@@ -249,7 +251,8 @@ public sealed class ActasController : ControllerBase
         [FromQuery] string? orden,
         [FromQuery] string? direccion,
         [FromQuery] string? vista,
-        CancellationToken cancellationToken)
+        [FromQuery] bool subtotales = false,
+        CancellationToken cancellationToken = default)
     {
         if (LeerUsuarioId() is not int usuarioId)
         {
@@ -269,13 +272,141 @@ public sealed class ActasController : ControllerBase
             orden,
             direccion?.Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) == true,
             cancellationToken,
-            VistaAgrupada(vista));
+            VistaAgrupada(vista),
+            subtotales);
         if (resultado.Estado != EstadoActa.Ok)
         {
             return Traducir(resultado);
         }
 
         Response.Headers.ContentDisposition = "inline; filename=\"InformeMateriales.pdf\"";
+        return File(resultado.Valor!, "application/pdf");
+    }
+
+    [HttpGet("conceptos")]
+    [ProducesResponseType(typeof(InformeMaterialesDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Conceptos(
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta,
+        [FromQuery] int? arquitectoId,
+        [FromQuery] int? revisorId,
+        [FromQuery] int? contratistaId,
+        [FromQuery] int? construccionId,
+        [FromQuery] string? estado,
+        [FromQuery] string? vista,
+        [FromQuery] string? orden,
+        [FromQuery] string? direccion,
+        [FromQuery] int pagina = 0,
+        [FromQuery] int tamano = 0,
+        CancellationToken cancellationToken = default)
+    {
+        if (LeerUsuarioId() is not int usuarioId)
+        {
+            return Unauthorized();
+        }
+
+        var resultado = await _servicio.ConsultarConceptosAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            Cerrada(estado),
+            usuarioId,
+            cancellationToken,
+            orden,
+            direccion?.Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) == true,
+            VistaAgrupada(vista),
+            pagina,
+            tamano);
+        return Traducir(resultado);
+    }
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpGet("conceptos/excel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConceptosExcel(
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta,
+        [FromQuery] int? arquitectoId,
+        [FromQuery] int? revisorId,
+        [FromQuery] int? contratistaId,
+        [FromQuery] int? construccionId,
+        [FromQuery] string? estado,
+        [FromQuery] string? vista,
+        [FromQuery] bool subtotales = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (LeerUsuarioId() is not int usuarioId)
+        {
+            return Unauthorized();
+        }
+
+        var resultado = await _servicio.ExportarConceptosAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            Cerrada(estado),
+            usuarioId,
+            cancellationToken,
+            VistaAgrupada(vista),
+            subtotales);
+        if (resultado.Estado != EstadoActa.Ok)
+        {
+            return Traducir(resultado);
+        }
+
+        return File(
+            resultado.Valor!,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "ReporteConceptos.xlsx");
+    }
+
+    [HttpGet("conceptos/informe")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConceptosInforme(
+        [FromQuery] DateOnly? desde,
+        [FromQuery] DateOnly? hasta,
+        [FromQuery] int? arquitectoId,
+        [FromQuery] int? revisorId,
+        [FromQuery] int? contratistaId,
+        [FromQuery] int? construccionId,
+        [FromQuery] string? estado,
+        [FromQuery] string? orden,
+        [FromQuery] string? direccion,
+        [FromQuery] string? vista,
+        [FromQuery] bool subtotales = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (LeerUsuarioId() is not int usuarioId)
+        {
+            return Unauthorized();
+        }
+
+        var resultado = await _servicio.ImprimirConceptosAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            Cerrada(estado),
+            usuarioId,
+            orden,
+            direccion?.Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) == true,
+            cancellationToken,
+            VistaAgrupada(vista),
+            subtotales);
+        if (resultado.Estado != EstadoActa.Ok)
+        {
+            return Traducir(resultado);
+        }
+
+        Response.Headers.ContentDisposition = "inline; filename=\"InformeConceptos.pdf\"";
         return File(resultado.Valor!, "application/pdf");
     }
 

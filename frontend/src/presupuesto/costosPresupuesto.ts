@@ -44,6 +44,7 @@ export function cuerpo(presupuesto: PresupuestoDetalle) {
         factorConversionApu: item.factorConversionApu || 1,
         conceptoId: item.conceptoId,
         cantidad: item.cantidad,
+        formulaCantidad: item.formulaCantidad ?? null,
         cantidadOrigenItemId: item.cantidadOrigenItemId,
         cantidadOrigenFactor: item.cantidadOrigenFactor || 1,
         valorMaterialUnitario: item.valorMaterialUnitario,

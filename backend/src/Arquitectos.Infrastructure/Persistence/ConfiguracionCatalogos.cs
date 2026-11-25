@@ -90,6 +90,7 @@ public sealed class ConceptoConfiguracion : IEntityTypeConfiguration<Concepto>
         builder.Property(c => c.Unidad).HasMaxLength(20);
         builder.Property(c => c.Activo).HasDefaultValue(true);
         builder.HasIndex(c => c.Descripcion).IsUnique();
+        builder.HasOne(c => c.UnidadMedida).WithMany().HasForeignKey(c => c.UnidadMedidaId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

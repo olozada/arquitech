@@ -7,11 +7,9 @@ import { atajo, type FiltroDashboard } from './filtroUrl'
 type Propiedades = {
   filtro: FiltroDashboard
   alCambiar: (filtro: FiltroDashboard) => void
-  exportando: boolean
-  alExportar: () => void
 }
 
-export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: Propiedades) {
+export function FiltrosDashboard({ filtro, alCambiar }: Propiedades) {
   const construcciones = useCatalogo('construcciones')
   const contratistas = useCatalogo('contratistas')
   const arquitectos = useCatalogo('arquitectos')
@@ -76,11 +74,6 @@ export function FiltrosDashboard({ filtro, alCambiar, exportando, alExportar }: 
             <option value="abierta">Abierta</option>
             <option value="cerrada">Cerrada</option>
           </Form.Select>
-        </Col>
-        <Col xs={12} md={4} xl className="d-grid">
-          <Button type="button" onClick={alExportar} disabled={exportando}>
-            {exportando ? 'Exportando…' : 'Exportar'}
-          </Button>
         </Col>
       </Row>
       <div className="catalogo-acciones mt-3">

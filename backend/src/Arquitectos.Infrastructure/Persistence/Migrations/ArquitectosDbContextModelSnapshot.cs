@@ -462,10 +462,15 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("UnidadMedidaId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Descripcion")
                         .IsUnique();
+
+                    b.HasIndex("UnidadMedidaId");
 
                     b.ToTable("Conceptos", (string)null);
                 });
@@ -617,6 +622,120 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Dispositivos", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Factura", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateTime?>("ModificadaEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Numero")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OrdenCompra")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("ProveedorId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("UsuarioRegistroId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioRegistroId");
+
+                    b.HasIndex("Fecha", "Id");
+
+                    b.HasIndex("ProveedorId", "Numero")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Facturas_Proveedor_Numero");
+
+                    b.ToTable("Facturas", (string)null);
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.FacturaDetalle", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Cantidad")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("ConstruccionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("FacturaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InsumoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Precio")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Subtotal")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasPrecision(37, 6)
+                        .HasColumnType("decimal(37,6)")
+                        .HasComputedColumnSql("[Cantidad] * [Precio]", true);
+
+                    b.Property<int?>("UnidadMedidaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacturaId");
+
+                    b.HasIndex("InsumoId");
+
+                    b.HasIndex("UnidadMedidaId");
+
+                    b.HasIndex("ConstruccionId", "InsumoId");
+
+                    b.ToTable("FacturaDetalles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FacturaDetalles_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_FacturaDetalles_Precio", "[Precio] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>
@@ -874,10 +993,18 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Id = 24,
+                            Descripcion = "Facturas",
+                            Icono = "receipt",
+                            Orden = 3,
+                            Url = "/facturas"
+                        },
+                        new
+                        {
                             Id = 13,
                             Descripcion = "Informes",
                             Icono = "chart-column",
-                            Orden = 3
+                            Orden = 4
                         },
                         new
                         {
@@ -899,10 +1026,28 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            Id = 25,
+                            Descripcion = "Reporte de facturas",
+                            Icono = "receipt",
+                            Orden = 4,
+                            PadreId = 13,
+                            Url = "/informes/facturas"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Descripcion = "Reporte por conceptos",
+                            Icono = "list-tree",
+                            Orden = 3,
+                            PadreId = 13,
+                            Url = "/informes/conceptos"
+                        },
+                        new
+                        {
                             Id = 18,
                             Descripcion = "Presupuestos",
                             Icono = "wallet",
-                            Orden = 4
+                            Orden = 5
                         },
                         new
                         {
@@ -1029,6 +1174,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            MenuOpcionId = 24,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
                             MenuOpcionId = 13,
                             TipoUsuarioId = 1
                         },
@@ -1040,6 +1190,16 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         new
                         {
                             MenuOpcionId = 23,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 25,
+                            TipoUsuarioId = 1
+                        },
+                        new
+                        {
+                            MenuOpcionId = 26,
                             TipoUsuarioId = 1
                         },
                         new
@@ -1079,12 +1239,22 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         },
                         new
                         {
+                            MenuOpcionId = 24,
+                            TipoUsuarioId = 2
+                        },
+                        new
+                        {
                             MenuOpcionId = 11,
                             TipoUsuarioId = 3
                         },
                         new
                         {
                             MenuOpcionId = 16,
+                            TipoUsuarioId = 3
+                        },
+                        new
+                        {
+                            MenuOpcionId = 24,
                             TipoUsuarioId = 3
                         },
                         new
@@ -1095,6 +1265,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         new
                         {
                             MenuOpcionId = 16,
+                            TipoUsuarioId = 4
+                        },
+                        new
+                        {
+                            MenuOpcionId = 24,
                             TipoUsuarioId = 4
                         },
                         new
@@ -1365,6 +1540,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("FactorConversionApu")
                         .HasPrecision(19, 6)
                         .HasColumnType("decimal(19,6)");
+
+                    b.Property<string>("FormulaCantidad")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("Orden")
                         .HasColumnType("int");
@@ -1885,6 +2064,16 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                     b.Navigation("SubApu");
                 });
 
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Concepto", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.UnidadMedida", "UnidadMedida")
+                        .WithMany()
+                        .HasForeignKey("UnidadMedidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UnidadMedida");
+                });
+
             modelBuilder.Entity("Arquitectos.Domain.Entidades.CuadrillaCargo", b =>
                 {
                     b.HasOne("Arquitectos.Domain.Entidades.Cargo", "Cargo")
@@ -1913,6 +2102,58 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Factura", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Proveedor", "Proveedor")
+                        .WithMany()
+                        .HasForeignKey("ProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Usuario", "UsuarioRegistro")
+                        .WithMany()
+                        .HasForeignKey("UsuarioRegistroId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Proveedor");
+
+                    b.Navigation("UsuarioRegistro");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.FacturaDetalle", b =>
+                {
+                    b.HasOne("Arquitectos.Domain.Entidades.Construccion", "Construccion")
+                        .WithMany()
+                        .HasForeignKey("ConstruccionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Factura", "Factura")
+                        .WithMany("Detalles")
+                        .HasForeignKey("FacturaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.Insumo", "Insumo")
+                        .WithMany()
+                        .HasForeignKey("InsumoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Arquitectos.Domain.Entidades.UnidadMedida", "UnidadMedida")
+                        .WithMany()
+                        .HasForeignKey("UnidadMedidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Construccion");
+
+                    b.Navigation("Factura");
+
+                    b.Navigation("Insumo");
+
+                    b.Navigation("UnidadMedida");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.InsumoPrecioHistorial", b =>
@@ -2140,6 +2381,11 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Dispositivo", b =>
                 {
                     b.Navigation("Sesiones");
+                });
+
+            modelBuilder.Entity("Arquitectos.Domain.Entidades.Factura", b =>
+                {
+                    b.Navigation("Detalles");
                 });
 
             modelBuilder.Entity("Arquitectos.Domain.Entidades.Insumo", b =>

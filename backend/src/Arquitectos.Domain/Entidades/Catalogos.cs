@@ -36,6 +36,8 @@ public interface IConDescripcionUnidad : ICatalogo
     string Descripcion { get; set; }
 
     string? Unidad { get; set; }
+
+    int? UnidadMedidaId { get; set; }
 }
 
 public class Arquitecto : IConCedula
@@ -115,6 +117,10 @@ public class Concepto : IConDescripcionUnidad
     public required string Descripcion { get; set; }
 
     public string? Unidad { get; set; }
+
+    public int? UnidadMedidaId { get; set; }
+
+    public UnidadMedida? UnidadMedida { get; set; }
 
     public bool Activo { get; set; } = true;
 }

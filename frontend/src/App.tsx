@@ -22,8 +22,20 @@ const TomaActas = lazy(() => import('./paginas/TomaActas').then((modulo) => ({ d
 const ReporteActas = lazy(() =>
   import('./paginas/ReporteActas').then((modulo) => ({ default: modulo.ReporteActas })),
 )
+const ReporteConceptos = lazy(() =>
+  import('./paginas/ReporteMateriales').then((modulo) => ({ default: modulo.ReporteConceptos })),
+)
 const ReporteMateriales = lazy(() =>
   import('./paginas/ReporteMateriales').then((modulo) => ({ default: modulo.ReporteMateriales })),
+)
+const ListadoFacturas = lazy(() =>
+  import('./paginas/ListadoFacturas').then((modulo) => ({ default: modulo.ListadoFacturas })),
+)
+const TomaFacturas = lazy(() =>
+  import('./paginas/TomaFacturas').then((modulo) => ({ default: modulo.TomaFacturas })),
+)
+const ReporteFacturas = lazy(() =>
+  import('./paginas/ReporteFacturas').then((modulo) => ({ default: modulo.ReporteFacturas })),
 )
 const Usuarios = lazy(() => import('./paginas/Usuarios').then((modulo) => ({ default: modulo.Usuarios })))
 const Auditoria = lazy(() => import('./paginas/Auditoria').then((modulo) => ({ default: modulo.Auditoria })))
@@ -70,6 +82,15 @@ function PaginaActa() {
   return <TomaActas key={numero} />
 }
 
+function PaginaNuevaFactura() {
+  const { sesion } = useSesion()
+  if (!esAdministrador(sesion?.tipoUsuario)) {
+    return <Navigate to="/facturas" replace />
+  }
+
+  return <TomaFacturas />
+}
+
 export function App() {
   return (
     <Suspense fallback={<p className="cargando-pagina">Cargando…</p>}>
@@ -95,6 +116,11 @@ export function App() {
             <Route path="actas/:numero" element={<PaginaActa />} />
             <Route path="informes/actas" element={<ReporteActas />} />
             <Route path="informes/materiales" element={<ReporteMateriales />} />
+            <Route path="informes/conceptos" element={<ReporteConceptos />} />
+            <Route path="informes/facturas" element={<ReporteFacturas />} />
+            <Route path="facturas" element={<ListadoFacturas />} />
+            <Route path="facturas/nueva" element={<PaginaNuevaFactura />} />
+            <Route path="facturas/:id" element={<TomaFacturas />} />
             <Route path="presupuestos" element={<Presupuestos />} />
             <Route path="presupuestos/:id/seguimiento" element={<SeguimientoPresupuesto />} />
             <Route path="presupuestos/:id" element={<EditorPresupuesto />} />

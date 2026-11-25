@@ -1,12 +1,14 @@
+import { useMemo } from 'react'
 import { Button, Table } from 'react-bootstrap'
 import { cliente } from '../api/cliente'
 import type { ItemPresupuesto, PresupuestoDetalle } from '../api/presupuesto'
 import { dinero } from '../actas/formato'
 import { totalCapitulo } from './costosPresupuesto'
+import type { ApuOpcion } from './ComboApu'
 import { FilaItem } from './FilaItem'
+import { columnasPegado, interpretarPegado, type ColumnaPegado } from './pegarExcel'
 
 type Aviso = { itemId: number | null; tipo: string; mensaje: string }
-type ApuOpcion = { id: number; codigo: string | null; descripcion: string }
 
 export function CapituloPresupuesto({
   indiceCapitulo,
@@ -18,6 +20,7 @@ export function CapituloPresupuesto({
   apus,
   alActualizar,
   alCambiar,
+  alPegar,
   alAgregarItem,
   alBuscarApu,
   alCrearApu,
@@ -26,6 +29,7 @@ export function CapituloPresupuesto({
   alMover,
   alConcepto,
   alEditarApu,
+  unidades,
 }: {
   indiceCapitulo: number
   borrador: PresupuestoDetalle
@@ -36,6 +40,7 @@ export function CapituloPresupuesto({
   apus: ApuOpcion[]
   alActualizar: (presupuesto: PresupuestoDetalle) => void
   alCambiar: (item: number, cambios: Partial<ItemPresupuesto>) => void
+  alPegar: (desde: number, filas: Partial<ItemPresupuesto>[]) => void
   alAgregarItem: () => void
   alBuscarApu: () => void
   alCrearApu: () => void
@@ -44,10 +49,25 @@ export function CapituloPresupuesto({
   alMover: (itemId: number, destino: number) => void
   alConcepto: (item: number) => void
   alEditarApu: (apuId: number) => void
+  unidades: Array<{ id: number; nombre: string }>
 }) {
   const capitulo = borrador.capitulos[indiceCapitulo]
-  const candidatos = borrador.capitulos.flatMap((grupo) => grupo.items).filter((candidato) => candidato.id >= 0)
   const destinoInicial = borrador.capitulos.find((candidato) => candidato.id !== capitulo.id && candidato.id >= 0)?.id ?? 0
+
+  const cantidadDe = useMemo(() => {
+    const mapa = new Map<string, number>()
+    for (const fila of borrador.capitulos.flatMap((grupo) => grupo.items)) {
+      if (fila.codigo.trim()) {
+        mapa.set(fila.codigo.trim(), fila.cantidad)
+      }
+    }
+    return (codigo: string) => mapa.get(codigo.trim())
+  }, [borrador.capitulos])
+
+  const mostrarFactor = capitulo.items.some(
+    (fila) =>
+      fila.factorConversionApu !== 1 || fila.avisoUnidad || (fila.unidad && fila.unidadApu && fila.unidad !== fila.unidadApu),
+  )
 
   return (
     <details className="catalogo-panel mb-3" open>
@@ -87,13 +107,39 @@ export function CapituloPresupuesto({
             <th>Unidad</th>
             <th>Cantidad</th>
             <th>APU</th>
-            <th>Factor</th>
+            {mostrarFactor && <th>Factor</th>}
             <th className="text-end">Material</th>
+            <th className="w-0" aria-label="Acciones" />
             <th className="text-end">MO</th>
             <th className="text-end">Total</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody
+          onPaste={(evento) => {
+            if (!editable) {
+              return
+            }
+            const texto = evento.clipboardData.getData('text')
+            if (!texto.includes('\t') && !texto.includes('\n')) {
+              return
+            }
+            const activo = document.activeElement as HTMLElement | null
+            const columna = (activo?.dataset?.col as ColumnaPegado | undefined) ?? 'codigo'
+            if (!columnasPegado.includes(columna)) {
+              return
+            }
+            evento.preventDefault()
+            const filaDom = activo?.closest('tr')
+            const idDom = filaDom?.id?.startsWith('item-') ? Number(filaDom.id.slice(5)) : NaN
+            const indiceInicio = Number.isFinite(idDom)
+              ? Math.max(0, capitulo.items.findIndex((fila) => fila.id === idDom))
+              : 0
+            const filas = interpretarPegado(texto, columna, unidades, cantidadDe)
+            if (filas.length > 0) {
+              alPegar(indiceInicio >= 0 ? indiceInicio : 0, filas)
+            }
+          }}
+        >
           {capitulo.items.map((item, indiceItem) => (
               <FilaItem
                 key={item.id || `${indiceCapitulo}-${indiceItem}`}
@@ -104,7 +150,8 @@ export function CapituloPresupuesto({
                 oculto={filtroAvisos && !avisos.some((aviso) => aviso.itemId === item.id)}
                 avisos={avisos.filter((aviso) => aviso.itemId === item.id)}
                 apus={apus}
-                candidatos={candidatos}
+                mostrarFactor={mostrarFactor}
+                cantidadDe={cantidadDe}
                 destinoInicial={destinoInicial}
                 alCambiar={(cambios) => alCambiar(indiceItem, cambios)}
                 alMedicion={() => alMedicion(indiceItem)}
@@ -112,6 +159,7 @@ export function CapituloPresupuesto({
                 alMover={(destino) => alMover(item.id, destino)}
                 alConcepto={() => alConcepto(indiceItem)}
                 alEditarApu={() => alEditarApu(item.apuId ?? 0)}
+                unidades={unidades}
               />
           ))}
         </tbody>

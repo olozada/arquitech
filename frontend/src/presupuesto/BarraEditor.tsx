@@ -32,7 +32,7 @@ export function BarraEditor({
             Excel
           </Button>
           <Button type="button" variant="outline-primary" onClick={() => void descargarPresupuesto(borrador.id, 'pdf')}>
-            PDF
+            Imprimir
           </Button>
           {administrador && borrador.estado === 'Borrador' && !borrador.esPlantilla && (
             <Button type="button" variant="outline-success" disabled={guardando} onClick={() => void aprobar()}>

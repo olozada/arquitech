@@ -105,7 +105,11 @@ export function ReporteActas() {
   return (
     <section>
       <h1>Reporte de actas</h1>
-      <p><Link to="/informes/materiales">Ver por materiales</Link></p>
+      <p>
+        <Link to="/informes/materiales">Ver por materiales</Link>
+        {' · '}
+        <Link to="/informes/conceptos">Ver por conceptos</Link>
+      </p>
       <Form className="catalogo-panel reporte-filtros" onSubmit={(evento) => void consultar(evento)}>
         <Row className="g-3 align-items-end">
           <Col xs={12} sm="auto">
@@ -205,8 +209,8 @@ export function ReporteActas() {
                   setFiltro((actual) => (actual ? { ...actual, vista: siguiente } : actual))
                 }}
               >
-                <option value="detallado">Detallado</option>
-                <option value="agrupado">Agrupado</option>
+                <option value="detallado">Valor de obra detallado</option>
+                <option value="agrupado">Valor de obra acumulado</option>
               </Form.Select>
             </Form.Group>
           </Col>

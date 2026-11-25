@@ -1,4 +1,5 @@
 using Arquitectos.Domain.Entidades;
+using Arquitectos.Infrastructure.Presupuestos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arquitectos.Infrastructure.Persistence;
@@ -40,19 +41,15 @@ public static class SemillaDemo
             Nombre = persona.Nombre,
             Nit = persona.Documento,
         }).ToList();
-        var unidades = GeneradorDemo.Unidades.Select(unidad => new UnidadMedida
-        {
-            Nombre = unidad.Codigo,
-            Descripcion = unidad.Descripcion,
-        }).ToList();
+        await SemillaUnidadesObra.AplicarAsync(context, cancellationToken);
+        var unidades = await context.UnidadesMedida.AsNoTracking().ToListAsync(cancellationToken);
         context.AddRange(arquitectos);
         context.AddRange(revisores);
         context.AddRange(contratistas);
         context.AddRange(proveedores);
-        context.AddRange(unidades);
         await context.SaveChangesAsync(cancellationToken);
 
-        var unidadPorNombre = unidades.ToDictionary(unidad => unidad.Nombre, unidad => unidad.Id);
+        var unidadPorNombre = unidades.ToDictionary(unidad => unidad.Nombre, unidad => unidad.Id, StringComparer.OrdinalIgnoreCase);
         var insumos = GeneradorDemo.Materiales.Select((material, indice) => new Insumo
         {
             Codigo = $"MAT-{(indice + 1):000}",

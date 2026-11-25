@@ -16,6 +16,7 @@ public sealed class ImportadorPresupuesto
 
     public async Task<InformeImportacionDto> GuardarAsync(ModeloImportado modelo, int construccionId, CancellationToken cancellationToken)
     {
+        await SemillaUnidadesObra.AplicarAsync(_context, cancellationToken);
         var evaluacion = LectorModelo.Evaluar(modelo);
         await GuardarPrestacionesAsync(modelo, cancellationToken);
         var insumos = await GuardarInsumosAsync(modelo, cancellationToken);
@@ -47,7 +48,11 @@ public sealed class ImportadorPresupuesto
         var porCodigo = existentes.Where(insumo => !string.IsNullOrWhiteSpace(insumo.Codigo))
             .GroupBy(insumo => insumo.Codigo!)
             .ToDictionary(grupo => grupo.Key, grupo => grupo.First());
-        var porNombre = existentes.ToDictionary(insumo => Clave(insumo.Tipo, insumo.Descripcion), insumo => insumo);
+        var porNombre = new Dictionary<string, Insumo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var insumo in existentes)
+        {
+            porNombre.TryAdd(Clave(insumo.Tipo, insumo.Descripcion), insumo);
+        }
         var resultado = new Dictionary<string, Insumo>();
         foreach (var fila in modelo.Insumos)
         {
@@ -122,7 +127,25 @@ public sealed class ImportadorPresupuesto
     private async Task<Dictionary<string, Cargo>> GuardarCargosAsync(ModeloImportado modelo, CancellationToken cancellationToken)
     {
         var cargos = await _context.Cargos.ToListAsync(cancellationToken);
-        var porNombre = cargos.ToDictionary(cargo => TextoPresupuesto.Normalizar(cargo.Nombre), cargo => cargo);
+        var invalidos = cargos.Where(cargo => cargo.Id <= 0).ToList();
+        if (invalidos.Count > 0)
+        {
+            foreach (var mal in invalidos)
+            {
+                var enlaces = await _context.Set<CuadrillaCargo>().Where(item => item.CargoId == mal.Id).ToListAsync(cancellationToken);
+                _context.Set<CuadrillaCargo>().RemoveRange(enlaces);
+                _context.Cargos.Remove(mal);
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            cargos = await _context.Cargos.ToListAsync(cancellationToken);
+        }
+
+        var porNombre = new Dictionary<string, Cargo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cargo in cargos)
+        {
+            porNombre.TryAdd(TextoPresupuesto.Normalizar(cargo.Nombre), cargo);
+        }
         foreach (var fila in modelo.ManoObra.Cargos)
         {
             var clave = TextoPresupuesto.Normalizar(fila.Cargo);
@@ -147,8 +170,21 @@ public sealed class ImportadorPresupuesto
         CancellationToken cancellationToken)
     {
         var actuales = await _context.Cuadrillas.Include(cuadrilla => cuadrilla.Integrantes).ToListAsync(cancellationToken);
-        var porNombre = actuales.ToDictionary(cuadrilla => TextoPresupuesto.Normalizar(cuadrilla.Nombre), cuadrilla => cuadrilla);
-        Cargo? Buscar(string fragmento) => cargos.FirstOrDefault(par => par.Key.Contains(fragmento, StringComparison.Ordinal)).Value;
+        var porNombre = new Dictionary<string, Cuadrilla>(StringComparer.OrdinalIgnoreCase);
+        foreach (var cuadrilla in actuales)
+        {
+            porNombre.TryAdd(TextoPresupuesto.Normalizar(cuadrilla.Nombre), cuadrilla);
+        }
+        Cargo? Buscar(string nombrePreferido)
+        {
+            var clave = TextoPresupuesto.Normalizar(nombrePreferido);
+            if (cargos.TryGetValue(clave, out var exacto))
+            {
+                return exacto;
+            }
+
+            return cargos.FirstOrDefault(par => par.Key.Contains(clave, StringComparison.Ordinal)).Value;
+        }
         var maestro = Buscar("MAESTRO");
         var oficial = Buscar("OFICIAL");
         var ayudante = Buscar("AYUDANTE");
@@ -264,9 +300,18 @@ public sealed class ImportadorPresupuesto
         CancellationToken cancellationToken)
     {
         var conceptos = await _context.Conceptos.ToListAsync(cancellationToken);
-        var porConcepto = conceptos.ToDictionary(concepto => TextoPresupuesto.Normalizar(concepto.Descripcion), concepto => concepto);
+        var porConcepto = new Dictionary<string, Concepto>(StringComparer.OrdinalIgnoreCase);
+        foreach (var concepto in conceptos)
+        {
+            porConcepto.TryAdd(TextoPresupuesto.Normalizar(concepto.Descripcion), concepto);
+        }
+
         var unidades = await _context.UnidadesMedida.ToListAsync(cancellationToken);
-        var porUnidad = unidades.ToDictionary(unidad => TextoPresupuesto.Normalizar(unidad.Nombre), unidad => unidad);
+        var porUnidad = new Dictionary<string, UnidadMedida>(StringComparer.OrdinalIgnoreCase);
+        foreach (var unidad in unidades)
+        {
+            porUnidad.TryAdd(TextoPresupuesto.Normalizar(unidad.Nombre), unidad);
+        }
         var version = (await _context.Presupuestos.Where(item => item.ConstruccionId == construccionId).Select(item => (int?)item.Version).MaxAsync(cancellationToken) ?? 0) + 1;
         var presupuesto = new Presupuesto
         {
@@ -282,8 +327,7 @@ public sealed class ImportadorPresupuesto
         };
         foreach (var item in modelo.Presupuesto.Capitulos.SelectMany(capitulo => capitulo.Items))
         {
-            ConceptoDe(item, porConcepto);
-            UnidadDe(item.Unidad, porUnidad);
+            ConceptoDe(item, porConcepto, porUnidad);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -301,7 +345,7 @@ public sealed class ImportadorPresupuesto
             foreach (var item in capitulo.Items)
             {
                 var codigo = CodigoUnico(item.Codigo, vistos);
-                var concepto = ConceptoDe(item, porConcepto);
+                var concepto = ConceptoDe(item, porConcepto, porUnidad);
                 var unidad = UnidadDe(item.Unidad, porUnidad);
                 Apu? apu = item.ApuId is int apuId && apus.TryGetValue(apuId, out var encontrado) ? encontrado : null;
                 if (apu is not null && string.IsNullOrWhiteSpace(apu.Unidad))
@@ -338,39 +382,64 @@ public sealed class ImportadorPresupuesto
         return presupuesto;
     }
 
-    public static Concepto AsegurarConcepto(ArquitectosDbContext contexto, Dictionary<string, Concepto> porConcepto, string descripcion, string? unidad)
+    public static Concepto AsegurarConcepto(
+        ArquitectosDbContext contexto,
+        Dictionary<string, Concepto> porConcepto,
+        string descripcion,
+        string? unidad,
+        int? unidadMedidaId)
     {
         var texto = TextoPresupuesto.Recortar(descripcion, 200);
         var clave = TextoPresupuesto.Normalizar(texto);
         if (porConcepto.TryGetValue(clave, out var concepto))
         {
+            if (unidadMedidaId is > 0 && concepto.UnidadMedidaId is null)
+            {
+                concepto.UnidadMedidaId = unidadMedidaId;
+                concepto.Unidad = TextoPresupuesto.Recortar(unidad, 20);
+            }
+
             return concepto;
         }
 
-        concepto = new Concepto { Descripcion = texto, Unidad = TextoPresupuesto.Recortar(unidad, 20), Activo = true };
+        concepto = new Concepto
+        {
+            Descripcion = texto,
+            Unidad = TextoPresupuesto.Recortar(unidad, 20),
+            UnidadMedidaId = unidadMedidaId,
+            Activo = true
+        };
         contexto.Conceptos.Add(concepto);
         porConcepto[clave] = concepto;
         return concepto;
     }
 
-    private Concepto ConceptoDe(ItemImportado item, Dictionary<string, Concepto> porConcepto) =>
-        AsegurarConcepto(_context, porConcepto, item.Descripcion, item.Unidad);
+    private Concepto ConceptoDe(ItemImportado item, Dictionary<string, Concepto> porConcepto, Dictionary<string, UnidadMedida> porUnidad)
+    {
+        var unidad = UnidadDe(item.Unidad, porUnidad);
+        return AsegurarConcepto(_context, porConcepto, item.Descripcion, unidad?.Nombre ?? item.Unidad, unidad?.Id);
+    }
 
     private UnidadMedida? UnidadDe(string? nombre, Dictionary<string, UnidadMedida> porUnidad)
     {
-        var texto = TextoPresupuesto.Recortar(nombre, 20);
-        if (texto.Length == 0)
+        var oficial = CatalogoUnidadesObra.ResolverNombre(nombre);
+        if (oficial is null)
         {
             return null;
         }
 
-        var clave = TextoPresupuesto.Normalizar(texto);
+        var clave = TextoPresupuesto.Normalizar(oficial);
         if (porUnidad.TryGetValue(clave, out var unidad))
         {
             return unidad;
         }
 
-        unidad = new UnidadMedida { Nombre = texto, Activo = true };
+        if (!CatalogoUnidadesObra.EsNombreOficial(oficial))
+        {
+            return null;
+        }
+
+        unidad = new UnidadMedida { Nombre = oficial, Activo = true };
         _context.UnidadesMedida.Add(unidad);
         porUnidad[clave] = unidad;
         return unidad;
@@ -383,7 +452,7 @@ public sealed class ImportadorPresupuesto
             return;
         }
 
-        cuadrilla.Integrantes.Add(new CuadrillaCargo { CargoId = cargo.Id, Cantidad = cantidad });
+        cuadrilla.Integrantes.Add(new CuadrillaCargo { Cargo = cargo, Cantidad = cantidad });
     }
 
     private static string CodigoUnico(string codigo, Dictionary<string, int> vistos)

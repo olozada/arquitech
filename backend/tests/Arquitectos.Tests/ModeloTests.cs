@@ -33,6 +33,8 @@ public class ModeloTests
             "ProveedorMateriales",
             "Actas",
             "ActaDetalles",
+            "Facturas",
+            "FacturaDetalles",
             "Insumos",
             "InsumoPreciosHistorial",
             "PrestacionesSociales",
@@ -93,8 +95,8 @@ public class ModeloTests
         var menu = modelo.FindEntityType(typeof(MenuOpcion))!.GetSeedData().ToList();
 
         Assert.Contains(usuarios, fila => Equals(fila[nameof(Usuario.NombreUsuario)], "admin"));
-        // 22 opciones: la 12 se eliminó; 18 a 22 son el módulo de presupuesto y la 23 es el reporte por materiales.
-        Assert.Equal(22, menu.Count);
+        // 25 opciones: la 12 se eliminó; 24 y 25 son facturas de materiales; 26 es el reporte por conceptos.
+        Assert.Equal(25, menu.Count);
         Assert.DoesNotContain(menu, fila => Equals(fila[nameof(MenuOpcion.Id)], 12));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/actas"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/"));
@@ -102,6 +104,21 @@ public class ModeloTests
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/cuenta/contrasena"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/presupuestos"));
         Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/presupuesto/apu"));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/facturas"));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/informes/facturas"));
+        Assert.Contains(menu, fila => Equals(fila[nameof(MenuOpcion.Url)], "/informes/conceptos"));
+    }
+
+    [Fact]
+    public void El_detalle_de_la_factura_se_borra_en_cascada_y_el_subtotal_es_calculado()
+    {
+        using var context = CrearContexto();
+        var detalle = context.Model.FindEntityType(typeof(FacturaDetalle))!;
+        var factura = detalle.GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Factura));
+        var subtotal = detalle.FindProperty(nameof(FacturaDetalle.Subtotal))!;
+
+        Assert.Equal(DeleteBehavior.Cascade, factura.DeleteBehavior);
+        Assert.Equal("[Cantidad] * [Precio]", subtotal.GetComputedColumnSql());
     }
 
     [Fact]

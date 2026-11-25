@@ -162,6 +162,15 @@ public sealed partial class PresupuestoServicio
         var apus = await _context.Apus.AsNoTracking()
             .Select(apu => new { apu.Id, apu.Descripcion, apu.Unidad })
             .ToDictionaryAsync(apu => apu.Id, cancellationToken);
+        var unidadesActivas = await _context.UnidadesMedida.AsNoTracking()
+            .Where(unidad => unidad.Activo)
+            .OrderBy(unidad => unidad.Id)
+            .ToListAsync(cancellationToken);
+        var unidadPorNombre = new Dictionary<string, UnidadMedida>(StringComparer.OrdinalIgnoreCase);
+        foreach (var unidad in unidadesActivas)
+        {
+            unidadPorNombre.TryAdd(TextoPresupuesto.Normalizar(unidad.Nombre), unidad);
+        }
         var costo = CostoDe(presupuesto);
         var capitulos = presupuesto.Capitulos.OrderBy(capitulo => capitulo.Orden).Select(capitulo =>
         {
@@ -176,12 +185,23 @@ public sealed partial class PresupuestoServicio
                 }
 
                 var unitario = item.ValorMaterialUnitario + item.ValorManoObraUnitario;
+                var unidadTexto = item.Unidad;
+                var unidadMedidaId = item.UnidadMedidaId;
+                if (unidadMedidaId is not > 0 && CatalogoUnidadesObra.ResolverNombre(unidadTexto) is { } oficial)
+                {
+                    unidadTexto = oficial;
+                    if (unidadPorNombre.TryGetValue(TextoPresupuesto.Normalizar(oficial), out var unidad))
+                    {
+                        unidadMedidaId = unidad.Id;
+                    }
+                }
+
                 return new ItemPresupuestoDto(
                     item.Id,
                     item.Codigo,
                     item.Descripcion,
-                    item.Unidad,
-                    item.UnidadMedidaId,
+                    unidadTexto,
+                    unidadMedidaId,
                     item.ApuId,
                     apu,
                     unidadApu,
@@ -189,6 +209,7 @@ public sealed partial class PresupuestoServicio
                     item.ApuId is not null && item.FactorConversionApu == 1 && !TextoPresupuesto.MismaUnidad(item.Unidad, unidadApu),
                     item.ConceptoId,
                     item.Cantidad,
+                    item.FormulaCantidad,
                     item.CantidadOrigenItemId,
                     item.CantidadOrigenFactor,
                     item.ValorMaterialUnitario,

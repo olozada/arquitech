@@ -189,7 +189,8 @@ public sealed partial class ActaServicio : IActaServicio
         bool descendente = false,
         bool agrupado = true,
         int pagina = 0,
-        int tamano = 0)
+        int tamano = 0,
+        bool porConcepto = false)
     {
         var fechas = ValidarRango(desde, hasta);
         if (fechas is not null)
@@ -221,8 +222,10 @@ public sealed partial class ActaServicio : IActaServicio
             detalles = detalles.Where(detalle => detalle.ConstruccionId == construccionId);
         }
 
-        detalles = detalles.Where(detalle => detalle.InsumoId != null);
-        if (proveedorId is > 0)
+        detalles = porConcepto
+            ? detalles
+            : detalles.Where(detalle => detalle.InsumoId != null);
+        if (!porConcepto && proveedorId is > 0)
         {
             detalles = detalles.Where(detalle => _context.ProveedorMateriales.Any(oferta =>
                 oferta.ProveedorId == proveedorId && oferta.InsumoId == detalle.InsumoId));
@@ -232,21 +235,27 @@ public sealed partial class ActaServicio : IActaServicio
             .Select(detalle => new
             {
                 detalle.NumeroActa,
-                detalle.InsumoId,
-                Codigo = detalle.Insumo != null ? detalle.Insumo.Codigo ?? "" : "",
-                Material = detalle.Insumo != null ? detalle.Insumo.Descripcion : "",
+                Clave = porConcepto ? (int?)detalle.ConceptoId : detalle.InsumoId,
+                Codigo = porConcepto
+                    ? (detalle.Concepto.Codigo ?? "")
+                    : (detalle.Insumo != null ? detalle.Insumo.Codigo ?? "" : ""),
+                Material = porConcepto
+                    ? detalle.Concepto.Descripcion
+                    : (detalle.Insumo != null ? detalle.Insumo.Descripcion : ""),
                 Unidad = detalle.UnidadMedida != null ? detalle.UnidadMedida.Nombre : "",
                 detalle.Cantidad,
                 detalle.Precio,
                 detalle.Subtotal,
-                detalle.Aprobado
+                detalle.Aprobado,
+                Construccion = detalle.Construccion.Descripcion
             })
             .ToListAsync(cancellationToken);
 
+        var variasConstrucciones = construccionId is not > 0;
         var comparador = StringComparer.Create(CultureInfo.GetCultureInfo("es-CO"), ignoreCase: true);
         var items = agrupado
             ? filas
-                .GroupBy(fila => new { fila.InsumoId, fila.Codigo, fila.Material, fila.Unidad, fila.Aprobado })
+                .GroupBy(fila => new { fila.Clave, fila.Codigo, fila.Material, fila.Unidad, fila.Aprobado, Construccion = variasConstrucciones ? fila.Construccion : "" })
                 .Select(grupo =>
                 {
                     var cantidad = grupo.Sum(fila => fila.Cantidad);
@@ -258,9 +267,11 @@ public sealed partial class ActaServicio : IActaServicio
                         cantidad,
                         precio,
                         grupo.Sum(fila => fila.Aprobado ? fila.Subtotal : 0),
-                        grupo.Key.Aprobado);
+                        grupo.Key.Aprobado,
+                        Construccion: grupo.Key.Construccion);
                 })
-                .OrderByDescending(item => item.Subtotal)
+                .OrderBy(item => item.Construccion, comparador)
+                .ThenByDescending(item => item.Subtotal)
                 .ThenBy(item => item.Material, comparador)
                 .ToList()
             : filas
@@ -272,12 +283,14 @@ public sealed partial class ActaServicio : IActaServicio
                     fila.Precio,
                     fila.Aprobado ? fila.Subtotal : 0,
                     fila.Aprobado,
-                    fila.NumeroActa))
-                .OrderBy(item => item.NumeroActa)
+                    fila.NumeroActa,
+                    variasConstrucciones ? fila.Construccion : ""))
+                .OrderBy(item => item.Construccion, comparador)
+                .ThenBy(item => item.NumeroActa)
                 .ThenBy(item => item.Material, comparador)
                 .ThenByDescending(item => item.Subtotal)
                 .ToList();
-        items = OrdenarMateriales(items, orden, descendente);
+        items = OrdenarMateriales(items, orden, descendente, variasConstrucciones);
         var cantidadMateriales = items.Count;
         var totalMateriales = items.Sum(item => item.Subtotal);
         var (paginaMateriales, tamanoMateriales, paginaDeMateriales) = Paginar(items, pagina, tamano);
@@ -317,7 +330,8 @@ public sealed partial class ActaServicio : IActaServicio
         int? proveedorId,
         int usuarioId,
         CancellationToken cancellationToken,
-        bool agrupado = true)
+        bool agrupado = true,
+        bool subtotales = false)
     {
         var consulta = await ConsultarMaterialesAsync(
             desde,
@@ -332,7 +346,7 @@ public sealed partial class ActaServicio : IActaServicio
             cancellationToken,
             agrupado: agrupado);
         return consulta.Estado == EstadoActa.Ok
-            ? ResultadoActa<byte[]>.Ok(GeneradorExcelMateriales.Generar(consulta.Valor!))
+            ? ResultadoActa<byte[]>.Ok(GeneradorExcelMateriales.Generar(consulta.Valor!, subtotales && !agrupado))
             : ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
     }
 
@@ -349,7 +363,8 @@ public sealed partial class ActaServicio : IActaServicio
         string? orden,
         bool descendente,
         CancellationToken cancellationToken,
-        bool agrupado = true)
+        bool agrupado = true,
+        bool subtotales = false)
     {
         var consulta = await ConsultarMaterialesAsync(
             desde,
@@ -366,7 +381,110 @@ public sealed partial class ActaServicio : IActaServicio
             descendente,
             agrupado);
         return consulta.Estado == EstadoActa.Ok
-            ? ResultadoActa<byte[]>.Ok(GeneradorPdfInformeMateriales.Generar(consulta.Valor!))
+            ? ResultadoActa<byte[]>.Ok(GeneradorPdfInformeMateriales.Generar(consulta.Valor!, subtotales && !agrupado))
+            : ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
+    }
+
+    public Task<ResultadoActa<InformeMaterialesDto>> ConsultarConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken,
+        string? orden = null,
+        bool descendente = false,
+        bool agrupado = true,
+        int pagina = 0,
+        int tamano = 0) =>
+        ConsultarMaterialesAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            cerrada,
+            null,
+            usuarioId,
+            cancellationToken,
+            orden,
+            descendente,
+            agrupado,
+            pagina,
+            tamano,
+            porConcepto: true);
+
+    public async Task<ResultadoActa<byte[]>> ExportarConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        CancellationToken cancellationToken,
+        bool agrupado = true,
+        bool subtotales = false)
+    {
+        var consulta = await ConsultarConceptosAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            cerrada,
+            usuarioId,
+            cancellationToken,
+            agrupado: agrupado);
+        return consulta.Estado == EstadoActa.Ok
+            ? ResultadoActa<byte[]>.Ok(GeneradorExcelMateriales.Generar(
+                consulta.Valor!,
+                subtotales && !agrupado,
+                "Conceptos",
+                "Concepto"))
+            : ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
+    }
+
+    public async Task<ResultadoActa<byte[]>> ImprimirConceptosAsync(
+        DateOnly? desde,
+        DateOnly? hasta,
+        int? arquitectoId,
+        int? revisorId,
+        int? contratistaId,
+        int? construccionId,
+        bool? cerrada,
+        int usuarioId,
+        string? orden,
+        bool descendente,
+        CancellationToken cancellationToken,
+        bool agrupado = true,
+        bool subtotales = false)
+    {
+        var consulta = await ConsultarConceptosAsync(
+            desde,
+            hasta,
+            arquitectoId,
+            revisorId,
+            contratistaId,
+            construccionId,
+            cerrada,
+            usuarioId,
+            cancellationToken,
+            orden,
+            descendente,
+            agrupado);
+        return consulta.Estado == EstadoActa.Ok
+            ? ResultadoActa<byte[]>.Ok(GeneradorPdfInformeMateriales.Generar(
+                consulta.Valor!,
+                subtotales && !agrupado,
+                "Informe por conceptos",
+                "Concepto"))
             : ResultadoActa<byte[]>.Invalido(consulta.Mensaje ?? CrearActaValidador.MensajeFechas);
     }
 
@@ -433,7 +551,11 @@ public sealed partial class ActaServicio : IActaServicio
         return (paginaOk, tamanoOk, items.Skip((paginaOk - 1) * tamanoOk).Take(tamanoOk).ToList());
     }
 
-    private static List<ItemMaterialInformeDto> OrdenarMateriales(List<ItemMaterialInformeDto> items, string? orden, bool descendente)
+    private static List<ItemMaterialInformeDto> OrdenarMateriales(
+        List<ItemMaterialInformeDto> items,
+        string? orden,
+        bool descendente,
+        bool porConstruccion = false)
     {
         var campo = orden?.Trim().ToLowerInvariant();
         if (campo is not ("acta" or "codigo" or "material" or "unidad" or "cantidad" or "precio" or "estado" or "subtotal"))
@@ -444,6 +566,18 @@ public sealed partial class ActaServicio : IActaServicio
         var filas = items.Select((item, indice) => (item, indice)).ToList();
         filas.Sort((izquierda, derecha) =>
         {
+            if (porConstruccion)
+            {
+                var casa = Comparacion.Compare(
+                    izquierda.item.Construccion,
+                    derecha.item.Construccion,
+                    CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
+                if (casa != 0)
+                {
+                    return casa;
+                }
+            }
+
             var comparacion = campo switch
             {
                 "acta" => (izquierda.item.NumeroActa ?? 0).CompareTo(derecha.item.NumeroActa ?? 0),
