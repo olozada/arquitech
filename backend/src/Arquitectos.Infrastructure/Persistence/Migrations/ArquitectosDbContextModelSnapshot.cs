@@ -1633,6 +1633,10 @@ namespace Arquitectos.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("MapeoProductos")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<string>("Nit")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");

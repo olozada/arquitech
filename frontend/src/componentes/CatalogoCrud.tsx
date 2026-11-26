@@ -7,7 +7,8 @@ import type { Resolver } from 'react-hook-form'
 import Swal from 'sweetalert2'
 import { z } from 'zod'
 import { cliente, mensajeError } from '../api/cliente'
-import type { CampoCatalogo, ConfiguracionCatalogo, RegistroCatalogo } from '../catalogos/definiciones'
+import { dinero } from '../actas/formato'
+import type { CampoCatalogo, ColumnaCatalogo, ConfiguracionCatalogo, RegistroCatalogo } from '../catalogos/definiciones'
 
 const TAMANO_PAGINA = 10
 
@@ -228,7 +229,7 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
                       <tr>
                         <th>Seleccionar</th>
                         {configuracion.columnas.map((columna) => (
-                          <th key={columna.clave}>{columna.titulo}</th>
+                          <th key={columna.clave} className={columna.moneda ? 'text-end' : undefined}>{columna.titulo}</th>
                         ))}
                       </tr>
                     </thead>
@@ -246,7 +247,7 @@ export function CatalogoCrud({ configuracion }: Propiedades) {
                             </Button>
                           </td>
                           {configuracion.columnas.map((columna) => (
-                            <td key={columna.clave}>{texto(registro[columna.clave])}</td>
+                            <td key={columna.clave} className={columna.moneda ? 'text-end' : undefined}>{presentar(columna, registro[columna.clave])}</td>
                           ))}
                         </tr>
                       ))}
@@ -320,8 +321,19 @@ function filtrarRegistros(registros: RegistroCatalogo[], columnas: Configuracion
   }
 
   return registros.filter((registro) =>
-    columnas.some((columna) => normalizar(texto(registro[columna.clave])).includes(consulta)),
+    columnas.some((columna) => {
+      const valor = registro[columna.clave]
+      return normalizar(presentar(columna, valor)).includes(consulta) || normalizar(texto(valor)).includes(consulta)
+    }),
   )
+}
+
+function presentar(columna: ColumnaCatalogo, valor: string | number | boolean | null | undefined) {
+  if (columna.moneda && typeof valor === 'number' && Number.isFinite(valor)) {
+    return dinero(valor, 2)
+  }
+
+  return texto(valor)
 }
 
 function texto(valor: string | number | boolean | null | undefined) {

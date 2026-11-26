@@ -11,6 +11,29 @@ public sealed class AgregarMaterialSolicitud
     public decimal Precio { get; set; }
 }
 
+public sealed class MapeoProductosDto
+{
+    public string Codigo { get; set; } = "";
+
+    public string Descripcion { get; set; } = "";
+
+    public string Unidad { get; set; } = "";
+
+    public string Precio { get; set; } = "";
+}
+
+public sealed record VistaCargueDto(
+    IReadOnlyList<string> Columnas,
+    IReadOnlyList<IReadOnlyList<string>> Muestra,
+    MapeoProductosDto Sugerido);
+
+public sealed record ResultadoCargueDto(
+    int ProductosNuevos,
+    int PreciosNuevos,
+    int PreciosActualizados,
+    int Omitidos,
+    IReadOnlyList<string> Avisos);
+
 public enum EstadoProveedorMaterial
 {
     Ok,

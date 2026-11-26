@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arquitectos.Infrastructure.ProveedorMateriales;
 
-public sealed class ProveedorMaterialServicio : IProveedorMaterialServicio
+public sealed partial class ProveedorMaterialServicio : IProveedorMaterialServicio
 {
     private const string MensajeProveedor = "No se encontró el proveedor.";
     private const string MensajeMateriales = "Hay insumos que no existen o están inactivos.";

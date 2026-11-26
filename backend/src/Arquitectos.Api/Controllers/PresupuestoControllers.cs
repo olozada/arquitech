@@ -174,6 +174,7 @@ public sealed class CuadrillasController : ControllerBase
     public async Task<IActionResult> Actualizar(int id, CuadrillaSolicitud solicitud, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.GuardarCuadrillaAsync(id, solicitud, cancellationToken));
 
+    [HttpPost("{id:int}/eliminar")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Eliminar(int id, CancellationToken cancellationToken) =>
         ResultadoHttp.Traducir(this, await _servicio.EliminarCuadrillaAsync(id, cancellationToken));
@@ -461,7 +462,7 @@ public static class ResultadoHttp
     public static IActionResult Traducir<T>(ControllerBase controlador, ResultadoOperacion<T> resultado, bool creado = false) =>
         resultado.Estado switch
         {
-            EstadoOperacion.Ok when creado => controlador.Created(string.Empty, resultado.Valor),
+            EstadoOperacion.Ok when creado => controlador.StatusCode(StatusCodes.Status201Created, resultado.Valor),
             EstadoOperacion.Ok => controlador.Ok(resultado.Valor),
             EstadoOperacion.NoEncontrado => controlador.Problem(title: "No encontrado", detail: resultado.Mensaje, statusCode: StatusCodes.Status404NotFound),
             EstadoOperacion.Prohibido => controlador.Problem(title: "No autorizado", detail: resultado.Mensaje, statusCode: StatusCodes.Status403Forbidden),

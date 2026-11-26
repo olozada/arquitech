@@ -64,6 +64,63 @@ public sealed class ProveedorMaterialesController : ControllerBase
         return Traducir(resultado);
     }
 
+    [HttpGet("mapeo")]
+    [ProducesResponseType(typeof(MapeoProductosDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Mapeo(int proveedorId, CancellationToken cancellationToken)
+    {
+        var resultado = await _servicio.ObtenerMapeoAsync(proveedorId, cancellationToken);
+        return Traducir(resultado);
+    }
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpPost("vista")]
+    [RequestSizeLimit(10_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 10_000_000)]
+    [ProducesResponseType(typeof(VistaCargueDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Vista(int proveedorId, IFormFile archivo, CancellationToken cancellationToken)
+    {
+        if (archivo is null || archivo.Length == 0)
+        {
+            return Problem(title: "Solicitud inválida", detail: "Seleccione un archivo.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        await using var contenido = archivo.OpenReadStream();
+        var resultado = await _servicio.PrevisualizarCargueAsync(proveedorId, contenido, archivo.FileName, cancellationToken);
+        return Traducir(resultado);
+    }
+
+    [Authorize(Policy = Politicas.SoloAdministrador)]
+    [HttpPost("cargar")]
+    [RequestSizeLimit(10_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 10_000_000)]
+    [ProducesResponseType(typeof(ResultadoCargueDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Cargar(
+        int proveedorId,
+        IFormFile archivo,
+        [FromForm] string? codigo,
+        [FromForm] string? descripcion,
+        [FromForm] string? unidad,
+        [FromForm] string? precio,
+        CancellationToken cancellationToken)
+    {
+        if (archivo is null || archivo.Length == 0)
+        {
+            return Problem(title: "Solicitud inválida", detail: "Seleccione un archivo.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var mapeo = new MapeoProductosDto
+        {
+            Codigo = codigo ?? "",
+            Descripcion = descripcion ?? "",
+            Unidad = unidad ?? "",
+            Precio = precio ?? ""
+        };
+        await using var contenido = archivo.OpenReadStream();
+        var resultado = await _servicio.CargarProductosAsync(proveedorId, contenido, archivo.FileName, mapeo, cancellationToken);
+        return Traducir(resultado);
+    }
+
     [Authorize(Policy = Politicas.SoloAdministrador)]
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

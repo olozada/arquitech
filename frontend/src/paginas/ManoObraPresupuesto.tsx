@@ -4,18 +4,31 @@ import { Button, Form, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { cliente, mensajeError } from '../api/cliente'
 import { dinero as formatoDinero } from '../actas/formato'
+import { CatalogoCrud } from '../componentes/CatalogoCrud'
+import type { ConfiguracionCatalogo } from '../catalogos/definiciones'
 
 function dinero(valor: number) {
   return formatoDinero(valor, 2)
 }
-import { CatalogoCrud } from '../componentes/CatalogoCrud'
-import type { ConfiguracionCatalogo } from '../catalogos/definiciones'
 
 type Parametros = { diasMes: number; incluirDiasNoHabiles: boolean; diasHabilesAnio: number; factorPrestacional: number }
 type Prestacion = { id: number; concepto: string; porcentaje: number; orden: number }
 type Cargo = { id: number; nombre: string; salarioMensual: number; jornal: number }
 type Integrante = { cargoId: number; cargo: string; cantidad: number }
 type Cuadrilla = { id: number; nombre: string; descripcion: string | null; costoDia: number; integrantes: Integrante[] }
+
+function cargosDe(item: Cuadrilla) {
+  return item.integrantes
+    .map((integrante) => {
+      const nombre = integrante.cargo.trim()
+      if (!nombre) {
+        return ''
+      }
+      return integrante.cantidad > 1 ? `${nombre} × ${integrante.cantidad}` : nombre
+    })
+    .filter((nombre) => nombre.length > 0)
+    .join(', ')
+}
 
 const cargos: ConfiguracionCatalogo = {
   titulo: 'Cargos',
@@ -27,8 +40,8 @@ const cargos: ConfiguracionCatalogo = {
   ],
   columnas: [
     { clave: 'nombre', titulo: 'Cargo' },
-    { clave: 'salarioMensual', titulo: 'Salario' },
-    { clave: 'jornal', titulo: 'Jornal con prestaciones' },
+    { clave: 'salarioMensual', titulo: 'Salario', moneda: true },
+    { clave: 'jornal', titulo: 'Jornal con prestaciones', moneda: true },
   ],
 }
 
@@ -82,6 +95,34 @@ export function ManoObraPresupuesto() {
       }
       setCuadrilla(null)
       await consultas.invalidateQueries({ queryKey: ['mo-cuadrillas'] })
+      await consultas.invalidateQueries({ queryKey: ['cuadrillas-origen'] })
+    } catch (error) {
+      await Swal.fire({ icon: 'error', text: mensajeError(error) })
+    }
+  }
+
+  async function eliminarCuadrilla(item: Cuadrilla) {
+    const confirmacion = await Swal.fire({
+      icon: 'warning',
+      title: '¿Desea eliminar la cuadrilla?',
+      text: item.nombre,
+      showCancelButton: true,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d9534f',
+      cancelButtonColor: '#6c757d',
+    })
+    if (!confirmacion.isConfirmed) {
+      return
+    }
+
+    try {
+      await cliente.post(`/api/cuadrillas/${item.id}/eliminar`)
+      if (cuadrilla?.id === item.id) {
+        setCuadrilla(null)
+      }
+      await consultas.invalidateQueries({ queryKey: ['mo-cuadrillas'] })
+      await consultas.invalidateQueries({ queryKey: ['cuadrillas-origen'] })
     } catch (error) {
       await Swal.fire({ icon: 'error', text: mensajeError(error) })
     }
@@ -134,11 +175,23 @@ export function ManoObraPresupuesto() {
           <Button type="button" size="sm" onClick={() => setCuadrilla({ id: 0, nombre: '', descripcion: '', costoDia: 0, integrantes: [] })}>Nueva cuadrilla</Button>
         </div>
         <Table size="sm">
+          <thead>
+            <tr>
+              <th>Cuadrilla</th>
+              <th>Cargo</th>
+              <th className="text-end">Costo</th>
+              <th />
+            </tr>
+          </thead>
           <tbody>
             {(cuadrillas.data ?? []).map((item) => (
               <tr key={item.id}>
                 <td><Button type="button" variant="link" onClick={() => setCuadrilla(structuredClone(item))}>{item.nombre}</Button></td>
+                <td>{cargosDe(item)}</td>
                 <td className="text-end">{dinero(item.costoDia)} / día</td>
+                <td className="text-end">
+                  <Button type="button" size="sm" variant="outline-danger" onClick={() => void eliminarCuadrilla(item)}>Eliminar</Button>
+                </td>
               </tr>
             ))}
           </tbody>

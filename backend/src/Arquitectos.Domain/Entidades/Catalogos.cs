@@ -81,6 +81,8 @@ public class Proveedor : IConNombre
 
     public string? Nit { get; set; }
 
+    public string? MapeoProductos { get; set; }
+
     public bool Activo { get; set; } = true;
 
     public ICollection<ProveedorMaterial> Materiales { get; set; } = new List<ProveedorMaterial>();

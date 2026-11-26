@@ -11,6 +11,7 @@ export type CampoCatalogo = {
 export type ColumnaCatalogo = {
   clave: string
   titulo: string
+  moneda?: boolean
 }
 
 export type ConfiguracionCatalogo = {

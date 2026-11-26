@@ -73,7 +73,7 @@ public static class SemillaInicial
         new() { Id = 7, PadreId = 1, Descripcion = "Conceptos", Url = "/admin/conceptos", Icono = "list-tree", Orden = 6 },
         new() { Id = 8, PadreId = 1, Descripcion = "Insumos", Url = "/presupuesto/insumos", Icono = "package", Orden = 7 },
         new() { Id = 9, PadreId = 1, Descripcion = "Unidades de medida", Url = "/admin/unidades-medida", Icono = "ruler", Orden = 8 },
-        new() { Id = 10, PadreId = 1, Descripcion = "Materiales por proveedor", Url = "/admin/proveedores-materiales", Icono = "badge-dollar-sign", Orden = 9 },
+        new() { Id = 10, PadreId = 1, Descripcion = "Productos por proveedor", Url = "/admin/proveedores-materiales", Icono = "badge-dollar-sign", Orden = 9 },
         new() { Id = 15, PadreId = 1, Descripcion = "Usuarios", Url = "/admin/usuarios", Icono = "users", Orden = 10 },
         new() { Id = 16, PadreId = 1, Descripcion = "Cambiar contraseña", Url = "/cuenta/contrasena", Icono = "key-round", Orden = 11 },
         new() { Id = 11, Descripcion = "Actas", Url = "/actas", Icono = "file-pen-line", Orden = 2 },

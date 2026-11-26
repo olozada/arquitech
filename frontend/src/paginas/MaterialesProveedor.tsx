@@ -8,6 +8,17 @@ import { dinero, numero } from '../actas/formato'
 
 type MaterialAgregado = { id: number; descripcion: string; precio: number }
 type MaterialDisponible = { id: number; descripcion: string }
+type MapeoProductos = { codigo: string; descripcion: string; unidad: string; precio: string }
+type VistaCargue = { columnas: string[]; muestra: string[][]; sugerido: MapeoProductos }
+type ResultadoCargue = {
+  productosNuevos: number
+  preciosNuevos: number
+  preciosActualizados: number
+  omitidos: number
+  avisos: string[]
+}
+
+const mapeoVacio: MapeoProductos = { codigo: '', descripcion: '', unidad: '', precio: '' }
 
 const mensajeSeleccion = 'Debe seleccionar materiales.'
 const mensajePrecio = 'Debe seleccionar valores superiores a cero.'
@@ -15,6 +26,11 @@ const mensajePrecio = 'Debe seleccionar valores superiores a cero.'
 export function MaterialesProveedor() {
   const consultas = useQueryClient()
   const [proveedorId, setProveedorId] = useState(0)
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [vista, setVista] = useState<VistaCargue | null>(null)
+  const [mapeo, setMapeo] = useState<MapeoProductos>(mapeoVacio)
+  const [leyendo, setLeyendo] = useState(false)
+  const [cargandoArchivo, setCargandoArchivo] = useState(false)
   const [agregadosMarcados, setAgregadosMarcados] = useState<Set<number>>(new Set())
   const [disponiblesMarcados, setDisponiblesMarcados] = useState<Set<number>>(new Set())
   const [precios, setPrecios] = useState<Record<number, string>>({})
@@ -64,6 +80,60 @@ export function MaterialesProveedor() {
     setProveedorId(Number(valor))
     setAgregadosMarcados(new Set())
     setDisponiblesMarcados(new Set())
+    setArchivo(null)
+    setVista(null)
+    setMapeo(mapeoVacio)
+  }
+
+  async function leerArchivo() {
+    if (!archivo) {
+      await avisarTexto('Seleccione el archivo del proveedor.')
+      return
+    }
+
+    const datos = new FormData()
+    datos.append('archivo', archivo)
+    setLeyendo(true)
+    try {
+      const respuesta = await cliente.post<VistaCargue>(`/api/proveedores/${proveedorId}/materiales/vista`, datos)
+      setVista(respuesta.data)
+      setMapeo(respuesta.data.sugerido)
+    } catch (error) {
+      await avisarError(error)
+    } finally {
+      setLeyendo(false)
+    }
+  }
+
+  async function cargarArchivo() {
+    if (!archivo) {
+      await avisarTexto('Seleccione el archivo del proveedor.')
+      return
+    }
+
+    const datos = new FormData()
+    datos.append('archivo', archivo)
+    datos.append('codigo', mapeo.codigo)
+    datos.append('descripcion', mapeo.descripcion)
+    datos.append('unidad', mapeo.unidad)
+    datos.append('precio', mapeo.precio)
+    setCargandoArchivo(true)
+    try {
+      const respuesta = await cliente.post<ResultadoCargue>(`/api/proveedores/${proveedorId}/materiales/cargar`, datos)
+      const resultado = respuesta.data
+      await refrescar()
+      const avisos = resultado.avisos.length > 0 ? ` ${resultado.avisos.join(' ')}` : ''
+      await Swal.fire({
+        icon: 'success',
+        title: 'Cargue listo',
+        text: `Productos nuevos: ${resultado.productosNuevos}. Precios nuevos: ${resultado.preciosNuevos}. Precios actualizados: ${resultado.preciosActualizados}. Omitidos: ${resultado.omitidos}.${avisos}`,
+        confirmButtonColor: '#1abb9c',
+      })
+    } catch (error) {
+      await avisarError(error)
+    } finally {
+      setCargandoArchivo(false)
+    }
   }
 
   function refrescar() {
@@ -103,7 +173,7 @@ export function MaterialesProveedor() {
 
   return (
     <section>
-      <h1>Materiales por proveedor</h1>
+      <h1>Productos por proveedor</h1>
       <div className="catalogo-panel">
         <Form.Group controlId="proveedor-materiales">
           <Form.Label>Proveedor</Form.Label>
@@ -120,6 +190,55 @@ export function MaterialesProveedor() {
       {proveedorId === 0 ? (
         <p>Seleccione un proveedor.</p>
       ) : (
+        <>
+        <section className="catalogo-panel mt-3">
+          <h2>Cargue de productos y lista de precios</h2>
+          <p>Elija el Excel, CSV o TXT del proveedor, indique qué columna es cada dato y guarde. El mapeo queda asociado a este proveedor para el siguiente cargue.</p>
+          <Form.Group className="mb-3" controlId="archivo-productos">
+            <Form.Label>Archivo</Form.Label>
+            <Form.Control
+              type="file"
+              accept=".xlsx,.xls,.csv,.txt"
+              onChange={(evento) => {
+                const entrada = evento.target as HTMLInputElement
+                setArchivo(entrada.files?.[0] ?? null)
+                setVista(null)
+              }}
+            />
+          </Form.Group>
+          <Button type="button" variant="outline-dark" disabled={leyendo} onClick={() => void leerArchivo()}>
+            {leyendo ? 'Leyendo…' : 'Leer columnas'}
+          </Button>
+          {vista && (
+            <div className="mt-3">
+              <div className="row g-2">
+                <CampoMapeo titulo="Código" valor={mapeo.codigo} columnas={vista.columnas} alCambiar={(codigo) => setMapeo({ ...mapeo, codigo })} />
+                <CampoMapeo titulo="Descripción" valor={mapeo.descripcion} columnas={vista.columnas} alCambiar={(descripcion) => setMapeo({ ...mapeo, descripcion })} />
+                <CampoMapeo titulo="Unidad" valor={mapeo.unidad} columnas={vista.columnas} alCambiar={(unidad) => setMapeo({ ...mapeo, unidad })} />
+                <CampoMapeo titulo="Precio" valor={mapeo.precio} columnas={vista.columnas} alCambiar={(precio) => setMapeo({ ...mapeo, precio })} />
+              </div>
+              {vista.muestra.length > 0 && (
+                <div className="table-responsive mt-3">
+                  <Table size="sm" className="mb-0">
+                    <thead>
+                      <tr>{vista.columnas.map((columna) => <th key={columna}>{columna}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {vista.muestra.map((fila, indice) => (
+                        <tr key={indice}>
+                          {vista.columnas.map((columna, posicion) => <td key={columna}>{fila[posicion] ?? ''}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              )}
+              <Button type="button" className="mt-3" disabled={cargandoArchivo} onClick={() => void cargarArchivo()}>
+                {cargandoArchivo ? 'Cargando…' : 'Cargar y guardar mapeo'}
+              </Button>
+            </div>
+          )}
+        </section>
         <div className="dos-columnas">
           <section className="catalogo-panel">
             <h2>Agregados</h2>
@@ -161,6 +280,7 @@ export function MaterialesProveedor() {
             </Button>
           </section>
         </div>
+        </>
       )}
     </section>
   )
@@ -248,6 +368,30 @@ function TablaMateriales({
           ))}
         </tbody>
       </Table>
+    </div>
+  )
+}
+
+function CampoMapeo({
+  titulo,
+  valor,
+  columnas,
+  alCambiar,
+}: {
+  titulo: string
+  valor: string
+  columnas: string[]
+  alCambiar: (valor: string) => void
+}) {
+  return (
+    <div className="col-md-3">
+      <Form.Label>{titulo}</Form.Label>
+      <Form.Select value={valor} onChange={(evento) => alCambiar(evento.target.value)}>
+        <option value="">No usar</option>
+        {columnas.map((columna) => (
+          <option key={columna} value={columna}>{columna}</option>
+        ))}
+      </Form.Select>
     </div>
   )
 }

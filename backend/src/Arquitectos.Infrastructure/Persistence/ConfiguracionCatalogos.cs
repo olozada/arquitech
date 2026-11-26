@@ -50,6 +50,7 @@ public sealed class ProveedorConfiguracion : IEntityTypeConfiguration<Proveedor>
         builder.ToTable("Proveedores");
         builder.Property(p => p.Nombre).HasMaxLength(150).IsRequired();
         builder.Property(p => p.Nit).HasMaxLength(20);
+        builder.Property(p => p.MapeoProductos).HasMaxLength(2000);
         builder.Property(p => p.Activo).HasDefaultValue(true);
         builder.HasIndex(p => p.Nombre).IsUnique();
         builder.HasIndex(p => p.Nit).IsUnique().HasFilter("[Nit] IS NOT NULL");

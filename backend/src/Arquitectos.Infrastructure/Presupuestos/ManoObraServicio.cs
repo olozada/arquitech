@@ -209,21 +209,30 @@ public sealed class ManoObraServicio : IManoObraServicio
 
     public async Task<ResultadoOperacion<bool>> EliminarCuadrillaAsync(int id, CancellationToken cancellationToken)
     {
-        var cuadrilla = await _context.Cuadrillas.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var cuadrilla = await _context.Cuadrillas
+            .Include(item => item.Integrantes)
+            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (cuadrilla is null)
         {
             return ResultadoOperacion<bool>.NoEncontrado("No se encontró la cuadrilla.");
         }
 
-        if (await _context.Set<ApuLinea>().AnyAsync(linea => linea.CuadrillaId == id, cancellationToken))
+        var usada = await _context.Set<ApuLinea>().AnyAsync(linea => linea.CuadrillaId == id, cancellationToken);
+        if (usada)
         {
-            cuadrilla.Activo = false;
-        }
-        else
-        {
-            _context.Cuadrillas.Remove(cuadrilla);
+            var analisis = await _context.Set<ApuLinea>()
+                .Where(linea => linea.CuadrillaId == id)
+                .Select(linea => linea.Grupo.Apu.Descripcion)
+                .Distinct()
+                .OrderBy(nombre => nombre)
+                .Take(8)
+                .ToListAsync(cancellationToken);
+            var detalle = analisis.Count == 0 ? "un análisis de precios" : string.Join(", ", analisis);
+            return ResultadoOperacion<bool>.Conflicto(
+                $"La cuadrilla está en análisis de precios ({detalle}). Quítela de esas líneas antes de eliminarla.");
         }
 
+        _context.Cuadrillas.Remove(cuadrilla);
         await _context.SaveChangesAsync(cancellationToken);
         return ResultadoOperacion<bool>.Ok(true);
     }
